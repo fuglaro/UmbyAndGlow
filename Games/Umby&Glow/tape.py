@@ -189,10 +189,10 @@ class Tape:
         #     value 128. Additional active bits will be checked going upwards
         #     from themost significant bit/pixel to least significant.
         ###
-        stage = ptr32(self._stage)
         if x < -30 or x >= 102:
             return False # Out of buffer range is always False
-        p = x%132*2+492
+        stage = ptr32(self._stage)
+        p = (x+30)%132*2+432
         h = y - 8 # y position is from bottom of text
         img1 = b >> 0-h if h < 0 else b << h
         img2 = b >> 32-h if h-32 < 0 else b << h-32
