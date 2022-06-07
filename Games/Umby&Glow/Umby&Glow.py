@@ -18,11 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+
+# TODO: Full gave description and overview.
+
+
 import time
 import thumby
 from array import array
-
-# TODO: Full gave description and overview.
 
 ##
 # Scrolling tape with each render layer being a section one after the other.
@@ -82,6 +85,45 @@ def comp(tape: ptr32, tapeScroll: ptr32):
         frame[288+x] = b
 
 ##
+# Scroll the tape one pixel to the right for a specified layer.
+# Updates the tape scroll position of that layer.
+# Fills in the new column with pattern data from a specified
+# pattern function. Since this is a rotating buffer, this writes
+# over the column that has been scrolled offscreen.
+# @param pattern: a function, returning fill data, given x and y paramaters.
+# @param layer: the layer to scroll and write to.
+@micropython.viper
+def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
+    # Advance the tapeScroll position for the layer
+    tapePos = tapeScroll[layer] + 1
+    tapeScroll[layer] = tapePos
+    # Find the tape position for the column that needs to be filled
+    x = tapePos + 72 - 1
+    # Do the top 32 bits, then the bottom 32 bits
+    for w in range(0, 2):
+        # y will iterate through the vertical tape position, for the 32 bits
+        y = w*32
+        # v collects the data for the current 32 bits
+        v = 0
+        # Loop through each bit in this 32 bit word
+        for b in range(0, 32):
+            # Update this 32 bit word with the next bit of fill data from the pattern
+            v |= int(pattern(x, y)) << b
+            y+=1
+        # write the current 32 bits to tape
+        tape[layer*144 + x%72*2+w] = v
+
+
+
+
+
+# TODO rewind_tape
+
+
+
+
+
+##
 # Fast bitwise abs
 @micropython.viper
 def abs(v: int) -> int:
@@ -110,27 +152,6 @@ def pattern_test(x: int, y: int) -> int:
     return int(x%120 == y*3) | (int(x%12 == 0) & int(y%3 == 0))
 
 
-
-
-
-@micropython.viper
-def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
-    tapePos = tapeScroll[layer] + 1
-    tapeScroll[layer] = tapePos
-    x = tapePos + 72 - 1
-    for w in range(0, 2):
-        y = w*32
-        v = 0
-        for b in range(0, 32):
-            v |= int(pattern(x, y)) << b
-            y+=1
-        tape[layer*144 + x%72*2+w] = v
-
-
-
-
-
-
 ##
 # Prepare everything for a level of gameplay including
 # the starting tape, and the feed patterns for each layer.
@@ -144,32 +165,31 @@ def start_level():
 start_level()
 
 
+# FPS
+thumby.display.setFPS(2400) # TESTING: for speed profiling
+#thumby.display.setFPS(120) # Intended game speed
 
-
-
-
-thumby.display.setFPS(1200)
-#thumby.display.setFPS(30)
-
-
-t = 0;
-timer = time.ticks_ms()
+# Main gameplay loop
+c = 0;
+profiler = time.ticks_ms()
 while(1):
+    # Speed profiling
+    if (c % 60 == 0):
+        print(time.ticks_ms() - profiler)
+        profiler = time.ticks_ms()
 
-    if (t % 60 == 0):
-        print(time.ticks_ms() - timer)
-        timer = time.ticks_ms()
-
-
-    # Composite a view with new frame data, drawing to screen
+    # Update the display buffer new frame data
     comp(tape, tapeScroll)
+    # Flush to the display, waiting on the next frame interval
     thumby.display.update()
 
+
+    # TESTING: infinitely scroll the tape
     extend_tape(feed[3], memoryview(tape), tapeScroll, 3)
-    if (t%2==0):
+    if (c % 2 == 0):
         extend_tape(feed[1], memoryview(tape), tapeScroll, 1)
-        if (t%4==0):
+        if (c % 4 == 0):
             extend_tape(feed[0], memoryview(tape), tapeScroll, 0)
-    t += 1
+    c += 1
 
 
