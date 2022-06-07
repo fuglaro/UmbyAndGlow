@@ -58,18 +58,6 @@ from time import ticks_ms
 from thumby import display
 import thumby
 
-# Alphabet for writing text - 3x5 text size (4x6 with spacing)
-# BITMAP: width: 105, height: 8
-abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,136,
-    248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,128,
-    128,248,48,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,216,184,
-    168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,184,160,248,
-    200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,
-    80,32,8,168,56])
-# Index lookup for printable characters
-abc_i = dict((v, i) for i, v in enumerate(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?"))
-
 # Button functions. Note they return the inverse pressed state
 bU = thumby.buttonU.pin.value
 bD = thumby.buttonD.pin.value
@@ -130,6 +118,18 @@ class Tape:
     # This acts as the camera position across the level.
     # Care must be taken to NOT modify this externally.
     x = memoryview(_tape_scroll)[3:4]
+    
+    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
+    # BITMAP: width: 105, height: 8
+    abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,136,
+        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
+        128,128,248,48,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
+        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
+        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
+        32,32,80,136,136,80,32,8,168,56])
+    # Index lookup for printable characters
+    abc_i = dict((v, i) for i, v in enumerate(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?"))
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
@@ -286,7 +286,8 @@ class Tape:
         should be given relative to the screen, rather than the tape.
         """
         tape = ptr32(self._tape)
-        abc_b = ptr8(abc)
+        abc_b = ptr8(self.abc)
+        abc_i = self.abc_i
         h = y - 11 # ignore top 3 bits of the byte height (5 height font)
         # Select the relevant layers
         mask = 288 if layer == 1 else 720
@@ -662,6 +663,7 @@ class Umby:
             # Stop falling when hit ground
             self._y_vel = 0
 
+        
 
 
 
