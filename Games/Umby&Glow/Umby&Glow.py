@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(600000) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 
 from array import array
 from time import ticks_ms
