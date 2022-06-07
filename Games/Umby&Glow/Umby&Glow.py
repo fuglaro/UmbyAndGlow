@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(60) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(600000) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -559,6 +559,9 @@ class Umby:
     @micropython.native
     def tick(self):
         """ Updated Umby for one game tick """
+
+
+        #---- TESTING: Explore the level by flying without clipping 
         if not bU():
             self.y_pos -= 1
         elif not bD():
@@ -567,6 +570,7 @@ class Umby:
             self.x_pos -= 1
         elif not bR():
             self.x_pos += 1
+        #---- TESTING: END
 
     @micropython.viper
     def draw(self, t: int, x: int, stage):
@@ -635,21 +639,6 @@ def run_game():
 
         # Flush to the display, waiting on the next frame interval
         display.update()
-
-
-
-    
-
-        # TESTING: infinitely scroll the tape
-        #if not bU():
-        #    v = v - 1 if v > 0 else v
-        #elif not bD():
-        #    v = v + 1 if v < 24 else v
-        #tape.offset_vertically(v)
-        #if not bL():
-        #    tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
-        #elif not bR():
-        #    tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
         t += 1
 run_game()
 
