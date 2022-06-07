@@ -84,7 +84,7 @@ bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
 from sys import path
 path.append("/Games/Umby&Glow")
-from tape import Tape, display_update
+from tape import Tape, display_update, ihash
 
 
 
@@ -116,17 +116,6 @@ def abs(v: int) -> int:
     ### Fast bitwise abs ###
     m = v >> 31
     return (v + m) ^ m
-
-@micropython.viper
-def ihash(x: uint) -> int:
-    ### 32 bit deterministic semi-random hash fuction
-    # Credit: Thomas Wang
-    ###
-    x = (x ^ 61) ^ (x >> 16)
-    x += (x << 3)
-    x ^= (x >> 4)
-    x *= 0x27d4eb2d
-    return int(x ^ (x >> 15))
 
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:
@@ -339,7 +328,7 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 
 ## Actors ##
-"""
+
 class Player:
     ### Umby or Glow ###
     # Player behavior mode such as Play, Testing, and Respawn
@@ -487,12 +476,12 @@ class Umby(Player):
         ### Handle one game tick for normal play controls ###
         x = self.x
         y = self.y
-        _chd = tape.check(x, y+1)
-        _chu = tape.check(x, y-4)
-        _chl = tape.check(x-1, y)
-        _chlu = tape.check(x-1, y-3)
-        _chr = tape.check(x+1, y)
-        _chru = tape.check(x+1, y-3)
+        _chd = tape.check_tape(x, y+1)
+        _chu = tape.check_tape(x, y-4)
+        _chl = tape.check_tape(x-1, y)
+        _chlu = tape.check_tape(x-1, y-3)
+        _chr = tape.check_tape(x+1, y)
+        _chru = tape.check_tape(x+1, y-3)
         # Apply gravity and grund check
         if not (_chd or _chl or _chr):
             # Apply gravity to vertical speed
@@ -584,7 +573,7 @@ class Umby(Player):
                 # Diffuse rocket
                 self.rocket_active = 0
             # Check if the rocket hit the ground
-            if tape.check(rx, ry):
+            if tape.check_tape(rx, ry):
                 # Explode rocket
                 self.kill(t, None)
         # Wait until the rocket button is released before firing another
@@ -594,7 +583,6 @@ class Umby(Player):
     @micropython.viper
     def draw(self, t: int):
         ### Draw Umby to the draw buffer ###
-        stage = tape.stage
         p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
@@ -610,18 +598,18 @@ class Umby(Player):
         # 0 when still, 1 when left moving, 2 when right
         fm = 1 if not bL() else 2 if not bR() else 0
         # Draw Umby's layers and masks
-        stage.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
-        stage.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
-        stage.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
-        stage.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
+        tape.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
+        tape.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
+        tape.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
+        tape.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
         # Draw Umby's aim
-        stage.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
-        stage.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
-        stage.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
+        tape.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
+        tape.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
+        tape.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
         # Draw Umby's rocket
         if int(self.rocket_active) == 1:
-            stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            stage.draw(0, rock_x-p+(-3 if aim_x>0 else 1), rock_y-7,
+            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
+            tape.draw(0, rock_x-p+(-3 if aim_x>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
 
 
@@ -697,25 +685,25 @@ class Glow(Player):
         ### Handle one game tick for normal play controls ###
         x = self.x
         y = self.y
-        _chd = tape.check(x, y-1)
-        _chrd = tape.check(x+1, y-1)
-        _chlld = tape.check(x-2, y-1)
-        _chrrd = tape.check(x+2, y-1)
-        _chld = tape.check(x-1, y-1)
-        _chl = tape.check(x-1, y)
-        _chr = tape.check(x+1, y)
-        _chll = tape.check(x-2, y)
-        _chrr = tape.check(x+2, y)
-        _chu = tape.check(x, y+3)
-        _chlu = tape.check(x-1, y+3)
-        _chru = tape.check(x+1, y+3)
+        _chd = tape.check_tape(x, y-1)
+        _chrd = tape.check_tape(x+1, y-1)
+        _chlld = tape.check_tape(x-2, y-1)
+        _chrrd = tape.check_tape(x+2, y-1)
+        _chld = tape.check_tape(x-1, y-1)
+        _chl = tape.check_tape(x-1, y)
+        _chr = tape.check_tape(x+1, y)
+        _chll = tape.check_tape(x-2, y)
+        _chrr = tape.check_tape(x+2, y)
+        _chu = tape.check_tape(x, y+3)
+        _chlu = tape.check_tape(x-1, y+3)
+        _chru = tape.check_tape(x+1, y+3)
         free_falling = not (_chd or _chld or _chrd or _chl or _chr)
         head_hit = _chu or _chlu or _chru
         # CONTROLS: Activation of grappling hook
         if self.mode == 0:
             # Shoot hook straight up
             i = y-1
-            while i > 0 and not tape.check(x, i):
+            while i > 0 and not tape.check_tape(x, i):
                 i -= 1
             self._hook_x = x
             self._hook_y = i
@@ -766,7 +754,7 @@ class Glow(Player):
                 xh = x
                 yh = y
                 while (yh > 0 and (x-xh)*self.dir < 40
-                and not tape.check(int(xh), int(yh))):
+                and not tape.check_tape(int(xh), int(yh))):
                     xh += x2
                     yh += y2
                 # Apply grapple hook parameters
@@ -892,7 +880,7 @@ class Glow(Player):
                 # Diffuse rocket
                 self.rocket_active = 0
             # Check if the rocket hit the ground
-            if tape.check(rx, ry):
+            if tape.check_tape(rx, ry):
                 # Explode rocket
                 self.kill(t, None)
         # Immediately reset rickets after an explosion
@@ -902,7 +890,6 @@ class Glow(Player):
     @micropython.viper
     def draw(self, t: int):
         ### Draw Glow to the draw buffer ###
-        stage = tape.stage
         p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
@@ -916,10 +903,10 @@ class Glow(Player):
         # 0 when still, 1 when left moving, 2 when right
         fm = 1 if not bL() else 2 if not bR() else 0
         # Draw Glows's layers and masks
-        stage.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
-        stage.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
-        stage.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
-        stage.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
+        tape.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
+        tape.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
+        tape.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
+        tape.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
         # Draw Glows's aim
         l = t*6//_FPS%2
         # Rope aim
@@ -930,30 +917,29 @@ class Glow(Player):
             for i in range(0, 8):
                 sx = x_pos-p + (hook_x-x_pos)*i//8
                 sy = y_pos + (hook_y-y_pos)*i//8
-                stage.draw(1, sx-1, sy-6, self._aim, 3, 0)
+                tape.draw(1, sx-1, sy-6, self._aim, 3, 0)
             hx = hook_x-p-1
             hy = hook_y-6
         else:
             hx = x_pos-p-aim_x//2-1
             hy = y_pos-6-aim_y//2
-        stage.draw(l, hx, hy, self._aim, 3, 0)
-        stage.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
-        stage.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
+        tape.draw(l, hx, hy, self._aim, 3, 0)
+        tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
+        tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
         # Rocket aim
         x = x_pos-p+aim_x-1
         y = y_pos-6+aim_y
-        stage.draw(l, x, y, self._aim, 3, 0)
-        stage.mask(1, x, y, self._aim_fore_mask, 3, 0)
-        stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
+        tape.draw(l, x, y, self._aim, 3, 0)
+        tape.mask(1, x, y, self._aim_fore_mask, 3, 0)
+        tape.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
         # Draw Glows's rocket
         if self.rocket_active:
             rock_x = int(self.rocket_x)
             rock_y = int(self.rocket_y)
             dire = int(self._r_dir)
-            stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            stage.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
+            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
+            tape.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
-"""
 
 
 class BonesTheMonster:
@@ -974,8 +960,8 @@ class BonesTheMonster:
     # BITMAP: width: 9, height: 8
     _mask = bytearray([28,62,247,243,239,243,247,62,28])
 
-    def __init__(self, stage, x, y):
-        self._stage = stage
+    def __init__(self, tape, x, y):
+        self._tp = tape
         self.x = int(x) # Middle of Bones
         self.y = int(y) # Middle of Bones
         # Mode: 0 - flying, 1 - charging
@@ -989,6 +975,7 @@ class BonesTheMonster:
     def tick(self, t):
         ### Update Bones for one game tick ###
         # Find the potential new coordinates
+        tape = self._tp
         x = self.x
         y = self.y
         if self.mode == 0: # Flying
@@ -997,8 +984,8 @@ class BonesTheMonster:
             # Change direction if needed
             if ((self._dx == 0 and self._dy == 0)
             or ny < -10 or ny > 74 or t%128==0
-            or (tape.check(int(nx), int(ny)) and t%12 and not (
-                tape.check(x, y) or y < 0 or y >= 64))):
+            or (tape.check_tape(int(nx), int(ny)) and t%12 and not (
+                tape.check_tape(x, y) or y < 0 or y >= 64))):
                 self._dx = sin(t+nx)/4.0
                 self._dy = cos(t+nx)/4.0
             else:
@@ -1007,7 +994,7 @@ class BonesTheMonster:
                 self.x = int(nx)
                 self.y = int(ny)
             # Check for charging condition
-            for plyr in self._stage.players:
+            for plyr in tape.players:
                 px = plyr.x - x
                 py = plyr.y - y
                 if px*px + py*py < 300:
@@ -1015,7 +1002,7 @@ class BonesTheMonster:
                     self.mode = 1
             # Check for own death conditions
             if x < tape.x[0]:
-                self._stage.mons.remove(self)
+                tape.mons.remove(self)
         elif t%4==0: # Charging
             t = self._target
             self.x += 1 if x < t.x else -1 if x > t.x else 0
@@ -1024,7 +1011,7 @@ class BonesTheMonster:
     @micropython.viper
     def draw(self, t: int):
         ### Draw Bones to the draw buffer ###
-        stage = tape.stage
+        tape = self._tp
         p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
@@ -1032,9 +1019,9 @@ class BonesTheMonster:
         # Select animation frame
         f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
         # Draw Bones' layers and masks
-        stage.draw(1, x_pos-3-p, y_pos-4, self._art, 7, f) # Bones
-        stage.mask(1, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
-        stage.mask(0, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
+        tape.draw(1, x_pos-3-p, y_pos-4, self._art, 7, f) # Bones
+        tape.mask(1, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
+        tape.mask(0, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
 
 
 # TODO: Some monster things
@@ -1075,12 +1062,10 @@ def set_level(start):
     tape.feed[:] = [pattern_toplit_wall,
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
-    # Fill the tape in the starting level
-    tape.reset_tape(start)
     # Reset monster spawner to the new level
-    tape.stage.types = [BonesTheMonster]
-    tape.stage.rates = bytearray([200])
-    tape.stage.reset(start)
+    tape.types = [BonesTheMonster]
+    tape.rates = bytearray([200])
+    tape.reset(start)
     if start > -9999:
         # Fill the visible tape with the starting platform
         for i in range(start, start+72):
@@ -1098,8 +1083,8 @@ def run_menu():
     ###
     t = 0
     set_level(-9999)
-    tape.stage.add(BonesTheMonster, -9960, 25)
-    m = tape.stage.mons[0]
+    tape.add(BonesTheMonster, -9960, 25)
+    m = tape.mons[0]
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     h = s = 0
     while(bA()):
@@ -1166,7 +1151,7 @@ def run_game():
         p1 = Glow(start+10, 20)
     else:
         p1 = Umby(start+10, 20)
-    tape.stage.players.append(p1)
+    tape.players.append(p1)
     # (Secret) Testing mode
     if not (bR() or bA() or bB()):
         p1.mode = -99
@@ -1182,26 +1167,23 @@ def run_game():
 
         # Update the game engine by a tick
         p1.tick(t)
-        for mon in tape.stage.mons:
+        for mon in tape.mons:
             mon.tick(t)
 
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, t)
 
-        # Spawn new monsters as needed
-        tape.stage.spawn()
-
         # Update the display buffer new frame data
         # Add all the monsters, and check for collisions along the way
-        for mon in tape.stage.mons:
+        for mon in tape.mons:
             mon.draw(t)
             # Check if a rocket hits this monster
             if p1.rocket_active:
-                if tape.stage.check(p1.rocket_x-tape.x[0], p1.rocket_y, 128):
-                    tape.stage.mons.remove(mon)
+                if tape.check(p1.rocket_x-tape.x[0], p1.rocket_y, 128):
+                    tape.mons.remove(mon)
                     p1.kill(t, mon)
         # If player is in play mode, check for monster collisions
-        if p1.mode >= 0 and tape.stage.check(p1.x-tape.x[0], p1.y, 224):
+        if p1.mode >= 0 and tape.check(p1.x-tape.x[0], p1.y, 224):
             p1.die(240, "Umby became monster food!")
 
         # Draw the players

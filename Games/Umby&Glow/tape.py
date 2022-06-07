@@ -15,6 +15,16 @@
 from array import array
 from machine import Pin, SPI
 
+@micropython.viper
+def ihash(x: uint) -> int:
+    ### 32 bit deterministic semi-random hash fuction
+    # Credit: Thomas Wang
+    ###
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
 
 class SSD1306():
     # Yoinked from https://github.com/TinyCircuits/TinyCircuits-Thumby-Code-Editor/blob/master/ThumbyGames/lib/ssd1306.py
@@ -130,8 +140,77 @@ except: # Otherwise use a custom one if on the thumby device
 
 
 
+class Tape:
+    ###
+    # Scrolling tape with a fore, mid, and background layer.
+    # This represents the level of the ground but doesn't include actors.
+    # The foreground is the parts of the level that are interactive with
+    # actors such as the ground, roof, and platforms.
+    # Mid and background layers are purely decorative.
+    # Each layer can be scrolled intependently and then composited onto the
+    # display buffer.
+    # Each layer is created by providing deterministic functions that
+    # draw the pixels from x and y coordinates. Its really just an elaborate
+    # graph plotter - a scientific calculator turned games console!
+    # The tape size is 64 pixels high, with an infinite length, and 216 pixels
+    # wide are buffered (72 pixels before tape position, 72 pixels of visible,
+    # screen, and 72 pixels beyond the visible screen).
+    # This is intended for the 72x40 pixel view. The view can be moved
+    # up and down but when it moves forewards and backwards, the buffer
+    # is cycled backwards and forewards. This means that the tape
+    # can be modified (such as for explosion damage) for the 64 pixels high,
+    # and 216 pixels wide, but when the tape is rolled forewards, and backwards,
+    # the columns that go out of buffer are reset.
+    # There is also an overlay layer and associated mask, which is not
+    # subject to any tape scrolling or vertical offsets.
+    # There are also actor stage layers for managing rendering
+    # and collision detection of players and monsters.
+    ###
+    # Scrolling tape with each render layer being a section one after the other.
+    # Each section is a buffer that cycles (via the tape_scroll positions) as the
+    # world scrolls horizontally. Each section can scroll independently so
+    # background layers can move slower than foreground layers.
+    # Layers each have 1 bit per pixel from top left, descending then wrapping
+    # to the right.
+    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
+    # Each layer is a layer in the composited render stack.
+    # Layers from left to right:
+    # - 0: far background
+    # - 432: close background
+    # - 864: close background fill (opaque: off pixels)
+    # - 1296: landscape including ground, platforms, and roof
+    # - 1728: landscape fill (opaque: off pixels)
+    # - 2160: overlay mask (opaque: off pixels)
+    # - 2304: overlay
+    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
+    # The scroll distance of each layer in the tape,
+    # and then the frame number counter and vertical offset appended on the end.
+    # The vertical offset (yPos), cannot be different per layer (horizontal
+    # parallax only).
+    # [backPos, midPos, frameCounter, forePos, yPos]
+    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    # Public accessible x position of the tape foreground relative to the level.
+    # This acts as the camera position across the level.
+    # Care must be taken to NOT modify this externally.
+    x = memoryview(_tape_scroll)[3:4]
+    midx = memoryview(_tape_scroll)[1:2]
+    
+    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
+    # BITMAP: width: 117, height: 8
+    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
+        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
+        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
+        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
+        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
+        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
+        200,176])
+    abc_i = dict((v, i) for i, v in enumerate(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
 
-class _Stage:
+    # The patterns to feed into each tape section
+    feed = [None, None, None, None, None]
+
+    # Actor and player management variables
     ### Render and collision detection buffer
     # for all the maps and monsters, and also the players.
     # Monsters and players can be drawn to the buffer one
@@ -145,7 +224,6 @@ class _Stage:
     # background and foreground monsters, and 2 for clearing
     # background and foreground environment for monster
     # visibility.
-    ###
     # Frames for the drawing and checking collisions of all actors.
     # This includes layers for turning on pixels and clearing lower layers.
     # Clear layers have 0 bits for clearing and 1 for passing through.
@@ -164,28 +242,24 @@ class _Stage:
     mons = [] # Active monsters
     players = [] # Player register for monsters to interact with
 
-    def reset(self, start):
-        ### Remove all monsters and set a new spawn starting position ###
-        mons = []
-        self._x[0] = start
+    def __init__(self):
+        self.clear_overlay()
 
     @micropython.viper
-    def spawn(self):
-        ### Spawn new monsters as needed ###
-        x = ptr32(self._x)
-        p = int(tape.x[0])
-        # Only spawn when scrolling into unseen land
-        if x[0] >= p:
-            return
-        rates = ptr8(self.rates)
-        r = int(uint(ihash(p)))
-        # Loop through each monster type randomly spawning
-        # at the configured rate.
-        for i in range(0, int(len(self.types))):
-            if rates[i] and r%(256-rates[i]) == 0:
-                self.add(self.types[i], p+72+36, r%64)
-            r = r >> 1 # Fast reuse of random number
-        x[0] = p 
+    def reset(self, p: int):
+        ### Remove all monsters and set a new spawn starting position,
+        # and reset the tape.
+        ###
+        mons = []
+        self._x[0] = p
+        # Reset the tape buffers for all layers to the
+        # given position and fill with the current feed.
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            tapePos = scroll[layer] = (p if layer == 3 else 0)
+            for x in range(tapePos-72, tapePos+144):
+                self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
 
     def add(self, mon_type, x, y):
         ### Add a monster of the given type ###
@@ -207,16 +281,6 @@ class _Stage:
         img1 = b >> 0-h if h < 0 else b << h
         img2 = b >> 32-h if h-32 < 0 else b << h-32
         return bool((stage[p] & img1) | stage[p+1] & img2)
-
-    @micropython.viper
-    def clear(self):
-        ### Reset the render and mask laters to their default blank state ###
-        draw = ptr32(self.stage)
-        for i in range(288):
-            draw[i] = 0
-        mask = uint(0xFFFFFFFF)
-        for i in range(288, 576):
-            draw[i] = mask
 
     @micropython.viper
     def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
@@ -258,87 +322,6 @@ class _Stage:
             draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
 
-
-class Tape:
-    ###
-    # Scrolling tape with a fore, mid, and background layer.
-    # This represents the level of the ground but doesn't include actors.
-    # The foreground is the parts of the level that are interactive with
-    # actors such as the ground, roof, and platforms.
-    # Mid and background layers are purely decorative.
-    # Each layer can be scrolled intependently and then composited onto the
-    # display buffer.
-    # Each layer is created by providing deterministic functions that
-    # draw the pixels from x and y coordinates. Its really just an elaborate
-    # graph plotter - a scientific calculator turned games console!
-    # The tape size is 64 pixels high, with an infinite length, and 216 pixels
-    # wide are buffered (72 pixels before tape position, 72 pixels of visible,
-    # screen, and 72 pixels beyond the visible screen).
-    # This is intended for the 72x40 pixel view. The view can be moved
-    # up and down but when it moves forewards and backwards, the buffer
-    # is cycled backwards and forewards. This means that the tape
-    # can be modified (such as for explosion damage) for the 64 pixels high,
-    # and 216 pixels wide, but when the tape is rolled forewards, and backwards,
-    # the columns that go out of buffer are reset.
-    # There is also an overlay layer and associated mask, which is not
-    # subject to any tape scrolling or vertical offsets.
-    ###
-    # Scrolling tape with each render layer being a section one after the other.
-    # Each section is a buffer that cycles (via the tape_scroll positions) as the
-    # world scrolls horizontally. Each section can scroll independently so
-    # background layers can move slower than foreground layers.
-    # Layers each have 1 bit per pixel from top left, descending then wrapping
-    # to the right.
-    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
-    # Each layer is a layer in the composited render stack.
-    # Layers from left to right:
-    # - 0: far background
-    # - 432: close background
-    # - 864: close background fill (opaque: off pixels)
-    # - 1296: landscape including ground, platforms, and roof
-    # - 1728: landscape fill (opaque: off pixels)
-    # - 2160: overlay mask (opaque: off pixels)
-    # - 2304: overlay
-    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
-    # The scroll distance of each layer in the tape,
-    # and then the frame number counter and vertical offset appended on the end.
-    # The vertical offset (yPos), cannot be different per layer (horizontal
-    # parallax only).
-    # [backPos, midPos, frameCounter, forePos, yPos]
-    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
-    # Public accessible x position of the tape foreground relative to the level.
-    # This acts as the camera position across the level.
-    # Care must be taken to NOT modify this externally.
-    x = memoryview(_tape_scroll)[3:4]
-    midx = memoryview(_tape_scroll)[1:2]
-    # Actor and player management
-    stage = _Stage()
-    
-    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
-    # BITMAP: width: 117, height: 8
-    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
-        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
-        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
-        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
-        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
-        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
-        200,176])
-    abc_i = dict((v, i) for i, v in enumerate(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
-
-    # The patterns to feed into each tape section
-    feed = [None, None, None, None, None]
-
-    def __init__(self):
-        self.clear_overlay()
-
-    @micropython.viper
-    def check(self, x: int, y: int) -> bool:
-        ### Returns true if the x, y position is solid foreground ###
-        tape = ptr32(self._tape)
-        p = x%216*2+1296
-        return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
-
     @micropython.viper
     def comp(self):
         ### Composite all the render layers together and render directly to
@@ -347,7 +330,7 @@ class Tape:
         ###
         tape = ptr32(self._tape)
         scroll = ptr32(self._tape_scroll)
-        stg = ptr32(self.stage.stage)
+        stg = ptr32(self.stage)
         frame = ptr8(_display_buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
@@ -401,8 +384,20 @@ class Tape:
             frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
             frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
             frame[288+x] = b >> y_pos
-        # Clear the stage buffers now that we have pulled
-        self.stage.clear()
+        # Clear the stage buffers now that we have pulled the render
+        # Reset the render and mask laters to their default blank state
+        for i in range(288):
+            stg[i] = 0
+        mask = uint(0xFFFFFFFF)
+        for i in range(288, 576):
+            stg[i] = mask
+
+    @micropython.viper
+    def check_tape(self, x: int, y: int) -> bool:
+        ### Returns true if the x, y position is solid foreground ###
+        tape = ptr32(self._tape)
+        p = x%216*2+1296
+        return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
     
     @micropython.viper
     def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
@@ -441,6 +436,21 @@ class Tape:
                 fill_pattern = self.feed[layer + 1]
                 tape[offX+432] = int(fill_pattern(x, 0))
                 tape[offX+433] = int(fill_pattern(x, 32))
+        # Spawn new monsters as needed
+        xp = ptr32(self._x)
+        p = scroll[3]
+        # Only spawn when scrolling into unseen land
+        if xp[0] >= p:
+            return
+        rates = ptr8(self.rates)
+        r = int(uint(ihash(p)))
+        # Loop through each monster type randomly spawning
+        # at the configured rate.
+        for i in range(0, int(len(self.types))):
+            if rates[i] and r%(256-rates[i]) == 0:
+                self.add(self.types[i], p+72+36, r%64)
+            r = r >> 1 # Fast reuse of random number
+        xp[0] = p 
 
     @micropython.viper
     def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
@@ -501,18 +511,6 @@ class Tape:
         if l != 0 and fill_pattern:
             tape[offX+432] &= int(fill_pattern(x, 0))
             tape[offX+433] &= int(fill_pattern(x, 32))
-
-    @micropython.viper
-    def reset_tape(self, p: int):
-        ### Reset the tape buffers for all layers to the
-        # given position and fill with the current feed.
-        ###
-        scroll = ptr32(self._tape_scroll)
-        for i in range(3):
-            layer = 3 if i == 2 else i
-            tapePos = scroll[layer] = (p if layer == 3 else 0)
-            for x in range(tapePos-72, tapePos+144):
-                self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
         
     @micropython.viper
     def offset_vertically(self, offset: int):
