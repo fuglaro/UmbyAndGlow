@@ -1182,7 +1182,9 @@ class MonsterSpawner:
     @micropython.native
     def add(self, mon_type, x, y):
         """ Add a monster of the given type """
-        self.mons.append(mon_type(self._tape, self._stage, self, x, y))
+        if len(self.mons) < 10: # Limit to maximum 10 monsters at once
+            self.mons.append(mon_type(self._tape, self._stage, self, x, y))
+
 
 ## Game Play ##
 
