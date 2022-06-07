@@ -739,7 +739,7 @@ class Umby:
         self.rocket_x = 0
         self.rocket_y = 0
 
-    @micropython.native
+    # TODO @micropython.native
     def tick(self, t, tape):
         """ Updated Umby for one game tick.
         @param t: the current game tick count
@@ -789,13 +789,31 @@ class Umby:
                 elif not self.rocket_active: # Power rocket
                     self._aim_pow += 0.03
                 # Resolve rocket aim to the x by y vector form
-                self.aim_x = int(math.sin(self._aim_angle)*(self._aim_pow)*10)
-                self.aim_y = int(math.cos(self._aim_angle)*(self._aim_pow)*10)
+                self.aim_x = int(math.sin(self._aim_angle)*self._aim_pow*10)
+                self.aim_y = int(math.cos(self._aim_angle)*self._aim_pow*10)
             # Actually launch the rocket when button is released
-            if bB() and not self.rocket_active:
-                self.rocket_active
-                self.rocket_x = 
+            if bB() and self._aim_pow > 1.0 and not self.rocket_active:
+                self.rocket_active = 1
+                self._rocket_x = self._x_pos
+                self._rocket_y = self._y_pos - 1
+                self._rocket_x_vel = math.sin(self._aim_angle)*self._aim_pow/2
+                self._rocket_y_vel = math.cos(self._aim_angle)*self._aim_pow/2
                 self._aim_pow = 1.0
+                self.aim_x = int(math.sin(self._aim_angle)*self._aim_pow*10)
+                self.aim_y = int(math.cos(self._aim_angle)*self._aim_pow*10)
+            # Apply rocket dynamics if it is active
+            if self.rocket_active:
+                # Apply rocket motion
+                self._rocket_x += self._rocket_x_vel
+                self._rocket_y += self._rocket_y_vel
+                self.rocket_x = int(self._rocket_x)
+                self.rocket_y = int(self._rocket_y)
+                # Apply gravity
+                self._rocket_y_vel += 2.5 / _FPS
+                # Check fallen through ground
+                if self.rocket_y > 80:
+                    # Diffuse rocket
+                    self.rocket_active = 0
 
             # DEATH: Check for head smacking
             if _chu and self._y_vel < -0.4:
@@ -842,7 +860,7 @@ class Umby:
 
 
 
-        # TODO: rocket
+        # TODO: rocket, and trim code
 
 
         # Update the viper friendly variables.
@@ -856,6 +874,8 @@ class Umby:
         y_pos = int(self.y_pos)
         aim_x = int(self.aim_x)
         aim_y = int(self.aim_y)
+        rock_x = int(self.rocket_x)
+        rock_y = int(self.rocket_y)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
@@ -871,6 +891,9 @@ class Umby:
         # Draw Umby's aim
         stage.draw(t*6//_FPS % 2, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
         stage.mask(1, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
+        # Draw Umby's rocket
+        if self.rocket_active:
+            stage.draw(1, rock_x-x, rock_y-7, self._aim, 1, 0)
 
 
 ## Game Engine ##
