@@ -62,7 +62,7 @@ def comp(tape: ptr32, tapeScroll: ptr32):
 ##
 # Drawable pattern - dotted vertical lines repeating
 @micropython.viper
-def wall_pattern(x: int, y: int) -> int:
+def pattern_wall(x: int, y: int) -> int:
     #return 0 if (x % 16) or (y % 3) else 1
     #return 1 if x/3%(40) == y else 0
     return 1 if x%120 == y*3 or not ((x % 16) or (y % 3)) else 0
@@ -98,7 +98,7 @@ def pattern_test(x: int, y: int) -> int:
 def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
     tapePos = tapeScroll[layer] + 1
     tapeScroll[layer] = tapePos
-    x = tapePos + 72
+    x = tapePos + 72 - 1
     for w in range(0, 2):
         y = w*32
         v = 0
@@ -109,18 +109,18 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 
 
 
-for i in range(0, 72):
-    extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
-    extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
-    extend_tape(pattern_room, memoryview(tape), tapeScroll, 0)
+#for i in range(0, 72):
+#    extend_tape(pattern_wall, memoryview(tape), tapeScroll, 3)
+#    extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
+#    extend_tape(pattern_room, memoryview(tape), tapeScroll, 0)
 
 
 
 
 
 
-thumby.display.setFPS(1200)
-#thumby.display.setFPS(120)
+#thumby.display.setFPS(1200)
+thumby.display.setFPS(30)
 
 
 t = 0;
@@ -136,7 +136,7 @@ while(1):
     comp(tape, tapeScroll)
     thumby.display.update()
 
-    extend_tape(pattern_test, memoryview(tape), tapeScroll, 3)
+    extend_tape(pattern_room, memoryview(tape), tapeScroll, 3)
     if (t%2==0):
         extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
         if (t%4==0):
