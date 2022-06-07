@@ -1077,12 +1077,7 @@ class Umby(Player):
                 self._aim, 3, 0) # Rocket tail
 
 
-
-
-
-
-
-class Glow(Player): # TODO
+class Glow(Player):
     """ One of the players you can play with.
     Glow is a cave dwelling glow worm. They can crawl along the roof,
     fall at will, swing with a grappling hook, and fire rockets.
@@ -1095,11 +1090,12 @@ class Glow(Player): # TODO
     be moved up or down, and will switch to the horizontal direction for
     the last direction Glow pressed.
     Monsters, traps, and falling offscreen will kill them.
-    Glow is not good with mud, and will sink and suffocate when touching
-    the ground while the grappling hook is not activated. Suffocation will
-    only occur if Glow is covered in mud from 1 pixel above head to toe,
-    otherwise Glow will slowly sink. This means glow can fall through
-    thin platforms like Umby's platforms.
+    Glow is not good with mud, and if hits the ground, including at a bad angle
+    when on the grappling hook, will get stuck. This will cause it to be
+    difficult to throw the grappling hook, and may leave Glow with the only
+    option of sinking throug the abyse into the mud.
+    This means glow can sometimes fall through thin platforms like Umby's
+    platforms and then crawl underneath.
     Umby also has some specific modes:
         * 0: auto attach grapple hook to ceiling.
         * 1: grapple hook activated.
@@ -1154,11 +1150,6 @@ class Glow(Player): # TODO
             return 1
         return 0
 
-    # TODO: grapple-hook/mud-sinking
-    # TODO: fix death conditions
-
-
-
     @micropython.native
     def _tick_play(self, t):
         """ Handle one game tick for normal play controls """
@@ -1178,6 +1169,7 @@ class Glow(Player): # TODO
         _chlu = tape.check(x-1, y+3)
         _chru = tape.check(x+1, y+3)
         free_falling = not (_chd or _chld or _chrd or _chl or _chr)
+        head_hit = _chu or _chlu or _chru
         # CONTROLS: Activation of grappling hook
         if self.mode == 0:
             # Shoot hook straight up
@@ -1193,8 +1185,6 @@ class Glow(Player): # TODO
             self.mode = 1
         # CONTROLS: Grappling hook swing
         if self.mode == 1:
-            # Apply motion
-            self._hook_ang += self._hook_vel/128.0
             ang = self._hook_ang
             # Apply gravity
             g = ang*ang/2.0
@@ -1206,15 +1196,13 @@ class Glow(Player): # TODO
             self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
             # CONTROLS: climb/extend rope
             self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
-            # Update position variables based on swing
-            self._x = self._hook_x + math.sin(self._hook_ang)*self._hook_len
-            self._y = self._hook_y + math.cos(self._hook_ang)*self._hook_len
-            if not free_falling:
-                if bA(): # Stick to ceiling if touched
-                    self.mode = 2
-                elif vel*ang > 0: # Rebound off ceiling
-                    self._hook_vel = -self._hook_vel
-            elif self._bAO(): # Release grappling hook
+            # Check land interaction conditions
+            if not free_falling and bA(): # Stick to ceiling if touched
+                self.mode = 2
+            elif head_hit or (not free_falling and vel*ang > 0):
+                # Rebound off ceiling
+                self._hook_vel = -self._hook_vel
+            if free_falling and self._bAO(): # Release grappling hook
                 self.mode = 2
                 # Convert angular momentum to free falling momentum
                 ang2 = ang + vel/128.0
@@ -1222,9 +1210,10 @@ class Glow(Player): # TODO
                 y2 = self._hook_y + math.cos(ang2)*self._hook_len
                 self._x_vel = x2 - self._x
                 self._y_vel = y2 - self._y
-            
-
-
+            # Update motion and position variables based on swing
+            self._hook_ang += self._hook_vel/128.0
+            self._x = self._hook_x + math.sin(self._hook_ang)*self._hook_len
+            self._y = self._hook_y + math.cos(self._hook_ang)*self._hook_len
         elif self.mode == 2: # Normal movement (without grappling hook)
             # CONTROLS: Activate hook
             if free_falling and self._bAO():
@@ -1242,17 +1231,14 @@ class Glow(Player): # TODO
                 # Apply grapple hook parameters
                 self._hook_x = int(xh)
                 self._hook_y = int(yh)
-                self._hook_vel = 0.0 # TODO
                 x1 = x - self._hook_x
                 y1 = y - self._hook_y
                 self._hook_len = math.sqrt(x1*x1+y1*y1)
-
-            # TODO: Trig the release and attach velocities.
-
-
-
-
-
+                # Now get the velocity in the grapple angle
+                v1 = (1-self._x_vel*y1+self._y_vel*x1)/self._hook_len
+                xv = self._x_vel
+                yv = self._y_vel
+                self._hook_vel = -math.sqrt(xv*xv+yv+yv)*v1*2
                 # Start normal grappling hook mode
                 self.mode = 1
             # CONTROLS: Fall (force when jumping)
@@ -1289,29 +1275,18 @@ class Glow(Player): # TODO
                 # Check is we should decend
                 elif (_chr or _chru) and not _chu:
                     self._y += 1
-
-
-
-
         # Update the state of the A button pressed detector
         if not bA():
             if self._bAOnce == 0:
                 self._bAOnce = 1
         else:
             self._bAOnce = 0
-
-
         # Update the viper friendly variables.
         self.x = int(self._x)
         self.y = int(self._y)
-
-        # DEATH: Check for head smacking
-        if _chu and self._y_vel < -0.4:
-            self.die(240, "Umby face-planted the roof!")
         # DEATH: Check for falling into the abyss
         if self._y > 80:
             self.die(240, "Umby fell into the abyss!")
-
 
     @micropython.native
     def _tick_rocket(self, t):
@@ -1384,7 +1359,7 @@ class Glow(Player): # TODO
         if self.rocket_active == 2:
             self.rocket_active = 0
 
-    @micropython.viper
+    @micropython.viper # TODO: Draw the grappling hook rope
     def draw(self, t: int):
         """ Draw Glow to the draw buffer """
         p = int(self._tape.x[0])
