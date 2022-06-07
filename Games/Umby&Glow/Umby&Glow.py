@@ -12,6 +12,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+# TODO: Instead of replacing sections of the tape by scrolling, allow for replacing columns of the tape.
+# TODO: extend tape cache to be 3 screens wide (288pixels) for mid and foreground
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
