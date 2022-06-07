@@ -139,45 +139,31 @@ class Tape:
             p0 = (x+scroll[0])%72*2
             p1 = (x+scroll[1])%72*2
             p3 = (x+scroll[3])%72*2
-
-
-# - 0: Non-interactive monsters between far and mid background layers (clear).
-# - 144: Monsters between mid background and foreground (clear).
-# - 288: Monsters in front of the foreground layer (clear).
-# - 432: Non-interactive monsters between far and mid background layers.
-# - 576: Monsters between mid background and foreground.
-# - 720: Monsters in front of the foreground layer.
-            a = uint((((((
-                # Background layer
-                tape[p0]
-                # Background (non-interactive monsters)
-                & actors[x] | actors[x+432])
-                # Midground layer
-                | tape[p1+144]) & tape[p1+288])
+            a = uint((
+                    # Back/mid layer (with monster mask and fill)
+                    ((tape[p0] | tape[p1+144]) & actors[x+288] & actors[x+432]
+                        & tape[p1+288] & tape[p3+576])
+                    # Background (non-interactive) monsters
+                    | actors[x])
                 # Dim all mid and background layers
                 & dim
-                # Mid monsters (and players)
-                & actors[x+144] | actors[x+576])
-                # Foreground
-                | tape[p3+432]) & tape[p3+576]
-                # Fore monsters
-                & actors[x+288] | actors[x+720])
+                # Foreground monsters (and players)
+                | actors[x+144]
+                # Foreground (with monster mask and fill)
+                | (tape[p3+432] & actors[x+432] & tape[p3+576]))
             # Now compose the second 32 bits vertically.
-            b = uint((((((
-                # Background layer
-                tape[p0+1]
-                # Background (non-interactive monsters)
-                & actors[x+1] | actors[x+433])
-                # Midground layer
-                | tape[p1+145]) & tape[p1+289])
+            b = uint((
+                    # Back/mid layer (with monster mask and fill)
+                    ((tape[p0+1] | tape[p1+145]) & actors[x+289] & actors[x+433]
+                        & tape[p1+289] & tape[p3+577])
+                    # Background (non-interactive) monsters
+                    | actors[x+1])
                 # Dim all mid and background layers
                 & dim
-                # Mid monsters (and players)
-                & actors[x+145] | actors[x+577])
-                # Foreground
-                | tape[p3+433]) & tape[p3+577]
-                # Fore monsters
-                & actors[x+289] | actors[x+721])
+                # Foreground monsters (and players)
+                | actors[x+145]
+                # Foreground (with monster mask and fill)
+                | (tape[p3+433] & actors[x+433] & tape[p3+577]))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> yPos
@@ -465,14 +451,12 @@ def pattern_panelsv(x: int, oY: int) -> int:
 # Frames for drawing and checking collisions of all actors.
 # This includes layers for turning on pixels and clearing lower layers.
 # Clear layers have 0 bits for clearing and 1 for passing through.
-# This includes 6 layers:
-# - 0: Non-interactive monsters between far and mid background layers (clear).
-# - 144: Monsters between mid background and foreground (clear).
-# - 288: Monsters in front of the foreground layer (clear).
-# - 432: Non-interactive monsters between far and mid background layers.
-# - 576: Monsters between mid background and foreground.
-# - 720: Monsters in front of the foreground layer.
-actors = array('I', (0 for i in range(72*2*6)))
+# This includes the following layers:
+# - 0: Non-interactive background monsters.
+# - 144: Foreground monsters.
+# - 288: Mid and background clear.
+# - 432: Foreground clear.
+actors = array('I', (0 for i in range(72*2*4)))
 
 class Umby:
     # Bottom middle position
@@ -499,16 +483,19 @@ class Umby:
         draw = ptr32(actors)
 
         mask = uint(0xFFFFFFFF)
-        for i in range(432):
+        #draw[0:432] = 0 for i in range(432)
+        #draw[432:864] = 0 for i in range(432)
+        for i in range(288):
+            draw[i] = 0
+        for i in range(288, 576):
             draw[i] = mask
-        #for i in range(432, 864):
-        #    draw[i] = 0
-        draw[144+8] = 0xFFFF
-        draw[576+8] = 0xFF
-        draw[288+7] = 0xFFFF
-        draw[720+4] = 0xFFFF
+        draw[0+8] = 0xFFFF
+        draw[288+8] = 0xFF
+        draw[144+7] = 0xFFFF
+        draw[432+4] = 0xFFFF
 
-
+        # TODO
+        """
         frame = ptr8(display.display.buffer)
         x = int(self.x_pos)
         y = int(self.y_pos)
@@ -540,6 +527,7 @@ class Umby:
             frame[up_byte + 1] &= 0xff ^ (1 << (y-2 & 0x07))
             frame[mid_bype + 1] &= 0xff ^ (1 << (y-1 & 0x07))
         frame[low_byte + 1] &= 0xff ^ (1 << (y & 0x07))
+        """
 
 
 
