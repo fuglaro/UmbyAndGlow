@@ -11,6 +11,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # TODO: Refactor Monsters to be type switchable single obkects (ready for coop comms)
+# TODO: PLayer draw - if offscreen show aim where they are.
 # TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Make 2 player (remote monsters out of range go to background)
