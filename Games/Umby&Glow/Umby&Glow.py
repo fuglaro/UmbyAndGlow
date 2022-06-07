@@ -275,8 +275,8 @@ class Tape:
         b = 0xFE
         for i in range(int(len(text))*4+1):
             p = (x-1+i)%72*2+288
-            tape[p] ^= tape[p] | b >> 1-h if h+1 < 0 else b << h+1
-            tape[p+1] ^= tape[p+1] | b >> -31-h if 31-h < 0 else b << 31-h
+            tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
+            tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
         # Draw to the mid background layer
         for i in range(int(len(text))):
             print(text[i], abc_i[text[i]])
@@ -284,14 +284,13 @@ class Tape:
                 p = (x+o+i*4)%72*2+144
                 b = abc_b[int(abc_i[text[i]])*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
-                img2 = b >> -32-h if 32-h < 0 else b << 32-h
+                img2 = b >> 32-h if -32+h < 0 else b << -32+h
                 # Draw to the mid background layer
                 tape[p] |= img1
                 tape[p+1] |= img2
                 # Stencil text out of the clear background mask layer
                 tape[p+144] |= img1
                 tape[p+145] |= img2
-
 
 
 ## Patterns ##
@@ -637,7 +636,6 @@ class Umby:
         # TODO: jump
         # TODO: hit ceiling
         # TODO: writing top, bottom
-        # TODO: writing wall
 
         #---- TESTING: Explore the level by flying without clipping
         if not bU():
@@ -673,18 +671,6 @@ class Umby:
         stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3, fm)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Game Engine ##
 
 def set_level(tape, start):
@@ -701,6 +687,9 @@ def set_level(tape, start):
     tape.scroll_tape(start-72, start-72, start-72)
     for i in range(72):
         tape.scroll_tape(1, 1, 1)
+    # Draw starting instructions
+    tape.write("THAT WAY!", 22, 26)
+    tape.write("------>", 40, 32)
     # Ready tape for main area
     tape.feed[:] = [pattern_toplit_wall,
         pattern_stalagmites, pattern_stalagmites_fill,
@@ -715,13 +704,6 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
-
-
-
-
-    tape.write("THAT WAY!", 22, 26)
-    tape.write("------>", 40, 32)
-    #tape.write("XXXXXX", 60, 52)
 
     # Main gameplay loop
     v = 0
