@@ -277,7 +277,8 @@ def pattern_cave_fill(x: int, oY: int) -> int:
     for y in range(oY, oY+32):
         v |= (
             ((int(y < buff[0]//2*3) | buff[2]) # ground fill
-            & (int(y > 10-buff[1]) | int(y == 5) | buff[1]%y)) # ceiling fill
+            # ceiling fill
+            & (int(y > 10-buff[1]) | int(y > 5) | int(y == 5) | buff[1]%y))
         ) << (y-oY)
     return v
 
@@ -305,6 +306,19 @@ def pattern_fallentree(x: int, y: int) -> int:
 
 
 ##
+# PATTERN [dev2]: TODO
+@micropython.viper
+def pattern_dev2(x: int, oY: int) -> int:
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1
+        ) << (y-oY)
+    return v
+
+
+
+##
 # PATTERN [dev]: TODO
 @micropython.viper
 def pattern_dev(x: int, oY: int) -> int:
@@ -328,7 +342,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_fence, pattern_fill,
+    feed[:] = [pattern_wall, pattern_dev2, pattern_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
