@@ -78,6 +78,7 @@ class _Player:
     #      11: Swinging from grapple
     #      12: Clinging (from ceiling)
     mode = 0 # (int)
+    _bAOnce = -1 # Had a press down of A button (-1 held, 1 pressed, 0 none)
     # Movement variables
     _x_vel = 0.0
     _y_vel = 0.0
@@ -85,6 +86,7 @@ class _Player:
     rocket_x = 0 # (int)
     rocket_y = 0 # (int)
     rocket_active = 0 # (int)
+    _aim_ang = 0.0
     _aim_pow = 1.0
     # Grappling hook variables
     hook_x = 0 # (int) Position where hook attaches ceiling
@@ -120,6 +122,29 @@ class _Player:
         m = ptr8(self.mstates)
         m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
 
+
+
+
+
+
+
+
+
+    ### TODO
+
+
+
+    ### Getter and setter for the direction the rocket is facing ###
+    @property
+    @micropython.viper
+    def dir(self) -> int:
+        return 1 if ptr8(self.mstates)[0] & 1 else -1
+    @dir.setter
+    @micropython.viper
+    def dir(self, d: int):
+        m = ptr8(self.mstates)
+        m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
+
     ### Getter and setter for whether the player is trying to move ###
     @property
     @micropython.viper
@@ -130,6 +155,16 @@ class _Player:
     def moving(self, d: int):
         m = ptr8(self.mstates)
         m[0] = ((m[0] | 4) ^ 4) | (0 if d == 0 else 4)
+
+    @micropython.native
+    def _bAO(self):
+        ### Returns true if the A button was hit
+        # since the last time thie was called
+        ###
+        if self._bAOnce == 1:
+            self._bAOnce = -1
+            return 1
+        return 0
 
     @property
     def immune(self):
@@ -183,15 +218,23 @@ class _Player:
         self.moving = 1 if not (bL() and bR()) else 0 # Update moving
         # Normal Play modes
         if self.mode < 199:
+            # Update the state of the A button pressed detector
+            self._bAOnce = (0 if bA() else
+                1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
+            # Handle play tick
             self._tick_play(t)
-            # Now handle rocket engine
-            self._tick_rocket(t)
         # Respawn mode
         elif 201 <= self.mode <= 202:
             self._tick_respawn()
         # Testing mode
         elif self.mode == 199:
             self._tick_testing()
+        # Update the viper friendly variables.
+        self.x = int(self._x)
+        self.y = int(self._y)
+        # Handle rocket engine tick
+        if self.mode < 199:
+            self._tick_rocket(t)
 
     @micropython.native
     def _tick_respawn(self):
@@ -217,9 +260,6 @@ class _Player:
             # Return to normal play modes
             self.mode = 0 if self.mode == 201 else 10
             tape.write(1, "DONT GIVE UP!", tape.midx[0]+8, 26)
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
 
     @micropython.native
     def _tick_testing(self):
@@ -235,9 +275,6 @@ class _Player:
             self._x -= 1
         elif not bR():
             self._x += 1
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
 
 
 class Umby(_Player):
@@ -293,15 +330,12 @@ class Umby(_Player):
             if _chd or _chl or _chr: # detatch from ground grip
                 self._y -= 1
             self._y_vel = -0.8
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
         # DEATH: Check for head smacking
         if _chu and self._y_vel < -0.4:
-            self.die(240, "Umby face-planted the roof!")
+            self.die(240, self.name + " face-planted the roof!")
         # DEATH: Check for falling into the abyss
         if self._y > 80:
-            self.die(240, "Umby fell into the abyss!")
+            self.die(240, self.name + " fell into the abyss!")
 
     @micropython.native
     def _tick_rocket(self, t):
@@ -441,18 +475,6 @@ class Glow(_Player):
         _Player.__init__(self, tape, x, y)
         # Rocket variables
         self.rocket_dir = 1
-        # Grappling hook variables
-        self._bAOnce = -1 # Had a press down of A button
-
-    @micropython.native
-    def _bAO(self):
-        ### Returns true if the A button was hit
-        # since the last time thie was called
-        ###
-        if self._bAOnce == 1:
-            self._bAOnce = -1
-            return 1
-        return 0
 
     @micropython.native
     def _tick_play(self, t):
@@ -579,18 +601,9 @@ class Glow(_Player):
                 # Check is we should decend
                 elif (_chr or _chru) and not _chu:
                     self._y += 1
-        # Update the state of the A button pressed detector
-        if not bA():
-            if self._bAOnce == 0:
-                self._bAOnce = 1
-        else:
-            self._bAOnce = 0
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
         # DEATH: Check for falling into the abyss
         if self._y > 80:
-            self.die(240, "Umby fell into the abyss!")
+            self.die(240, self.name + " fell into the abyss!")
 
     @micropython.native
     def _tick_rocket(self, t):
@@ -666,13 +679,15 @@ class Glow(_Player):
         y_pos = int(self.y)
         aim_x = int(self.aim_x)
         aim_y = int(self.aim_y)
+        m = int(self.moving)
+        d = int(self.dir)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
         # 4 when moving left and 5 when moving right.
-        f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
+        f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
         # 0 when still, 1 when left moving, 2 when right
-        fm = 1 if not bL() else 2 if not bR() else 0
+        fm = 0 if not m else 1 if d < 0 else 2
         # Draw Glows's layers and masks
         tape.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
         tape.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow

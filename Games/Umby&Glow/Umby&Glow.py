@@ -10,6 +10,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# TODO: Change Test "mode" to a character selection (Clip)
+# TODO: Auto camera in direction of looking
 # TODO: Make Glows hook break lose if off top of screen (after 1 sec).
 # TODO: Refactor explosions across Players and explode on monsters.
 # TODO: Make testing mode draw be a cross-hair.
@@ -216,7 +218,7 @@ def run_game():
             mon.draw(t)
             # Check if a rocket hits this monster
             if p1.rocket_active:
-                if tape.check(p1.rocket_x-tape.x[0], p1.rocket_y, 128):
+                if tape.check(p1.rocket_x-tape.x[0], p1.rocket_y+1, 224):
                     tape.mons.remove(mon)
                     p1.kill(t, mon)
         # If player is in play mode, check for monster collisions
