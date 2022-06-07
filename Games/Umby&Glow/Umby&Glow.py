@@ -859,12 +859,12 @@ class Player:
             self._x -= 1
             self._y += 0 if int(self._y) == 20 else \
                 1 if self._y < 20 else -1
-            if self._x == self._respawn_x + 120:
+            if self.x == self._respawn_x + 120:
                 # Hide any death message
                 tape.clear_overlay()
             if self._x < self._respawn_x + 30:
                 # Draw the starting platform
-                tape.redraw_tape(2, self._x-5, pattern_room, pattern_fill)
+                tape.redraw_tape(2, self.x-5, pattern_room, pattern_fill)
         else:
             # Return to normal play mode
             self.mode = 0#Play
@@ -994,11 +994,9 @@ class Umby(Player):
         power = self._aim_pow
         # CONTROLS: Apply rocket
         if not bU() or not bD() or not bB(): # Rocket aiming
-            if not bU(): # Aim up
-                self._aim_angle += 0.02
-            elif not bD(): # Aim down
-                self._aim_angle -= 0.02
-            elif not self.rocket_active: # Power rocket
+            # CONTROLS: Aiming
+            self._aim_angle += 0.02 if not bU() else -0.02 if not bD() else 0
+            if not self.rocket_active: # Power rocket
                 self._aim_pow += 0.03
             angle = self._aim_angle
             # Resolve rocket aim to the x by y vector form
@@ -1145,9 +1143,9 @@ class Glow(Player): # TODO
         self._fall_held = 0
         self._hook_x = 0
         self._hook_y = 0
-        self._hook_angle = 0.0
+        self._hook_ang = 0.0
         self._hook_vel = 0.0
-        self._hook_length = 0.0
+        self._hook_len = 0.0
 
 
 
@@ -1183,20 +1181,39 @@ class Glow(Player): # TODO
                 i -= 1
             self._hook_x = x
             self._hook_y = i
-            self._hook_angle = 0.0
+            self._hook_ang = 0.0
             self._hook_vel = 0.0
-            self._hook_length = y - i
+            self._hook_len = y - i
             # Start normal grappling hook mode
             self.mode = 1
         # CONTROLS: Grappling hook swing
         if self.mode == 1:
-            print(self._hook_angle, self._hook_vel, self._hook_length, self._hook_x, self._hook_y)
+            # Apply motion
+            self._hook_ang += self._hook_vel / 128.0
+            ang = self._hook_ang
+            # Apply gravity
+            g = ang*ang/2.0
+            self._hook_vel += -g if ang > 0 else g if ang < 0 else 0.0
+            # Air friction
+            vel = self._hook_vel
+            self._hook_vel -= vel*vel*vel/64000
+            # CONTROLS: swing
+            self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
+            # CONTROLS: climb/extend rope
+            self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
 
 
+            # TODO: Trig the release and attach velocities.
 
+            # Update position variables based on swing
+            self._x = self._hook_x + math.sin(self._hook_ang)*self._hook_len
+            self._y = self._hook_y + math.cos(self._hook_ang)*self._hook_len
 
             if not free_falling:
-                self.mode = 2
+                if bA(): # Attach to ceiling
+                    self.mode = 2
+                elif vel*ang > 0: # Rebound off ceiling
+                    self._hook_vel = -self._hook_vel
         elif self.mode == 2: # Normal movement (without grappling hook)
             # CONTROLS: Activate hook
             if free_falling and not bA() and not self._fall_held:
