@@ -306,17 +306,39 @@ def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
 
 
+
+
 ##
 # PATTERN [dev2]: TODO
 @micropython.viper
 def pattern_dev2(x: int, oY: int) -> int:
+    # buff: [ceiling-height]
+    buff = ptr32(buf)
+    if oY == 0:
+        #buff[0] = 40-(90*((x%4)-2)*((x%4)-2) - (  (x+1024)% (((x+256)%1024 )//8 ) - ( (x+256)%1024   )//16    )//4   )//8
+        #buff[0] = ((x%40)-20)*((x%40)-20)
+        t1 = (x%256)-128
+        t2 = (x%18)-9
+        t3 = (x%4)-2
+        buff[0] = 50 - t1*t1//256 - t2*t2//4 - t3*t3*4
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            1
+            int(y < buff[0]) | int(y > 64 - buff[0])
         ) << (y-oY)
     return v
-
+##
+# PATTERN [dev2_fill]: TODO
+@micropython.viper
+def pattern_dev2_fill(x: int, oY: int) -> int:
+    # buff: [ceiling-height]
+    buff = ptr32(buf)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y != buff[0]) | int(y != 64 - buff[0]) # TODO XXXXX
+        ) << (y-oY)
+    return v
 
 
 ##
@@ -331,6 +353,7 @@ def pattern_dev(x: int, oY: int) -> int:
     return v
 
 
+
 ## Game Engine ##
 
 def start_level():
@@ -343,7 +366,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_fence, pattern_fill,
+    feed[:] = [pattern_wall, pattern_dev2, pattern_dev2_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
