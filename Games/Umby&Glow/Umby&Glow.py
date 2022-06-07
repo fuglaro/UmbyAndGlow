@@ -25,6 +25,9 @@
 
 ''' # TODO turn story into script and delete.
 
+1 - player can switch characters (hold both buttons)
+2 - 2 players connect if devices have different characters
+
 Umby and Glow save their cave.
 
 1.1) Umby, Glow in cave, with monsters and traps being about.
