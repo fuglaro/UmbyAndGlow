@@ -118,6 +118,7 @@ class Tape:
     # This acts as the camera position across the level.
     # Care must be taken to NOT modify this externally.
     x = memoryview(_tape_scroll)[3:4]
+    midx = memoryview(_tape_scroll)[1:2]
     
     # Alphabet for writing text - 3x5 text size (4x6 with spacing)
     # BITMAP: width: 105, height: 8
@@ -285,6 +286,7 @@ class Tape:
         When writing to the overlay layer, the positional coordinates
         should be given relative to the screen, rather than the tape.
         """
+        text = text.upper() # only uppercase is supported
         tape = ptr32(self._tape)
         abc_b = ptr8(self.abc)
         abc_i = self.abc_i
@@ -311,6 +313,14 @@ class Tape:
                 # Stencil text out of the clear background mask layer
                 tape[p+mask] |= img1
                 tape[p+mask+1] |= img2
+
+    @micropython.viper
+    def message(self, position: int, text):
+        """ Write a message to the top (left), center (middle), or
+        bottom (right) of the screen in the overlay layer.
+        @param position: (int) 0 - center, 1 - top, 2 - bottom.
+        """
+        self.write(3, text, 0, 10)
 
     @micropython.viper
     def clear_overlay(self):
@@ -512,9 +522,10 @@ def pattern_stalagmites_fill(x: int, oY: int) -> int:
 def pattern_toplit_wall(x: int, oY: int) -> int:
     """ PATTERN [toplit_wall]: organic background with roof shine """
     v = 0
+    p = x-500
     for y in range(oY, oY+32):
         v |= (
-            1 if (x*x)%y == 0 else 0
+            1 if (p*p)%y == 0 else 0
         ) << (y-oY)
     return v
 
@@ -639,12 +650,10 @@ class Umby:
     _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+    mode = 0#Play (normal)
 
     def __init__(self, x, y):
         # Main behavior modes such as Play, Testing, and Respawn
-        self._mode = 0#Play
-        # If in the respawn mode, the respawn location to move to.
-        self._respawn_x = 0
         # Motion variables
         self._x_pos = x
         self._y_pos = y
@@ -655,11 +664,13 @@ class Umby:
         self.y_pos = int(y)
 
     @micropython.native
-    def tick(self, tape):
-        """ Updated Umby for one game tick """
+    def tick(self, t, tape):
+        """ Updated Umby for one game tick.
+        @param t: the current game tick count
+        """
 
-        if self._mode == 0: # Play
-
+        # Normal Play mode
+        if self.mode == 0:
             # Apply gravity and grund check
             if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
                 # Apply gravity to vertical speed
@@ -670,6 +681,7 @@ class Umby:
                 # Stop falling when hit ground
                 self._y_vel = 0
     
+            # Apply movement controls
             if not bU():
                 self._y_pos -= 1
             elif not bD():
@@ -679,25 +691,37 @@ class Umby:
             elif not bR():
                 self._x_pos += 1
 
-            # Check for falling into the abyse
+            # Check for falling into the abyss
             if self._y_pos > 80:
-                self._mode = 1#Respawn
-                self._respawn_x = tape.x[0] - 150
+                self.mode = 1#Respawn
+                self._respawn_x = tape.x[0] - 240
+                tape.message(0, "Umby fell into the abyss!")
     
-        elif self._mode == 1: # Respawn
+        # Respawn mode
+        elif self.mode == 1:
             # Move Umby towards the respawn location
             if self._x_pos > self._respawn_x:
                 self._x_pos -= 1
                 self._y_pos += 0 if int(self._y_pos) == 32 else \
                     1 if self._y_pos < 32 else -1
+                if self._x_pos == self._respawn_x + 30:
+                    # Generate the respawn platform (level section)
+                    self._feed_cache = tape.feed
+                    tape.feed = [pattern_wall,
+                        pattern_fence, pattern_fill,
+                        pattern_room, pattern_fill]
+                    # Hide any death message
+                if self._x_pos == self._respawn_x + 120:
+                    tape.clear_overlay()
             else:
-                pass #
+                # Return to normal play mode
+                tape.feed = self._feed_cache
+                self.mode = 0#Play
+                tape.write(1, "DONT GIVE UP!", tape.midx[0]+5, 26)
 
-        
-        else: # Testing
-
-
-            # Explore the level by flying without clipping
+        # Testing mode
+        else:
+            # Explore the level by flying, free of interaction
             if not bU():
                 self._y_pos -= 1
             elif not bD():
@@ -709,7 +733,7 @@ class Umby:
 
 
 
-        # TODO: fall off tape
+        # TODO: fall off tape: fix death message display
         # TODO: allow digging straight down
         # TODO: climb
         # TODO: jump
@@ -772,6 +796,7 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
+    #umby.mode = 99 # Testing mode
 
     # Main gameplay loop
     v = 0
@@ -784,7 +809,7 @@ def run_game():
             profiler = ticks_ms()
 
         # Update the game engine by a tick
-        umby.tick(tape)
+        umby.tick(t, tape)
 
         # Make the camera follow the action
         tape.auto_camera_parallax(umby.x_pos, umby.y_pos)
