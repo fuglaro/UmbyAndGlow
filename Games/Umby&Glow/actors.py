@@ -50,12 +50,12 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 # TODO: One the crawls along the ground and digs in to then pounce
 # TODO: make a monster that spawns other monsters! (HARD)
 # TODO: Do a monster that flys into the background
-
+# TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
 
 
 
 class _Player:
-    ### Umby and Glow generic functions and variables ###
+    ### Umby and Glow ###
     # Player behavior mode such as Play, Testing, and Respawn
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
@@ -65,15 +65,45 @@ class _Player:
     _aim_fore_mask = bytearray([224,224,224])
     # BITMAP: width: 5, height: 8
     _aim_back_mask = bytearray([112,248,248,248,112])
-    mode = 0#Play (normal)
-    rocket_x = 0
-    rocket_y = 0
-    rocket_active = 0
+    # Modes:
+    # TODO:
+    #     199: Testing
+    #     200: Frozen (immune)
+    #     201: Respawning to Umby
+    #     202: Respawning to Glow
+    # ----0-9: Umby modes----
+    #       0: Crawling (along ground)
+    # --10-19: Glow modes----
+    #      10: Auto latching grapple
+    #      11: Swinging from grapple
+    #      12: Clinging (from ceiling)
+    mode = 0 # (int)
+    # Movement variables
+    _x_vel = 0.0
+    _y_vel = 0.0
+    # Rocket variables
+    rocket_x = 0 # (int)
+    rocket_y = 0 # (int)
+    rocket_active = 0 # (int)
+    # Grappling hook variables
+    hook_x = 0 # (int) Position where hook attaches ceiling
+    hook_y = 0 # (int)
+    # Internal calulation of hook parameters (resolved to player x, y in tick)
+    _hook_ang = 0.0
+    _hook_vel = 0.0
+    _hook_len = 0.0
+
+    @property
+    def immune(self):
+        ### Returns if Umby is in a mode that can't be killed ###
+        return 199 <= self.mode <= 202
 
     def die(self, rewind_distance, death_message):
         ### Put Player into a respawning state ###
         tape = self._tp
-        self.mode = -1#Respawn
+        self._x_vel = 0.0 # Reset speed
+        self._y_vel = 0.0 # Reset fall speed
+        self.mode = 201 if 0 <= self.mode <= 9 else 202
         self._respawn_x = tape.x[0] - rewind_distance
         tape.message(0, death_message)
 
@@ -111,15 +141,15 @@ class _Player:
         # @param t: the current game tick count
         ###
         # Normal Play modes
-        if self.mode >= 0:
+        if self.mode < 199:
             self._tick_play(t)
             # Now handle rocket engine
             self._tick_rocket(t)
         # Respawn mode
-        elif self.mode == -1:
+        elif 201 <= self.mode <= 202:
             self._tick_respawn()
         # Testing mode
-        elif self.mode == -99:
+        elif self.mode == 199:
             self._tick_testing()
 
     @micropython.native
@@ -143,8 +173,8 @@ class _Player:
                 # Draw the starting platform
                 tape.redraw_tape(2, int(self._x)-5, pattern_room, pattern_fill)
         else:
-            # Return to normal play mode
-            self.mode = 0#Play
+            # Return to normal play modes
+            self.mode = 0 if self.mode == 201 else 10
             tape.write(1, "DONT GIVE UP!", tape.midx[0]+8, 26)
         # Update the viper friendly variables.
         self.x = int(self._x)
@@ -190,7 +220,6 @@ class Umby(_Player):
         # Motion variables
         self._x = x # Middle of Umby
         self._y = y # Bottom of Umby
-        self._y_vel = 0.0
         # Viper friendly variants (ints)
         self.x = int(x)
         self.y = int(y)
@@ -367,7 +396,7 @@ class Glow(_Player):
     # Umby also has some specific modes:
     #     * 0: auto attach grapple hook to ceiling.
     #     * 1: grapple hook activated.
-    #    * 2: normal movement
+    #     * 2: normal movement
     ###
     # BITMAP: width: 3, height: 8, frames: 6
     _art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
@@ -380,11 +409,10 @@ class Glow(_Player):
 
     def __init__(self, tape, x, y):
         self._tp = tape
+        self.mode = 10
         # Motion variables
         self._x = x # Middle of Glow
         self._y = y # Bottom of Glow (but top because they upside-down!)
-        self._x_vel = 0.0
-        self._y_vel = 0.0
         # Viper friendly variants (ints)
         self.x = int(x)
         self.y = int(y)
@@ -397,11 +425,6 @@ class Glow(_Player):
         self.aim_y = int(cos(self._aim_angle)*10.0)
         # Grappling hook variables
         self._bAOnce = -1 # Had a press down of A button
-        self._hook_x = 0 # Position where hook attaches ceiling
-        self._hook_y = 0
-        self._hook_ang = 0.0
-        self._hook_vel = 0.0
-        self._hook_len = 0.0
 
     @micropython.native
     def _bAO(self):
@@ -434,20 +457,20 @@ class Glow(_Player):
         free_falling = not (_chd or _chld or _chrd or _chl or _chr)
         head_hit = _chu or _chlu or _chru
         # CONTROLS: Activation of grappling hook
-        if self.mode == 0:
+        if self.mode == 10:
             # Shoot hook straight up
             i = y-1
             while i > 0 and not tape.check_tape(x, i):
                 i -= 1
-            self._hook_x = x
-            self._hook_y = i
+            self.hook_x = x
+            self.hook_y = i
             self._hook_ang = 0.0
             self._hook_vel = 0.0
             self._hook_len = y - i
             # Start normal grappling hook mode
-            self.mode = 1
+            self.mode = 11
         # CONTROLS: Grappling hook swing
-        if self.mode == 1:
+        if self.mode == 11:
             ang = self._hook_ang
             # Apply gravity
             g = ang*ang/2.0
@@ -461,25 +484,25 @@ class Glow(_Player):
             self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
             # Check land interaction conditions
             if not free_falling and bA(): # Stick to ceiling if touched
-                self.mode = 2
+                self.mode = 12
             elif head_hit or (not free_falling and vel*ang > 0):
                 # Rebound off ceiling
                 self._hook_vel = -self._hook_vel
             if free_falling and self._bAO(): # Release grappling hook
-                self.mode = 2
+                self.mode = 12
                 # Convert angular momentum to free falling momentum
                 ang2 = ang + vel/128.0
-                x2 = self._hook_x + sin(ang2)*self._hook_len
-                y2 = self._hook_y + cos(ang2)*self._hook_len
+                x2 = self.hook_x + sin(ang2)*self._hook_len
+                y2 = self.hook_y + cos(ang2)*self._hook_len
                 self._x_vel = x2 - self._x
                 self._y_vel = y2 - self._y
             # Update motion and position variables based on swing
             self._hook_ang += self._hook_vel/128.0
-            self._x = self._hook_x + sin(self._hook_ang)*self._hook_len
-            self._y = self._hook_y + cos(self._hook_ang)*self._hook_len
-        elif self.mode == 2: # Normal movement (without grappling hook)
+            self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
+            self._y = self.hook_y + cos(self._hook_ang)*self._hook_len
+        elif self.mode == 12: # Clinging movement (without grappling hook)
             # CONTROLS: Activate hook
-            if free_falling and self._bAO():
+            if free_falling and self._bAO() and self.y < 64:
                 # Activate grappling hook in aim direction
                 self._hook_ang = self._aim_angle * self.dir
                 # Find hook landing position
@@ -492,10 +515,10 @@ class Glow(_Player):
                     xh += x2
                     yh += y2
                 # Apply grapple hook parameters
-                self._hook_x = int(xh)
-                self._hook_y = int(yh)
-                x1 = x - self._hook_x
-                y1 = y - self._hook_y
+                self.hook_x = int(xh)
+                self.hook_y = int(yh)
+                x1 = x - self.hook_x
+                y1 = y - self.hook_y
                 self._hook_len = sqrt(x1*x1+y1*y1)
                 # Now get the velocity in the grapple angle
                 v1 = (1-self._x_vel*y1+self._y_vel*x1)/(self._hook_len+1)
@@ -503,7 +526,7 @@ class Glow(_Player):
                 yv = self._y_vel
                 self._hook_vel = -sqrt(xv*xv+yv*yv)*v1*4
                 # Start normal grappling hook mode
-                self.mode = 1
+                self.mode = 11
             # CONTROLS: Fall (force when jumping)
             elif free_falling or not bA():
                 if not free_falling:
@@ -562,7 +585,7 @@ class Glow(_Player):
         ###
         angle = self._aim_angle
         power = self._aim_pow
-        grappling = self.mode == 1
+        grappling = self.mode == 11
         tape = self._tp
         # CONTROLS: Apply rocket
         # Rocket aiming
@@ -646,9 +669,9 @@ class Glow(_Player):
         # Draw Glows's aim
         l = t*6//_FPS%2
         # Rope aim
-        if int(self.mode) == 1: # Activated hook
-            hook_x = int(self._hook_x)
-            hook_y = int(self._hook_y)
+        if int(self.mode) == 11: # Activated hook
+            hook_x = int(self.hook_x)
+            hook_y = int(self.hook_y)
             # Draw Glow's grappling hook rope
             for i in range(0, 8):
                 sx = x_pos-p + (hook_x-x_pos)*i//8
