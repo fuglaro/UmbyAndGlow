@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Extend game dynamics (Glow)
 # TODO: Make Menu (interactive paused starting game)
 # TODO: Make help 
 # TODO: Make AI Umby
@@ -1359,7 +1358,7 @@ class Glow(Player):
         if self.rocket_active == 2:
             self.rocket_active = 0
 
-    @micropython.viper # TODO: Draw the grappling hook rope
+    @micropython.viper
     def draw(self, t: int):
         """ Draw Glow to the draw buffer """
         p = int(self._tape.x[0])
@@ -1384,8 +1383,15 @@ class Glow(Player):
         l = t*6//_FPS%2
         # Rope aim
         if int(self.mode) == 1: # Activated hook
-            hx = int(self._hook_x)-p-1
-            hy = int(self._hook_y)-6
+            hook_x = int(self._hook_x)
+            hook_y = int(self._hook_y)
+            # Draw Glow's grappling hook rope
+            for i in range(0, 8):
+                sx = x_pos-p + (hook_x-x_pos)*i//8
+                sy = y_pos + (hook_y-y_pos)*i//8
+                stage.draw(1, sx-1, sy-6, self._aim, 3, 0)
+            hx = hook_x-p-1
+            hy = hook_y-6
         else:
             hx = x_pos-p-aim_x//2-1
             hy = y_pos-6-aim_y//2
