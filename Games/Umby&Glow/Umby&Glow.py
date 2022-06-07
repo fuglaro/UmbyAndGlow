@@ -22,7 +22,6 @@
 # TODO: Make demo video
 # TODO: Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
 
-
 ''' # TODO turn story into script and delete.
 
 1 - player can switch characters (hold both buttons)
@@ -116,11 +115,11 @@ class Tape:
     feed = [None, None, None, None, None]
     
     @micropython.viper
-    def comp(self, actors: ptr32):
+    def comp(self, stage: ptr32):
         """ Composite all the render layers together and render directly to
         the display buffer, taking into account the scroll position of each
         render layer, and dimming the background layers.
-        @param actors: The draw layers for the monsters and players
+        @param stage: The draw layers for the monsters and players
                         to stack within the comp.
         """
         tape = ptr32(self._tape)
@@ -142,29 +141,29 @@ class Tape:
             x2 = x*2
             a = uint((
                     # Back/mid layer (with monster mask and fill)
-                    ((tape[p0] | tape[p1+144]) & actors[x2+288] & actors[x2+432]
+                    ((tape[p0] | tape[p1+144]) & stage[x2+288] & stage[x2+432]
                         & tape[p1+288] & tape[p3+576])
                     # Background (non-interactive) monsters
-                    | actors[x2])
+                    | stage[x2])
                 # Dim all mid and background layers
                 & dim
                 # Foreground monsters (and players)
-                | actors[x2+144]
+                | stage[x2+144]
                 # Foreground (with monster mask and fill)
-                | (tape[p3+432] & actors[x2+432] & tape[p3+576]))
+                | (tape[p3+432] & stage[x2+432] & tape[p3+576]))
             # Now compose the second 32 bits vertically.
             b = uint((
                     # Back/mid layer (with monster mask and fill)
-                    ((tape[p0+1] | tape[p1+145]) & actors[x2+289] & actors[x2+433]
+                    ((tape[p0+1] | tape[p1+145]) & stage[x2+289] & stage[x2+433]
                         & tape[p1+289] & tape[p3+577])
                     # Background (non-interactive) monsters
-                    | actors[x2+1])
+                    | stage[x2+1])
                 # Dim all mid and background layers
                 & dim
                 # Foreground monsters (and players)
-                | actors[x2+145]
+                | stage[x2+145]
                 # Foreground (with monster mask and fill)
-                | (tape[p3+433] & actors[x2+433] & tape[p3+577]))
+                | (tape[p3+433] & stage[x2+433] & tape[p3+577]))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> yPos
@@ -447,17 +446,32 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 
 
-## Actors ##
+## Actors and Stage ##
 
-# Frames for drawing and checking collisions of all actors.
-# This includes layers for turning on pixels and clearing lower layers.
-# Clear layers have 0 bits for clearing and 1 for passing through.
-# This includes the following layers:
-# - 0: Non-interactive background monsters.
-# - 144: Foreground monsters.
-# - 288: Mid and background clear.
-# - 432: Foreground clear.
-actors = array('I', (0 for i in range(72*2*4)))
+class Stage:
+    """ Render and collision detection buffer
+    for all the maps and monsters, and also the players.
+    Monsters and players can be drawn to the buffer one
+    after the other. Collision detection capabilities are
+    very primitive and only allow checking for pixel collisions
+    between what is on the buffer and another provided sprite.
+    The Render buffer is two words (64 pixels) high, and
+    72 pixels wide. Sprites passed in must be a byte tall,
+    but any width.
+    There are 4 layers on the render buffer, 2 for rendering
+    background and foreground monsters, and 2 for clearing
+    background and foreground environment for monster
+    visibility.
+    """
+    # Frames for the drawing and checking collisions of all actors.
+    # This includes layers for turning on pixels and clearing lower layers.
+    # Clear layers have 0 bits for clearing and 1 for passing through.
+    # This includes the following layers:
+    # - 0: Non-interactive background monsters.
+    # - 144: Foreground monsters.
+    # - 288: Mid and background clear.
+    # - 432: Foreground clear.
+    stage = array('I', (0 for i in range(72*2*4)))
 
 class Umby:
     # Bottom middle position
@@ -465,6 +479,8 @@ class Umby:
     y_pos = 27 # TODO set to 32
     # BITMAP: width: 8, height: 8
     art = bytearray([2,254,66,66,66,66,115,64])
+    # BITMAP: width: 8, height: 8
+    mask = bytearray([255,193,217,209,1,1,7,255])
 
     @micropython.native
     def tick(self):
@@ -479,14 +495,11 @@ class Umby:
             self.x_pos += 1
 
     @micropython.viper
-    def draw(self, t: int):
+    def draw(self, t: int, draw: ptr32):
         """ Draw unby to the frame buffer """
 
-        draw = ptr32(actors)
 
         mask = uint(0xFFFFFFFF)
-        #draw[0:432] = 0 for i in range(432)
-        #draw[432:864] = 0 for i in range(432)
         for i in range(288):
             draw[i] = 0
         for i in range(288, 576):
@@ -569,6 +582,7 @@ def run_game():
     """ Initialise the game and run the game loop """
     display.setFPS(_FPS)
     tape = Tape()
+    stage = Stage()
     set_level(tape)
     umby = Umby()
 
@@ -587,11 +601,11 @@ def run_game():
 
 
         # Update the display buffer new frame data
-        tape.comp(actors)
+        tape.comp(stage.stage)
 
 
 
-        umby.draw(t)
+        umby.draw(t, stage.stage)
 
 
         # Flush to the display, waiting on the next frame interval
