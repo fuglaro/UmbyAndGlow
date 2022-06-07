@@ -59,6 +59,18 @@ from time import ticks_ms
 from thumby import display
 import thumby
 
+# Alphabet for writing text - 3x5 text size (4x6 with spacing)
+# BITMAP: width: 102, height: 8
+abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,136,
+    248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,128,
+    128,248,48,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,216,184,
+    168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,184,160,248,
+    200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,
+    80,32])
+# Index lookup for printable characters
+abc_i = dict((v, i) for i, v in enumerate(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>"))
+
 # Button functions. Note they return the inverse pressed state
 bU = thumby.buttonU.pin.value
 bD = thumby.buttonD.pin.value
@@ -247,6 +259,19 @@ class Tape:
         # Reset the vertical offset as needed
         y -= 20
         ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
+
+
+
+    @micropython.viper
+    def write(self, text, x: int, y: int): # TODO
+        tape = ptr32(self._tape)
+        abc_b = ptr8(abc)
+        for i in range(int(len(text))):
+            print(text[i], abc_i[text[i]])
+            for o in range(3):
+                p = (x+1+o+i*4)%72*2+144
+                tape[p] |= abc_b[int(abc_i[text[i]])*3+o] << 24
+
 
 
 ## Patterns ##
@@ -628,6 +653,18 @@ class Umby:
         stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3, fm)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 ## Game Engine ##
 
 def set_level(tape, start):
@@ -658,6 +695,11 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
+
+
+
+
+    tape.write("AHELLO !,.:WORLD", 10, 30)
 
     # Main gameplay loop
     v = 0
