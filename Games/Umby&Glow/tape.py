@@ -1,0 +1,633 @@
+# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+## Tape Management and Stage ##
+
+from array import array
+from machine import Pin, SPI
+
+
+class SSD1306():
+    # Yoinked from https://github.com/TinyCircuits/TinyCircuits-Thumby-Code-Editor/blob/master/ThumbyGames/lib/ssd1306.py
+    def __init__(self, width, height, external_vcc):
+        self.width = width
+        self.height = height
+        self.external_vcc = external_vcc
+        self.pages = self.height // 8
+        self.buffer = bytearray(self.pages * self.width)
+        #self.init_display()
+
+    def init_display(self):
+        self.reset()
+        for cmd in (0xAE,0x20,0x00,0x40,0xA1,0xA8,self.height-1,0xC8,0xD3,0x00,0xDA,0x12,0xD5,0x80,0xD9,
+            0x22 if self.external_vcc else 0xF1,0xDB,0x20,0x81,0x7F,0xA4,0xA6,0x8D,
+            0x10 if self.external_vcc else 0x14,0xAD,0x30,0xAE | 0x01
+        ):
+            self.write_cmd(cmd)
+        #self.fill(0)
+        #self.show()
+
+    def poweroff(self):
+        self.write_cmd(0xAE | 0x00)
+
+    def poweron(self):
+        self.write_cmd(0xAE | 0x01)
+
+    def contrast(self, contrast):
+        self.write_cmd(0x81)
+        self.write_cmd(contrast)
+
+    def invert(self, invert):
+        self.write_cmd(0xA6 | (invert & 1))
+
+    @micropython.native
+    def show(self):
+        self.write_window_cmd()
+        self.write_data(self.buffer)
+
+class SSD1306_SPI(SSD1306):
+    # Yoinked from https://github.com/TinyCircuits/TinyCircuits-Thumby-Code-Editor/blob/master/ThumbyGames/lib/ssd1306.py
+    def __init__(self, width, height, spi, dc, res, cs, external_vcc=False):
+        self.rate = 10 * 1024 * 1024
+        dc.init(dc.OUT, value=0)
+        cs.init(cs.OUT, value=1)
+        self.spi = spi
+        self.dc = dc
+        self.res = res
+        self.cs = cs
+        self.cmdWindow = bytearray([0x21, 28, 99, 0x22, 0 ,4])
+        
+        super().__init__(width, height, external_vcc)
+
+    def reset(self):
+        self.res.init(self.res.OUT, value=0)
+        from time import sleep_ms
+        self.res(1)
+        sleep_ms(1)
+        self.res(0)
+        sleep_ms(10)
+        self.res(1)        
+        sleep_ms(10)
+
+    @micropython.native
+    def write_cmd(self, cmd):
+        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
+        self.cs(1)
+        self.dc(0)
+        self.cs(0)
+        self.spi.write(bytearray([cmd]))
+        self.cs(1)
+        
+    @micropython.native
+    def write_window_cmd(self):
+        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
+        self.cs(1)
+        self.dc(0)
+        self.cs(0)
+        self.spi.write(self.cmdWindow)
+        self.cs(1)
+
+
+    @micropython.native
+    def write_data(self, buf):
+        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
+        self.cs(1)
+        self.dc(1)
+        self.cs(0)
+        self.spi.write(buf)
+        self.cs(1)
+
+display = SSD1306_SPI(72, 40, SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
+
+
+print(display)
+
+try: # Load the emulator display if using the IDE API
+    __file__ # Fails on the thumby device
+    from thumby import display as emu_dpy
+    emu_dpy.setFPS(60)
+    display_update = emu_dpy.update
+    _display_buffer = emu_dpy.display.buffer
+except: # Otherwise use a custom one if on the thumby device
+    _display_buffer = display.buffer
+    timer = ticks_ms()
+    @micropython.native
+    def display_update():
+        global timer
+        display.show()
+        #sleep_ms(1000//_FPS + timer - ticks_ms())
+        timer = ticks_ms()
+
+
+
+
+
+class _Stage:
+    ### Render and collision detection buffer
+    # for all the maps and monsters, and also the players.
+    # Monsters and players can be drawn to the buffer one
+    # after the other. Collision detection capabilities are
+    # very primitive and only allow checking for pixel collisions
+    # between what is on the buffer and another provided sprite.
+    # The Render buffer is two words (64 pixels) high, and
+    # 72 pixels wide. Sprites passed in must be a byte tall,
+    # but any width.
+    # There are 4 layers on the render buffer, 2 for rendering
+    # background and foreground monsters, and 2 for clearing
+    # background and foreground environment for monster
+    # visibility.
+    ###
+    # Frames for the drawing and checking collisions of all actors.
+    # This includes layers for turning on pixels and clearing lower layers.
+    # Clear layers have 0 bits for clearing and 1 for passing through.
+    # This includes the following layers:
+    # - 0: Non-interactive background monsters.
+    # - 144: Foreground monsters.
+    # - 288: Mid and background clear.
+    # - 432: Foreground clear.
+    stage = array('I', (0 for i in range(72*2*4)))
+    # Monster classes to spawn
+    types = []
+    # Likelihood of each monster class spawning (out of 255) for every 5 steps
+    rates = bytearray([])
+    # How far along the tape spawning has completed
+    _x = array('I', [0])
+    mons = [] # Active monsters
+    players = [] # Player register for monsters to interact with
+
+    def reset(self, start):
+        ### Remove all monsters and set a new spawn starting position ###
+        mons = []
+        self._x[0] = start
+
+    @micropython.viper
+    def spawn(self):
+        ### Spawn new monsters as needed ###
+        x = ptr32(self._x)
+        p = int(tape.x[0])
+        # Only spawn when scrolling into unseen land
+        if x[0] >= p:
+            return
+        rates = ptr8(self.rates)
+        r = int(uint(ihash(p)))
+        # Loop through each monster type randomly spawning
+        # at the configured rate.
+        for i in range(0, int(len(self.types))):
+            if rates[i] and r%(256-rates[i]) == 0:
+                self.add(self.types[i], p+72+36, r%64)
+            r = r >> 1 # Fast reuse of random number
+        x[0] = p 
+
+    def add(self, mon_type, x, y):
+        ### Add a monster of the given type ###
+        if len(self.mons) < 10: # Limit to maximum 10 monsters at once
+            self.mons.append(mon_type(self, x, y))
+
+    @micropython.viper
+    def check(self, x: int, y: int, b: int) -> bool:
+        ### Returns true if the byte going up from the x, y position is solid
+        # foreground where it collides with a given byte.
+        # @param b: Collision byte (as an int). All pixels in this vertical
+        #     byte will be checked. To check just a single pixel, pass in the
+        #     value 128. Additional active bits will be checked going upwards
+        #     from themost significant bit/pixel to least significant.
+        ###
+        stage = ptr32(self.stage)
+        p = x%72*2+144
+        h = y - 8 # y position is from bottom of text
+        img1 = b >> 0-h if h < 0 else b << h
+        img2 = b >> 32-h if h-32 < 0 else b << h-32
+        return bool((stage[p] & img1) | stage[p+1] & img2)
+
+    @micropython.viper
+    def clear(self):
+        ### Reset the render and mask laters to their default blank state ###
+        draw = ptr32(self.stage)
+        for i in range(288):
+            draw[i] = 0
+        mask = uint(0xFFFFFFFF)
+        for i in range(288, 576):
+            draw[i] = mask
+
+    @micropython.viper
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a render layer.
+        # Sprites must be 8 pixels high but can be any width.
+        # Sprites can have multiple frames stacked horizontally.
+        # There are 2 layers that can be rendered to:
+        #     0: Non-interactive background monster layer.
+        #     1: Foreground monsters, traps and player.
+        # @param layer: (int) the layer to render to.
+        # @param x: screen x draw position.
+        # @param y: screen y draw position (from top).
+        # @param img: (ptr8) sprite to draw (single row VLSB).
+        # @param w: width of the sprite to draw.
+        # @param f: the frame of the sprite to draw.
+        ###
+        o = x-f*w
+        p = layer*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-o])
+            draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
+
+    @micropython.viper
+    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a mask (clear) layer.
+        # This is similar to the "draw" method but applies a mask
+        # sprite to a mask later.
+        # There are 2 layers that can be rendered to:
+        #     0: Mid and background environment mask (1 bit to clear).
+        #     1: Foreground environment mask (1 bit to clear).
+        ###
+        o = x-f*w
+        p = (layer+2)*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-o])
+            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
+
+
+class Tape:
+    ###
+    # Scrolling tape with a fore, mid, and background layer.
+    # This represents the level of the ground but doesn't include actors.
+    # The foreground is the parts of the level that are interactive with
+    # actors such as the ground, roof, and platforms.
+    # Mid and background layers are purely decorative.
+    # Each layer can be scrolled intependently and then composited onto the
+    # display buffer.
+    # Each layer is created by providing deterministic functions that
+    # draw the pixels from x and y coordinates. Its really just an elaborate
+    # graph plotter - a scientific calculator turned games console!
+    # The tape size is 64 pixels high, with an infinite length, and 216 pixels
+    # wide are buffered (72 pixels before tape position, 72 pixels of visible,
+    # screen, and 72 pixels beyond the visible screen).
+    # This is intended for the 72x40 pixel view. The view can be moved
+    # up and down but when it moves forewards and backwards, the buffer
+    # is cycled backwards and forewards. This means that the tape
+    # can be modified (such as for explosion damage) for the 64 pixels high,
+    # and 216 pixels wide, but when the tape is rolled forewards, and backwards,
+    # the columns that go out of buffer are reset.
+    # There is also an overlay layer and associated mask, which is not
+    # subject to any tape scrolling or vertical offsets.
+    ###
+    # Scrolling tape with each render layer being a section one after the other.
+    # Each section is a buffer that cycles (via the tape_scroll positions) as the
+    # world scrolls horizontally. Each section can scroll independently so
+    # background layers can move slower than foreground layers.
+    # Layers each have 1 bit per pixel from top left, descending then wrapping
+    # to the right.
+    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
+    # Each layer is a layer in the composited render stack.
+    # Layers from left to right:
+    # - 0: far background
+    # - 432: close background
+    # - 864: close background fill (opaque: off pixels)
+    # - 1296: landscape including ground, platforms, and roof
+    # - 1728: landscape fill (opaque: off pixels)
+    # - 2160: overlay mask (opaque: off pixels)
+    # - 2304: overlay
+    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
+    # The scroll distance of each layer in the tape,
+    # and then the frame number counter and vertical offset appended on the end.
+    # The vertical offset (yPos), cannot be different per layer (horizontal
+    # parallax only).
+    # [backPos, midPos, frameCounter, forePos, yPos]
+    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    # Public accessible x position of the tape foreground relative to the level.
+    # This acts as the camera position across the level.
+    # Care must be taken to NOT modify this externally.
+    x = memoryview(_tape_scroll)[3:4]
+    midx = memoryview(_tape_scroll)[1:2]
+    # Actor and player management
+    stage = _Stage()
+    
+    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
+    # BITMAP: width: 117, height: 8
+    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
+        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
+        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
+        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
+        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
+        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
+        200,176])
+    abc_i = dict((v, i) for i, v in enumerate(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
+
+    # The patterns to feed into each tape section
+    feed = [None, None, None, None, None]
+
+    def __init__(self):
+        self.clear_overlay()
+
+    @micropython.viper
+    def check(self, x: int, y: int) -> bool:
+        ### Returns true if the x, y position is solid foreground ###
+        tape = ptr32(self._tape)
+        p = x%216*2+1296
+        return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
+
+    @micropython.viper
+    def comp(self):
+        ### Composite all the render layers together and render directly to
+        # the display buffer, taking into account the scroll position of each
+        # render layer, and dimming the background layers.
+        ###
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tape_scroll)
+        stg = ptr32(self.stage.stage)
+        frame = ptr8(_display_buffer)
+        # Obtain and increase the frame counter
+        scroll[2] += 1 # Counter
+        y_pos = scroll[4]
+        # Loop through each column of pixels
+        for x in range(72):
+            # Create a modifier for dimming background layer pixels.
+            # The magic number here is repeating on and off bits, which is
+            # alternated horizontally and in time. Someone say "time crystal".
+            dim = int(1431655765) << (scroll[2]+x)%2
+            # Compose the first 32 bits vertically.
+            p0 = (x+scroll[0])%216*2
+            p1 = (x+scroll[1])%216*2
+            p3 = (x+scroll[3])%216*2
+            x2 = x*2
+            a = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0] | tape[p1+432]) & stg[x2+288]
+                            & stg[x2+432] & tape[p1+864] & tape[p3+1728])
+                        # Background (non-interactive) monsters
+                        | stg[x2])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stg[x2+144]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+1296] & stg[x2+432] & tape[p3+1728]))
+                # Now apply the overlay mask and draw layers.
+                & (tape[x2+2160] << y_pos)
+                | (tape[x2+2304] << y_pos))
+            # Now compose the second 32 bits vertically.
+            b = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0+1] | tape[p1+433]) & stg[x2+289]
+                        & stg[x2+433] & tape[p1+865] & tape[p3+1729])
+                        # Background (non-interactive) monsters
+                        | stg[x2+1])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stg[x2+145]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+1297] & stg[x2+433] & tape[p3+1729]))
+                # Now apply the overlay mask and draw layers.
+                & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
+                | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
+            # Apply the relevant pixels to next vertical column of the display
+            # buffer, while also accounting for the vertical offset.
+            frame[x] = a >> y_pos
+            frame[72+x] = (a >> 8 >> y_pos) | (b << (32 - y_pos) >> 8)
+            frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
+            frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
+            frame[288+x] = b >> y_pos
+        # Clear the stage buffers now that we have pulled
+        self.stage.clear()
+    
+    @micropython.viper
+    def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
+        ### Scroll the tape one pixel forwards, or backwards for each layer.
+        # Updates the tape scroll position of that layer.
+        # Fills in the new column with pattern data from the relevant
+        # pattern functions. Since this is a rotating buffer, this writes
+        # over the column that has been scrolled offscreen.
+        # Each layer can be moved in the following directions:
+        #     -1 -> rewind layer backwards,
+        #     0 -> leave layer unmoved,
+        #     1 -> roll layer forwards
+        # @param back_move: Movement of the background layer
+        # @param mid_move: Movement of the midground layer (with fill)
+        # @param fore_move: Movement of the foreground layer (with fill)
+        ###
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            move = fore_move if i == 2 else mid_move if i == 1 else back_move
+            if not move:
+                continue
+            # Advance the tape_scroll position for the layer
+            tapePos = scroll[layer] + move
+            scroll[layer] = tapePos
+            # Find the tape position for the column that needs to be filled
+            x = tapePos + 143 if move == 1 else tapePos - 72
+            offX = layer*432 + x%216*2
+            # Update 2 words of vertical pattern for the tape
+            # (the top 32 bits, then the bottom 32 bits)
+            pattern = self.feed[layer]
+            tape[offX] = int(pattern(x, 0))
+            tape[offX+1] = int(pattern(x, 32))
+            if layer != 0:
+                fill_pattern = self.feed[layer + 1]
+                tape[offX+432] = int(fill_pattern(x, 0))
+                tape[offX+433] = int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Updates a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This can be used to draw to a layer without scrolling.
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] = int(pattern(x, 0))
+        tape[offX+1] = int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] = int(fill_pattern(x, 0))
+            tape[offX+433] = int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def scratch_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Carves a hole out of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] &= int(pattern(x, 0))
+        tape[offX+1] &= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] |= int(fill_pattern(x, 0))
+            tape[offX+433] |= int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def draw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Draws over the top of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This combines the existing layer with the provided pattern.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] |= int(pattern(x, 0))
+        tape[offX+1] |= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] &= int(fill_pattern(x, 0))
+            tape[offX+433] &= int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def reset_tape(self, p: int):
+        ### Reset the tape buffers for all layers to the
+        # given position and fill with the current feed.
+        ###
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            tapePos = scroll[layer] = (p if layer == 3 else 0)
+            for x in range(tapePos-72, tapePos+144):
+                self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
+        
+    @micropython.viper
+    def offset_vertically(self, offset: int):
+        ### Shift the view on the tape to a new vertical position, by
+        # specifying the offset from the top position. This cannot
+        # exceed the total vertical size of the tape (minus the tape height).
+        ###
+        ptr32(self._tape_scroll)[4] = (
+            offset if offset >= 0 else 0) if offset <= 24 else 24
+
+    @micropython.viper
+    def auto_camera_parallax(self, x: int, y: int, t: int):
+        ### Move the camera so that an x, y tape position is in the spotlight.
+        # This will scroll each tape layer to immitate a camera move and
+        # will scroll with standard parallax.
+        ###
+        # Get the current camera position
+        c = ptr32(self._tape_scroll)[3]
+        # Scroll the tapes as needed
+        if x < c + 10:
+            self.scroll_tape(-1 if c % 4 == 0 else 0, 0-(c % 2), -1)
+        elif x > c + 40 or (x > c + 20 and t%4==0):
+            self.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
+        # Reset the vertical offset as needed
+        y -= 20
+        ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
+
+    @micropython.viper
+    def write(self, layer: int, text, x: int, y: int):
+        ### Write text to the mid background layer at an x, y tape position.
+        # This also clears a space around the text for readability using
+        # the background clear mask layer.
+        # Text is drawn with the given position being at the botton left
+        # of the written text (excluding the mask border).
+        # There are 2 layers that can be rendered to:
+        #     1: Mid background layer.
+        #     3: Overlay layer.
+        # When writing to the overlay layer, the positional coordinates
+        # should be given relative to the screen, rather than the tape.
+        ###
+        text = text.upper() # only uppercase is supported
+        tape = ptr32(self._tape)
+        abc_b = ptr8(self.abc)
+        abc_i = self.abc_i
+        h = y - 8 # y position is from bottom of text
+        # Select the relevant layers
+        mask = 864 if layer == 1 else 2160
+        draw = 432 if layer == 1 else 2304
+        # Clear space on background mask layer
+        b = 0xFE
+        for i in range(int(len(text))*4+1):
+            p = (x-1+i)%216*2+mask
+            tape[p] ^= tape[p] & (b >> -1-h if h+1 < 0 else b << h+1)
+            tape[p+1] ^= tape[p+1] & (b >> 31-h if h-31 < 0 else b << h-31)
+        # Draw to the mid background layer
+        for i in range(int(len(text))):
+            for o in range(3):
+                p = (x+o+i*4)%216*2
+                b = abc_b[int(abc_i[text[i]])*3+o]
+                img1 = b >> 0-h if h < 0 else b << h
+                img2 = b >> 32-h if h-32 < 0 else b << h-32
+                # Draw to the draw layer
+                tape[p+draw] |= img1
+                tape[p+draw+1] |= img2
+                # Stencil text out of the clear background mask layer
+                tape[p+mask] |= img1
+                tape[p+mask+1] |= img2
+
+    def message(self, position, text):
+        ### Write a message to the top (left), center (middle), or
+        # bottom (right) of the screen in the overlay layer.
+        # @param position: (int) 0 - center, 1 - top, 2 - bottom.
+        ###
+        # Split the text into lines that fit on screen.
+        lines = [""]
+        for word in text.split(' '):
+            if (len(lines[-1]) + len(word) + 1)*4 > 72:
+                lines.append("")
+            lines[-1] += (" " if lines[-1] else "") + word
+        # Draw centered (if applicable)
+        if position == 0:
+            x = 25-len(lines)*3
+            while (lines):
+                line = lines.pop(0)
+                self.write(3, line, 36-(len(line)*2), x)
+                x += 6
+        else:
+            # Draw top (if applicable)
+            if position == 1:
+                x = 5
+            # Draw bottom (if applicable)
+            if position == 2:
+                x = 46 - 6*len(lines)
+            while (lines):
+                self.write(2, lines.pop(0), 0, x)
+                x += 6
+
+    @micropython.viper
+    def tag(self, text, x: int, y: int):
+        ### Write text to the mid background layer centered
+        # on the given tape foreground scoll position.
+        ###
+        scroll = ptr32(self._tape_scroll)
+        p = x-scroll[3]+scroll[1] # Translate position to mid background
+        self.write(1, text, p-int(len(text))*2, y+3)
+
+    @micropython.viper
+    def clear_overlay(self):
+        ### Reset and clear the overlay layer and it's mask layer. ###
+        tape = ptr32(self._tape)
+        # Reset the overlay mask layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(2160, 2304):
+            tape[i] = mask
+        # Reset and clear the overlay layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(2304, 2448):
+            tape[i] = 0
