@@ -15,8 +15,9 @@ from array import array
 # - 432: landscape including ground, platforms, and roof
 # - 720: landscape fill (opaque off pixels)
 tape = array('I', (0 for i in range(0, 72*2*5)))
-# The scroll distance of each layer in the tape.
-tapeScroll = array('i', [0, 0, 0, 0, 0])
+# The scroll distance of each layer in the tape,
+# and then the frame number counter.
+tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
 
 @micropython.viper
 def comp(tape: ptr32, tapeScroll: ptr32):
@@ -24,8 +25,12 @@ def comp(tape: ptr32, tapeScroll: ptr32):
     tp0 = tapeScroll[0]
     tp1 = tapeScroll[1]
     tp3 = tapeScroll[3]
+    tapeScroll[5] += 1
+    ctr = tapeScroll[5]
     for x in range(0, 72):
-        a = tape[(x+tp0)%72*2] | tape[(x+tp1)%72*2+144] | tape[(x+tp3)%72*2+432]
+        a = ((tape[(x+tp0)%72*2] & (int(1431655765) << (ctr+x)%2)) # low dim
+            | (tape[(x+tp1)%72*2+144] if ctr%3 else 0) # mid dim
+            | tape[(x+tp3)%72*2+432]) # full bright
         b = tape[(x+tp0)%72*2+1] | tape[(x+tp1)%72*2+144] | tape[(x+tp3)%72*2+432]
         frame[x] = a
         frame[72+x] = a >> 8
@@ -94,8 +99,8 @@ for i in range(0, 72):
 
 
 
-thumby.display.setFPS(240)
-
+# profiling: thumby.display.setFPS(12000)
+thumby.display.setFPS(60)
 
 
 t = 0;
@@ -108,6 +113,12 @@ while(1):
 
 
     # Composite a view with new frame data, drawing to screen
+    comp(tape, tapeScroll)
+    thumby.display.update()
+    comp(tape, tapeScroll)
+    thumby.display.update()
+    comp(tape, tapeScroll)
+    thumby.display.update()
     comp(tape, tapeScroll)
     thumby.display.update()
 
