@@ -129,13 +129,14 @@ class Tape:
     # - 288: close background fill (opaque off pixels)
     # - 432: landscape including ground, platforms, and roof
     # - 576: landscape fill (opaque off pixels)
-    tape = array('I', (0 for i in range(72*2*5)))
+    _tape = array('I', (0 for i in range(72*2*5)))
     # The scroll distance of each layer in the tape,
     # and then the frame number counter and vertical offset appended on the end.
     # The vertical offset (yPos), cannot be different per layer (horizontal
     # parallax only).
     # [backPos, midPos, frameCounter, forePos, yPos]
-    tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    _tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
     
@@ -145,8 +146,8 @@ class Tape:
         the display buffer, taking into account the scroll position of each
         render layer, and dimming the background layers.
         """
-        tape = ptr32(self.tape)
-        scroll = ptr32(self.tapeScroll)
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tapeScroll)
         frame = ptr8(thumby.display.display.buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
@@ -189,8 +190,8 @@ class Tape:
         @param mid_move: Movement of the midground layer (with fill)
         @param fore_move: Movement of the foreground layer (with fill)
         """
-        tape = ptr32(self.tape)
-        scroll = ptr32(self.tapeScroll)
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tapeScroll)
         for i in range(3):
             layer = 3 if i == 2 else i
             move = fore_move if i == 2 else mid_move if i == 1 else back_move
@@ -218,7 +219,7 @@ class Tape:
         specifying the offset from the top position. This cannot
         exceed the total vertical size of the tape (minus the tape height).
         """
-        ptr32(self.tapeScroll)[4] = (
+        ptr32(self._tapeScroll)[4] = (
             offset if offset >= 0 else 0) if offset <= 24 else 24
 
 
