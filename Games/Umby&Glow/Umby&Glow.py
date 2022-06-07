@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(600000) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(60) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -500,12 +500,11 @@ class Stage:
             draw[i] = mask
 
     @micropython.viper
-    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int):
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
         """ Draw a sprite to a render layer.
         Sprites must be 8 pixels high but can be any width.
-        It is recommended to pass in different frames of an animated
-        sprite via a memoryview. There are 2 layers that can be
-        rendered to:
+        Sprites can have multiple frames stacked horizontally.
+        There are 2 layers that can be rendered to:
             0: Non-interactive background monster layer.
             1: Foreground monsters, traps and player.
         @param layer: (int) the layer to render to.
@@ -513,11 +512,13 @@ class Stage:
         @param y: screen y draw position (from top).
         @param img: (ptr8) sprite to draw (single row VLSB).
         @param w: width of the sprite to draw.
+        @param f: the frame of the sprite to draw.
         """
+        o = x-f*w
         p = layer*144
         draw = ptr32(self.stage)
         for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-            b = uint(img[i-x])
+            b = uint(img[i-o])
             draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
 
@@ -525,7 +526,8 @@ class Stage:
     def mask(self, layer: int, x: int, y: int, img: ptr8, w: int):
         """ Draw a sprite to a mask (clear) layer.
         This is similar to the "draw" method but applies a mask
-        sprite to a mask later. There are 2 layers that can be rendered to:
+        sprite to a mask later, and animated sprites are not supported.
+        There are 2 layers that can be rendered to:
             0: Mid and background environment mask (1 bit to clear).
             1: Foreground environment mask (1 bit to clear).
         """
@@ -536,14 +538,23 @@ class Stage:
             draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
 
-class Umby: # TODO
+class Umby:
+    """ One of the players you can play with.
+    Umby is an earth worm. They can jump, aim, and fire rockets.
+    Umby can also make platforms by releasing rocket trails.
+    Monsters, traps, and falling offscreen will kill them.
+    Hitting their head on a platform or a roof, while jumping, will
+    also kill them.
+    """
     # Bottom middle position
     x_pos = 82
-    y_pos = 27 # TODO set to 32
-    # BITMAP: width: 8, height: 8
-    art = bytearray([2,254,66,66,66,66,115,64])
-    # BITMAP: width: 8, height: 8
-    mask = bytearray([247,247,247,247,247,247,247,247])
+    y_pos = 38
+    # BITMAP: width: 3, height: 8, frames: 3
+    art = bytearray([96,224,0,0,224,0,0,224,96])
+    # BITMAP: width: 3, height: 8
+    fore_mask = bytearray([224,224,224])
+    # BITMAP: width: 9, height: 8
+    back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 
     @micropython.native
     def tick(self):
@@ -562,44 +573,15 @@ class Umby: # TODO
         """ Draw umby to the draw buffer """
         x_pos = int(self.x_pos)
         y_pos = int(self.y_pos)
-        stage.draw(1, x_pos-x, y_pos, self.art, 8)
-        stage.mask(0, x_pos-x, y_pos, self.mask, 8)
-
-        # TODO
-        """
-        frame = ptr8(display.display.buffer)
-        x = int(self.x_pos)
-        y = int(self.y_pos)
-        # Steps through 0,1,2,4 every half second.
-        step = t*2 // _FPS % 4
-        up_byte = (y-2 >> 3)*72 + x
-        mid_bype = (y-1 >> 3)*72 + x
-        low_byte = (y >> 3)*72 + x
-        # Protect overflow
-        if up_byte - 1 < 0 or low_byte + 1 > 360:
-            return
-        # Left outline (top, mid, bottom)
-        if step == 1:
-            frame[up_byte - 1] |= 1 << (y-2 & 0x07)
-            frame[mid_bype - 1] |= 1 << (y-1 & 0x07)
-        else:
-            frame[up_byte - 1] &= 0xff ^ (1 << (y-2 & 0x07))
-            frame[mid_bype - 1] &= 0xff ^ (1 << (y-1 & 0x07))
-        frame[low_byte - 1] &= 0xff ^ (1 << (y & 0x07))
-        # Worm  (top, mid, bottom)
-        frame[up_byte] |= 1 << (y-2 & 0x07)
-        frame[mid_bype] |= 1 << (y-1 & 0x07)
-        frame[low_byte] |= 1 << (y & 0x07)
-        # Right outline (top, mid, bottom)
-        if step == 3:
-            frame[up_byte + 1] |= 1 << (y-2 & 0x07)
-            frame[mid_bype + 1] |= 1 << (y-1 & 0x07)      
-        else:
-            frame[up_byte + 1] &= 0xff ^ (1 << (y-2 & 0x07))
-            frame[mid_bype + 1] &= 0xff ^ (1 << (y-1 & 0x07))
-        frame[low_byte + 1] &= 0xff ^ (1 << (y & 0x07))
-        """
-
+        # Get animation frame
+        # Steps through 0,1,2,1 every half second, or
+        # 0 when moving left and 2 when moving right.
+        f = 0 if not bL() else 2 if not bR() else t*2 // _FPS % 4
+        f = 1 if f == 3 else f
+        # Draw the layers and masks
+        stage.draw(1, x_pos-1-x, y_pos-8, self.art, 3, f)
+        stage.mask(0, x_pos-4-x, y_pos-8, self.back_mask, 9)
+        stage.mask(1, x_pos-1-x, y_pos-8, self.fore_mask, 3)
 
 
 ## Game Engine ##
