@@ -389,57 +389,44 @@ class _Player:
         # During flight, further presses of the rocket button
         # will leave a rocket trail that will act as a platform.
         ###
-        angle = self._aim_ang
-        power = self._aim_pow
         tape = self._tp
-        # CONTROLS: Apply rocket
-        if not (bU() and bD() and bB()): # Rocket aiming
-            # CONTROLS: Aiming and power
+        if not (bU() and bD() and bB()) or self._aim_pow > 1.0:
+            # CONTROLS: Aim rocket
             self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not (bB() or self.rocket_on) and (self._bBO() or power > 1.0):
+            if not (bB() or self.rocket_on) and (
+                    self._bBO() or self._aim_pow >1.0):
                 self._aim_pow += 0.03
-            angle = self._aim_ang
+            # CONTROLS: Launch the rocket when button is released
+            if bB() and not self.rocket_on and self._aim_pow > 1.0:
+                self.rocket_on = 1
+                self._rocket_x, self._rocket_y = self.x, self._y - 1
+                self._rocket_x_vel = sin(self._aim_ang)*self._aim_pow/2.0
+                self._rocket_y_vel = cos(self._aim_ang)*self._aim_pow/2.0
+                self._aim_pow = 1.0
+                self.rocket_dir = 1 if self.aim_x > 0 else -1
             # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0 and not self.rocket_on:
-            self.rocket_on = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y - 1
-            self._rocket_x_vel = sin(angle)*power/2.0
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = 1 if self.aim_x > 0 else -1
+            self.aim_x = int(sin(self._aim_ang)*self._aim_pow*10.0)
+            self.aim_y = int(cos(self._aim_ang)*self._aim_pow*10.0)
         # Apply rocket dynamics if it is active
-        if self.rocket_on == 1:
-            # Create trail platform when activated
-            if not bB():
-                rx = self.rocket_x
-                ry = self.rocket_y
-                rd = -1 if self.aim_x < 0 else 1
-                trail = pattern_bang(rx-rd, ry, 2, 1)
-                for x in range(rx-rd*2, rx, rd):
-                    tape.draw_tape(2, x, trail, None)
+        if self.rocket_on:
             # Apply rocket motion
             self._rocket_x += self._rocket_x_vel
             self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
+            rx = self.rocket_x = int(self._rocket_x)
+            ry = self.rocket_y = int(self._rocket_y)
             # Apply gravity
             self._rocket_y_vel += 2.5 / _FPS
-            rx = self.rocket_x
-            ry = self.rocket_y
-            # Check fallen through ground
+            # Create trail platform when activated
+            if not bB():
+                trail = pattern_bang(rx-self.rocket_dir, ry, 2, 1)
+                for x in range(rx-self.rocket_dir*2, rx, self.rocket_dir):
+                    tape.draw_tape(2, x, trail, None)
+            # Diffuse if fallen through ground
             if ry > 80:
-                # Diffuse rocket
                 self.rocket_on = 0
             # Check if the rocket hit the ground
             if tape.check_tape(rx, ry):
-                # Explode rocket
-                self.kill(t, None)
+                self.kill(t, None) # Explode rocket
         # Wait until the rocket button is released before firing another
         self._bBO()
 
@@ -452,57 +439,47 @@ class _Player:
         # ground it clears a blast radius, or kills Glow, if hit.
         # See the class doc strings for more details.
         ###
-        angle = self._aim_ang
-        power = self._aim_pow
         grappling = self.mode == 11
         tape = self._tp
         # CONTROLS: Apply rocket
         # Rocket aiming
-        if not bU() or not bD() or not bB() or not bL() or not bR():
+        if not (bU() and bD() and bB() and bL() and bR()) or (
+                bB() and self._aim_pow > 1.0):
             if not grappling:
                 self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
+                # Cap the aim angle between -2 and 2
+                self._aim_ang = (-2.0 if self._aim_ang < -2.0 else
+                    0 if self._aim_ang > 0 else self._aim_ang)
             if not bB(): # Power rocket
                 self._aim_pow += 0.03
-            angle = self._aim_ang
-            angle = -2.0 if angle < -2.0 else 0 if angle > 0 else angle
-            self._aim_ang = angle
+            # Actually launch the rocket when button is released
+            if bB() and self._aim_pow > 1.0:
+                self.rocket_on = 1
+                self._rocket_x, self._rocket_y = self.x, self._y + 1
+                self._rocket_x_vel = sin(self._aim_ang)*self._aim_pow/2*self.dir
+                self._rocket_y_vel = cos(self._aim_ang)*self._aim_pow/2
+                self._aim_pow = 1.0
+                self.rocket_dir = self.dir
             # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)*self.dir
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0:
-            self.rocket_on = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y + 1
-            self._rocket_x_vel = sin(angle)*power/2.0*self.dir
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)*self.dir
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = self.dir
+            self.aim_x = int(sin(self._aim_ang)*self._aim_pow*10.0)*self.dir
+            self.aim_y = int(cos(self._aim_ang)*self._aim_pow*10.0)
         # Apply rocket dynamics if it is active
         if self.rocket_on:
             # Apply rocket motion
             self._rocket_x += self._rocket_x_vel
             self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
-            rx = self.rocket_x
-            ry = self.rocket_y
+            rx = self.rocket_x = int(self._rocket_x)
+            ry = self.rocket_y = int(self._rocket_y)
             # Apply flight boosters
             self._rocket_x_vel += 2.5 / _FPS * self.rocket_dir
             if ((self._rocket_x_vel > 0 and self.rocket_dir > 0)
             or (self._rocket_x_vel < 0 and self.rocket_dir < 0)):
                 self._rocket_y_vel *= 0.9
-            # Check fallen through ground or above ceiling,
-            # or out of range
-            px = self.rocket_x - tape.x[0]
-            if ry > 80 or ry < -1 or px < -30 or px > 102:
-                # Diffuse rocket
+            # Diffuse rocket if out of range
+            if not (80>=ry>=-1) or not (-30<=rx-tape.x[0]<=102):
                 self.rocket_on = 0
-            # Check if the rocket hit the ground
+            # Explode rocket if the rocket hit the ground
             if tape.check_tape(rx, ry):
-                # Explode rocket
                 self.kill(t, None)
 
     @micropython.native
