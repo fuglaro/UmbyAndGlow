@@ -28,6 +28,7 @@ if "rate" not in dir(display): # Load the emulator display if using the IDE API
     display_update = emu_dpy.update
     _display_buffer = emu_dpy.display.buffer
 else: # Otherwise use the raw one if on the thumby device
+    # Load the nice memory-light display drivers
     _display_buffer = display.buffer
     timer = ticks_ms()
     @micropython.native
