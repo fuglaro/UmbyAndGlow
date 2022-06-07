@@ -10,13 +10,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Change Test "mode" to a character selection (Clip)
 # TODO: Auto camera in direction of looking
-# TODO: Make Glows hook break lose if off top of screen (after 1 sec).
+# TODO: Make Glows hook break lose if off top of screen (after 0-1 sec).
 # TODO: Refactor explosions across Players and explode on monsters.
 # TODO: Make testing mode draw be a cross-hair.
-# TODO: Refactor other player things.
-# TODO: Glow's rocket makes mini-platform when held.
+# TODO: Refactor Monsters to be type switchable single obkects (ready for coop comms)
 # TODO: Finish working on help
 # TODO: Make AI Umby
 # TODO: Make AI Glow
@@ -82,7 +80,7 @@ from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
 from tape import Tape, display_update
-from actors import Umby, Glow, BonesTheMonster, bU, bD, bL, bR, bB, bA
+from actors import Player, BonesTheMonster, bU, bD, bL, bR, bB, bA
 from patterns import *
 
 
@@ -180,14 +178,9 @@ def run_game():
     start = load_save(sav, load)
     t = 0;
     set_level(start)
-    if glow:
-        p1 = Glow(tape, start+10, 20)
-    else:
-        p1 = Umby(tape, start+10, 20)
+    name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
+    p1 = Player(tape, name, start+10, 20)
     tape.players.append(p1)
-    # (Secret) Testing mode
-    if not (bR() or bA() or bB()):
-        p1.mode = 199
 
     # Force memory cleanup before entering game loop
     gc.collect()

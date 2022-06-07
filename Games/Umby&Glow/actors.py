@@ -54,9 +54,60 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 
 
 
-class _Player:
+class Player:
     ### Umby and Glow ###
-    # Player behavior mode such as Play, Testing, and Respawn
+
+    ### Umby: One of the players you can play with.
+    # Activate by creating object with name == "Umby"
+    # Umby is an earth worm. They can jump, aim, and fire rockets.
+    # Umby can also make platforms by releasing rocket trails.
+    # Monsters, traps, and falling offscreen will kill them.
+    # Hitting their head on a platform or a roof, while jumping, will
+    # also kill them.
+    ###
+
+    ### Glow: One of the players you can play with.
+    # Activate by creating object with name == "Glow"
+    # Glow is a cave dwelling glow worm. They can crawl along the roof,
+    # fall at will, swing with a grappling hook, and fire rockets.
+    # Unlike Umby, Rockets are self propelled and accelerate into a horizontal
+    # flight, They are launched backwards and downwards in the oppostite
+    # direction of the grappling hook aim, but accelerate horizontally
+    # into the opposite direction of the rocket aim at launch.
+    # Unlike Umby, Glow has two aims pointing in opposite directions,
+    # one for the grappling hook, and one for the rocket aim. Aim can only
+    # be moved up or down, and will switch to the horizontal direction for
+    # the last direction Glow pressed.
+    # Monsters, traps, and falling offscreen will kill them.
+    # Glow is not good with mud, and if hits the ground, including at a bad angle
+    # when on the grappling hook, will get stuck. This will cause it to be
+    # difficult to throw the grappling hook, and may leave Glow with the only
+    # option of sinking throug the abyse into the mud.
+    # This means glow can sometimes fall through thin platforms like Umby's
+    # platforms and then crawl underneath.
+    # Umby also has some specific modes:
+    #     * 0: auto attach grapple hook to ceiling.
+    #     * 1: grapple hook activated.
+    #     * 2: normal movement
+    ###
+
+    ### Clip: Secret test mode you can play with.
+    # Invincible orb that can float anywhere and then
+    # transform into Umby or Glow (name will stay as "Clip")
+    # Activate by creating object with name == "Clip"
+
+    # BITMAP: width: 3, height: 8, frames: 6
+    _u_art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+    # Umby's shadow
+    _u_sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
+    # BITMAP: width: 3, height: 8, frames: 3
+    _u_fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
+    # BITMAP: width: 3, height: 8, frames: 6
+    _g_art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
+    # Umby's shadow
+    _g_sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
+    # BITMAP: width: 3, height: 8, frames: 3
+    _g_fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
     # BITMAP: width: 3, height: 8
@@ -67,7 +118,7 @@ class _Player:
     _aim_back_mask = bytearray([112,248,248,248,112])
     # Modes:
     # TODO:
-    #     199: Testing
+    #     199: Testing (Clip)
     #     200: Frozen (immune)
     #     201: Respawning to Umby
     #     202: Respawning to Glow
@@ -83,7 +134,7 @@ class _Player:
     _x_vel, _y_vel = 0.0, 0.0
     # Rocket variables
     rocket_x, rocket_y = 0, 0 # (int)
-    _aim_ang = 0.0
+    _aim_ang = 2.5
     _aim_pow = 1.0
     # Grappling hook variables
     hook_x, hook_y = 0, 0 # (int) Position where hook attaches ceiling
@@ -94,7 +145,13 @@ class _Player:
     #     0: dir(left:0, right:1), 1: rocket_dir, 2: moving, 3: rocket_on
     mstates = bytearray([1])
 
-    def __init__(self, tape, x, y):
+    def __init__(self, tape, name, x, y):
+        if name == "Glow": # Glow's starting behaviors
+            self.mode = 10
+            self._aim_ang = -0.5
+        elif name == "Clip": # Test mode starting behaviors
+            self.mode = 199
+        self.name = name
         self._tp = tape
         # Motion variables
         self._x, self._y = x, y
@@ -215,13 +272,13 @@ class _Player:
         if not (bL() and bR()): # Update direction
             self.dir = -1 if not bL() else 1
         self.moving = 1 if not (bL() and bR()) else 0 # Update moving
+        # Update the state of the button pressed detectors
+        self._bAOnce = (0 if bA() else
+            1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
+        self._bBOnce = (0 if bB() else
+            1 if (not bB() and self._bBOnce == 0) else self._bBOnce)
         # Normal Play modes
         if self.mode < 199:
-            # Update the state of the button pressed detectors
-            self._bAOnce = (0 if bA() else
-                1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
-            self._bBOnce = (0 if bB() else
-                1 if (not bB() and self._bBOnce == 0) else self._bBOnce)
             # Normal play modes
             if self.mode == 0: # Crawl mode (Umby)
                 self._tick_play_ground(t)
@@ -515,31 +572,12 @@ class _Player:
         ###
         self._y += -1 if not bU() else 1 if not bD() else 0
         self._x += -1 if not bL() else 1 if not bR() else 0
-
-
-class Umby(_Player):
-    ### One of the players you can play with.
-    # Umby is an earth worm. They can jump, aim, and fire rockets.
-    # Umby can also make platforms by releasing rocket trails.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Hitting their head on a platform or a roof, while jumping, will
-    # also kill them.
-    ###
-    # BITMAP: width: 3, height: 8, frames: 6
-    _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
-    # Umby's shadow
-    _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
-    name = "Umby"
-
-    def __init__(self, tape, x, y):
-        self._aim_ang = 2.5
-        _Player.__init__(self, tape, x, y)
+        # Switch to characters if buttons are pressed
+        self.mode = 0 if self._bBO() else 10 if self._bAO() else 199
 
     @micropython.viper
     def draw(self, t: int):
-        ### Draw Umby to the draw buffer ###
+        mode = int(self.mode)
         tape = self._tp
         p = int(tape.x[0])
         x_pos = int(self.x)
@@ -555,118 +593,54 @@ class Umby(_Player):
         f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
         # 0 when still, 1 when left moving, 2 when right
         fm = 0 if not m else 1 if d < 0 else 2
-        # Draw Umby's layers and masks
-        tape.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
-        tape.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
-        tape.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
-        # Draw Umby's aim
-        tape.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
-        tape.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
-        tape.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
-        # Draw Umby's rocket
-        if self.rocket_on:
-            rock_x = int(self.rocket_x)
-            rock_y = int(self.rocket_y)
-            rdir = int(self.rocket_dir)
-            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
-                self._aim, 3, 0) # Rocket tail
-
-
-class Glow(_Player):
-    ### One of the players you can play with.
-    # Glow is a cave dwelling glow worm. They can crawl along the roof,
-    # fall at will, swing with a grappling hook, and fire rockets.
-    # Unlike Umby, Rockets are self propelled and accelerate into a horizontal
-    # flight, They are launched backwards and downwards in the oppostite
-    # direction of the grappling hook aim, but accelerate horizontally
-    # into the opposite direction of the rocket aim at launch.
-    # Unlike Umby, Glow has two aims pointing in opposite directions,
-    # one for the grappling hook, and one for the rocket aim. Aim can only
-    # be moved up or down, and will switch to the horizontal direction for
-    # the last direction Glow pressed.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Glow is not good with mud, and if hits the ground, including at a bad angle
-    # when on the grappling hook, will get stuck. This will cause it to be
-    # difficult to throw the grappling hook, and may leave Glow with the only
-    # option of sinking throug the abyse into the mud.
-    # This means glow can sometimes fall through thin platforms like Umby's
-    # platforms and then crawl underneath.
-    # Umby also has some specific modes:
-    #     * 0: auto attach grapple hook to ceiling.
-    #     * 1: grapple hook activated.
-    #     * 2: normal movement
-    ###
-    # BITMAP: width: 3, height: 8, frames: 6
-    _art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
-    # Umby's shadow
-    _sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
-    name = "Glow"
-
-    def __init__(self, tape, x, y):
-        self.mode = 10 # Start with Glow's behaviors
-        self._aim_ang = -0.5
-        _Player.__init__(self, tape, x, y)
-
-    @micropython.viper
-    def draw(self, t: int):
-        ### Draw Glow to the draw buffer ###
-        tape = self._tp
-        p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        aim_x = int(self.aim_x)
-        aim_y = int(self.aim_y)
-        m = int(self.moving)
-        d = int(self.dir)
-        # Get animation frame
-        # Steps through 0,1,2,3 every half second for animation
-        # of looking left and right, and changes to movement art of
-        # 4 when moving left and 5 when moving right.
-        f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
-        # 0 when still, 1 when left moving, 2 when right
-        fm = 0 if not m else 1 if d < 0 else 2
-        # Draw Glows's layers and masks
-        tape.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
-        tape.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
-        tape.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
-        # Draw Glows's aim
-        l = t*6//_FPS%2
-        # Rope aim
-        if int(self.mode) == 11: # Activated hook
-            hook_x = int(self.hook_x)
-            hook_y = int(self.hook_y)
-            # Draw Glow's grappling hook rope
-            for i in range(0, 8):
-                sx = x_pos-p + (hook_x-x_pos)*i//8
-                sy = y_pos + (hook_y-y_pos)*i//8
-                tape.draw(1, sx-1, sy-6, self._aim, 3, 0)
-            hx = hook_x-p-1
-            hy = hook_y-6
-        else:
-            hx = x_pos-p-aim_x//2-1
-            hy = y_pos-6-aim_y//2
-        tape.draw(l, hx, hy, self._aim, 3, 0)
+        # Rocket aim (or test player if in test mode)
+        abl = t*6//_FPS%2 # aim blinker
+        if mode == 199:
+            aim_x = aim_y = 0
+        hx = x_pos-p+aim_x-1
+        hy = y_pos-6+aim_y
+        tape.draw(abl, hx, hy, self._aim, 3, 0)
         tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
         tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
-        # Rocket aim
-        x = x_pos-p+aim_x-1
-        y = y_pos-6+aim_y
-        tape.draw(l, x, y, self._aim, 3, 0)
-        tape.mask(1, x, y, self._aim_fore_mask, 3, 0)
-        tape.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
-        # Draw Glows's rocket
+        if mode == 199:
+            return # Test mode
+        # Draw rocket, if active
         if self.rocket_on:
-            rock_x = int(self.rocket_x)
-            rock_y = int(self.rocket_y)
+            hx = int(self.rocket_x)
+            hy = int(self.rocket_y)
             rdir = int(self.rocket_dir)
-            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
-                self._aim, 3, 0) # Rocket tail
+            tape.draw(1, hx-p-1, hy-7, self._aim, 3, 0)#head
+            tape.draw(0, hx-p+(-3 if rdir>0 else 1), hy-7, self._aim, 3, 0)#tail
+        # Select the character specifics
+        umby = int(mode == 0 or mode == 201)
+        sdw = self._u_sdw if umby else self._g_sdw
+        art = self._u_art if umby else self._g_art
+        msk = self._u_fore_mask if umby else self._g_fore_mask
+        hy = y_pos-6 if umby else y_pos-1
+        # Draw Umby's or Glow's layers and masks
+        tape.draw(0, x_pos-1-p, hy, sdw, 3, f) # Shadow
+        tape.draw(1, x_pos-1-p, hy, art, 3, f) # Umby
+        tape.mask(1, x_pos-1-p, hy, msk, 3, fm)
+        tape.mask(0, x_pos-4-p, hy, self._back_mask, 9, 0)
+        if not umby:
+            # Draw Glows's grappling hook and aim
+            # Rope aim
+            if mode == 11: # Activated hook
+                hook_x = int(self.hook_x)
+                hook_y = int(self.hook_y)
+                # Draw Glow's grappling hook rope
+                for i in range(0, 8):
+                    sx = x_pos-p + (hook_x-x_pos)*i//8
+                    sy = y_pos + (hook_y-y_pos)*i//8
+                    tape.draw(1, sx-1, sy-6, self._aim, 3, 0)
+                hx = hook_x-p-1
+                hy = hook_y-6
+            else:
+                hx = x_pos-p-aim_x//2-1
+                hy = y_pos-6-aim_y//2
+            tape.draw(abl, hx, hy, self._aim, 3, 0)
+            tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
+            tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
 
 
 class BonesTheMonster:
