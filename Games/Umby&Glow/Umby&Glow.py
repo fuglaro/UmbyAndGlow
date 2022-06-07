@@ -294,6 +294,27 @@ class Tape:
             tape[offX+433] |= int(fill_pattern(x, 32))
 
     @micropython.viper
+    def draw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        """ Draws over the top of a tape layer for a given x position
+        (relative to the start of the tape) with a pattern function.
+        This combines the existing layer with the provided pattern.
+        Draw layer: 1-leave, 0-carve
+        Fill layer: 0-leave, 1-carve
+        These layers can be rendered to:
+            0: Far background layer
+            1: Mid background layer
+            2: Foreground layer
+        """
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] |= int(pattern(x, 0))
+        tape[offX+1] |= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] &= int(fill_pattern(x, 0))
+            tape[offX+433] &= int(fill_pattern(x, 32))
+
+    @micropython.viper
     def reset_tape(self):
         """ Reset the tape buffers for all layers to the
         current feed.
@@ -618,7 +639,7 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
-def bang(blast_x, blast_y, blast_size, is_fill):
+def bang(blast_x, blast_y, blast_size, invert):
     """ PATTERN (DYNAMIC) [bang]: explosion blast with customisable
     position and size. Intended to be used for scratch_tape.
     Comes with it's own inbuilt fill patter for also blasting away
@@ -628,7 +649,7 @@ def bang(blast_x, blast_y, blast_size, is_fill):
     @micropython.viper
     def pattern(x: int, oY: int) -> int:
         s = int(blast_size)
-        f = int(is_fill)
+        f = int(invert)
         _by = int(blast_y)
         tx = x-int(blast_x)
         v = 0
@@ -863,7 +884,14 @@ class Umby:
 
     @micropython.native
     def _tick_rocket(self, t, tape):
-        """ Handle one game tick for Umby's rocket """
+        """ Handle one game tick for Umby's rocket.
+        Rockets start with aiming a target, then the launch
+        process begins and charges up. When the button is then
+        released the rocket launches. When the rocket hits the
+        ground it clears a blast radius, or kills Umby, if hit.
+        During flight, further presses of the rocket button
+        will leave a rocket trail that will act as a platform.
+        """
         angle = self._aim_angle
         power = self._aim_pow
         # CONTROLS: Apply rocket
@@ -889,7 +917,15 @@ class Umby:
             self.aim_x = int(math.sin(angle)*10.0)
             self.aim_y = int(math.cos(angle)*10.0)
         # Apply rocket dynamics if it is active
-        if self.rocket_active:
+        if self.rocket_active == 1:
+            if not bB():
+                rx = self.rocket_x
+                ry = self.rocket_y
+                rd = -1 if self.aim_x < 0 else 1
+                trail = bang(rx-rd, ry, 2, 1)
+                for x in range(rx-rd*2, rx, rd):
+                    tape.draw_tape(2, x, trail, None)
+
             # Apply rocket motion
             self._rocket_x += self._rocket_x_vel
             self._rocket_y += self._rocket_y_vel
@@ -913,9 +949,10 @@ class Umby:
                     "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
 
                 # Carve blast hole out of ground
+                pattern = bang(rx, ry, 8, 0)
+                fill = bang(rx, ry, 10, 1)
                 for x in range(rx-10, rx+10):
-                    tape.scratch_tape(2, x,
-                        bang(rx, ry, 8, 0), bang(rx, ry, 10, 1))
+                    tape.scratch_tape(2, x, pattern, fill)
 
                 # DEATH: Check for death by rocket blast
                 dx = rx-self.x_pos
@@ -925,14 +962,11 @@ class Umby:
                     self._respawn_x = tape.x[0] - 240
                     tape.message(0, "Umby kissed a rocket!")  
 
-                # End rocket
-                self.rocket_active = 0
-
-
-
-        # TODO: trail
-
-
+                # Get ready to end rocket
+                self.rocket_active = 2
+        # Wait until the rocket button is released before firing another
+        if self.rocket_active == 2 and bB():
+            self.rocket_active = 0
 
     @micropython.native
     def _tick_respawn(self, tape):
