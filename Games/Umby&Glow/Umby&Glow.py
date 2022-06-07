@@ -10,15 +10,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Refactor explosions across Players and explode on monsters.
-# TODO: Make testing mode draw be a cross-hair.
 # TODO: Refactor Monsters to be type switchable single obkects (ready for coop comms)
-# TODO: Finish working on help
 # TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Make 2 player (remote monsters out of range go to background)
 #          - Run all comms in a thread with thread locking on shared variables
 #          - half frame rate for each two way comms.
+# TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
+#       - Umby, try to jump high! But dont hit the roof too hard!"
 # TODO: Make script/story outline
 # TODO: Write script / story
 # TODO: Add 8 more levels, extended game dynamics, and more monsters!
@@ -54,22 +53,31 @@
 ###
 
 
-
-
-helper_text = [[ # Umby
-    "Umby can jump high!",
-    "Dont hit the roof too hard!"
-    
-    ], [ # Glow
-    ""]]
-# BITMAP: width: 7, height: 8
-helper = bytearray([0,60,250,170,226,60,0])
-helper_mask = bytearray([126,255,255,255,255,255,126])
-
-
 ##
 # Script - the story through the dialog of the characters.
-script = [
+script = [ # TODO: apply as tape scrolls - displaying each message for half a second and then until some input is down.
+    (20, [
+    "@:Hi Glow!",
+    "^:Hi Umby!"]),
+    (10, "^:Next thing 10 pixels later"),
+# TODO IDEAS
+"""
+The dolphins sold our planet? What for?!
+Mock tuna.
+Mock tuna?
+Yeah, synthesized tuna. They even thought they got the better deal. After the fish were wiped out, to the dolphins, the planet was just a big rock. From their point of view, they sold the aliens a rock for tuna.
+Gah! Tricky Blighters!
+
+Good thing we live near a SpaceY launch pad.
+We live near a SpaceY launch pad?
+Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask "Whats that?", and I always say "The downside of living near a SpaceY facility"
+Cool! Lets roll.
+
+
+Time to eat the frog!
+Eat the frog? - Do you mean: Try to do something impossible but by never giving up, eventually succeed?
+Yes. Eventually the worm eats everything.
+"""
 ]
 
 
