@@ -12,6 +12,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+# TODO: Add starting level arrow
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
@@ -90,7 +91,7 @@ class Tape:
     the columns that go offscreen are reset.
     """
     # Scrolling tape with each render layer being a section one after the other.
-    # Each section is a buffer that cycles (via the tapeScroll positions) as the
+    # Each section is a buffer that cycles (via the tape_scroll positions) as the
     # world scrolls horizontally. Each section can scroll independently so
     # background layers can move slower than foreground layers.
     # Layers each have 1 bit per pixel from top left, descending then wrapping
@@ -109,7 +110,7 @@ class Tape:
     # The vertical offset (yPos), cannot be different per layer (horizontal
     # parallax only).
     # [backPos, midPos, frameCounter, forePos, yPos]
-    _tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
@@ -123,11 +124,11 @@ class Tape:
                         to stack within the comp.
         """
         tape = ptr32(self._tape)
-        scroll = ptr32(self._tapeScroll)
+        scroll = ptr32(self._tape_scroll)
         frame = ptr8(display.display.buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
-        yPos = scroll[4]
+        y_pos = scroll[4]
         # Loop through each column of pixels
         for x in range(72):
             # Create a modifier for dimming background layer pixels.
@@ -166,11 +167,11 @@ class Tape:
                 | (tape[p3+433] & stage[x2+433] & tape[p3+577]))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
-            frame[x] = a >> yPos
-            frame[72+x] = (a >> 8 >> yPos) | (b << (32 - yPos) >> 8)
-            frame[144+x] = (a >> 16 >> yPos) | (b << (32 - yPos) >> 16)
-            frame[216+x] = (a >> 24 >> yPos) | (b << (32 - yPos) >> 24)
-            frame[288+x] = (b >> yPos)
+            frame[x] = a >> y_pos
+            frame[72+x] = (a >> 8 >> y_pos) | (b << (32 - y_pos) >> 8)
+            frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
+            frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
+            frame[288+x] = (b >> y_pos)
     
     @micropython.viper
     def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
@@ -188,13 +189,13 @@ class Tape:
         @param fore_move: Movement of the foreground layer (with fill)
         """
         tape = ptr32(self._tape)
-        scroll = ptr32(self._tapeScroll)
+        scroll = ptr32(self._tape_scroll)
         for i in range(3):
             layer = 3 if i == 2 else i
             move = fore_move if i == 2 else mid_move if i == 1 else back_move
             if not move:
                 continue
-            # Advance the tapeScroll position for the layer
+            # Advance the tape_scroll position for the layer
             tapePos = scroll[layer] + move
             scroll[layer] = tapePos
             # Find the tape position for the column that needs to be filled
@@ -216,7 +217,7 @@ class Tape:
         specifying the offset from the top position. This cannot
         exceed the total vertical size of the tape (minus the tape height).
         """
-        ptr32(self._tapeScroll)[4] = (
+        ptr32(self._tape_scroll)[4] = (
             offset if offset >= 0 else 0) if offset <= 24 else 24
 
 
@@ -411,27 +412,23 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
-
-## Interesting pattern library for future considerations ## 
-##
-# PATTERN [toothsaw]: TODO use and update for word
+# Pattern Library:
+# Interesting pattern library for future considerations ## 
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
+    """ PATTERN [toothsaw]: TODO use and update for word """
     return int(y > (113111^x+11) % 64 // 2 + 24)
-##
-# PATTERN [revtoothsaw]: TODO use and update for word
 @micropython.viper
 def pattern_revtoothsaw(x: int, y: int) -> int:
+    """ PATTERN [revtoothsaw]: TODO use and update for word """
     return int(y > (11313321^x) % 64)
-##
-# PATTERN [diamondsaw]: TODO use and update for word
 @micropython.viper
 def pattern_diamondsaw(x: int, y: int) -> int:
+    """ PATTERN [diamondsaw]: TODO use and update for word """
     return int(y > (32423421^x) % 64)
-##
-# PATTERN [fallentree]: TODO use and update for word
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
+    """ PATTERN [fallentree]: TODO use and update for word """
     return int(y > (32423421^(x+y)) % 64)
 @micropython.viper
 def pattern_panelsv(x: int, oY: int) -> int:
@@ -442,8 +439,6 @@ def pattern_panelsv(x: int, oY: int) -> int:
             1 if (x*y)%100 == 0 else 0
         ) << (y-oY)
     return v
-
-
 
 
 ## Actors and Stage ##
@@ -475,6 +470,7 @@ class Stage:
     
     @micropython.viper
     def clear(self): # TODO
+        """ Reset the render and mask laters to their default blank state """
         draw = ptr32(self.stage)
         for i in range(288):
             draw[i] = 0
