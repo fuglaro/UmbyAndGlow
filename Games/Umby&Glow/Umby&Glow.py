@@ -100,6 +100,8 @@ class Tape:
     can be modified (such as for explosion damage) for the 64 pixels high,
     and 72 pixels wide, but when the tape is rolled forewards, and backwards,
     the columns that go offscreen are reset.
+    There is also an overlay layer and associated mask, which is not
+    subject to any tape scrolling or vertical offsets.
     """
     # Scrolling tape with each render layer being a section one after the other.
     # Each section is a buffer that cycles (via the tape_scroll positions) as the
@@ -279,7 +281,9 @@ class Tape:
         of the written text (excluding the mask border).
         There are 2 layers that can be rendered to:
             1: Mid background layer.
-            3: Foreground environment mask (1 bit to clear).
+            3: Overlay layer.
+        When writing to the overlay layer, the positional coordinates
+        should be given relative to the screen, rather than the tape.
         """
         tape = ptr32(self._tape)
         abc_b = ptr8(abc)
@@ -321,35 +325,6 @@ class Tape:
         for i in range(864, 1008):
             tape[i] = 0
 
-    @micropython.viper
-    def write_over(self, text, x: int, y: int):
-        """ Similar to write_back but does not write to the tape itself.
-        Instead it writes to an additional overlay that is not subject to
-        any tape scrolling. Positional arguments are relative to the screen
-        rather than the tape.
-        """
-        tape = ptr32(self._tape)
-        abc_b = ptr8(abc)
-        h = y - 11 # ignore top 3 bits of the byte height (5 height font)
-        # Clear space on the overlay mask layer
-        b = 0xFE
-        for i in range(int(len(text))*4+1):
-            p = (x-1+i)%72*2+720
-            tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
-            tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
-        # Draw to the overlay layer
-        for i in range(int(len(text))):
-            for o in range(3):
-                p = (x+o+i*4)%72*2+864
-                b = abc_b[int(abc_i[text[i]])*3+o]
-                img1 = b >> 0-h if h < 0 else b << h
-                img2 = b >> 32-h if -32+h < 0 else b << -32+h
-                # Draw to the mid background layer
-                tape[p] |= img1
-                tape[p+1] |= img2
-                # Stencil text out of the clear background mask layer
-                tape[p-144] |= img1
-                tape[p-143] |= img2
 
 ## Patterns ##
 
@@ -686,14 +661,16 @@ class Umby:
         else:
             # Stop falling when hit ground
             self._y_vel = 0
-            
+
+
+
+
 
         # TODO: fall off tape
         # TODO: allow digging straight down
         # TODO: climb
         # TODO: jump
         # TODO: hit ceiling
-        # TODO: writing top, bottom
 
         #---- TESTING: Explore the level by flying without clipping
         if not bU():
@@ -762,7 +739,6 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
-    tape.write_over("HELLO WORLD", 10, 20)
 
     # Main gameplay loop
     v = 0
