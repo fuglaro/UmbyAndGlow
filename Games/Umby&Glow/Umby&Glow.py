@@ -200,17 +200,17 @@ def offset_vertically(offset: int):
 
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
-    """PATTERN [none]: empty"""
+    """ PATTERN [none]: empty"""
     return 0
 
 @micropython.viper
 def pattern_fill(x: int, oY: int) -> int:
-    """PATTERN [fill]: completely filled"""
+    """ PATTERN [fill]: completely filled """
     return int(0xFFFFFFFF) # 1 for all bits
 
 @micropython.viper
 def pattern_fence(x: int, oY: int) -> int:
-    """PATTERN [fence]: - basic dotted fences at roof and high floor"""
+    """ PATTERN [fence]: - basic dotted fences at roof and high floor """
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -220,7 +220,7 @@ def pattern_fence(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
-    """PATTERN [room]:- basic flat roof and high floor"""
+    """ PATTERN [room]:- basic flat roof and high floor """
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -230,7 +230,7 @@ def pattern_room(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_test(x: int, oY: int) -> int:
-    """PATTERN [test]: long slope plus walls"""
+    """ PATTERN [test]: long slope plus walls """
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -240,7 +240,7 @@ def pattern_test(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_wall(x: int, oY: int) -> int:
-    """PATTERN [wall]: dotted vertical lines repeating"""
+    """ PATTERN [wall]: dotted vertical lines repeating """
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -250,7 +250,7 @@ def pattern_wall(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_cave(x: int, oY: int) -> int:
-    """PATTERN [cave]:
+    """ PATTERN [cave]:
     Cave system with ceiling and ground. Ceiling is never less
     than 5 deep. Both have a random terrain and can intersect.
     """
@@ -268,7 +268,7 @@ def pattern_cave(x: int, oY: int) -> int:
     return v
 @micropython.viper
 def pattern_cave_fill(x: int, oY: int) -> int:
-    """PATTERN [cave_fill]:
+    """ PATTERN [cave_fill]:
     Fill pattern for the cave. The ceiling is semi-reflective
     at the plane at depth 5. The ground has vertical lines.
     """
@@ -282,6 +282,47 @@ def pattern_cave_fill(x: int, oY: int) -> int:
             & (int(y > 10-buff[1]) | int(y > 5) | int(y == 5) | buff[1]%y))
         ) << (y-oY)
     return v
+
+@micropython.viper
+def pattern_stalagmites(x: int, oY: int) -> int:
+    """ PATTERN [stalagmites]:
+    Stalagmite columns coming from the ground and associated
+    stalactite columns hanging from the ceiling.
+    These undulate in height in clustered waves.
+    """
+    # buff: [ceiling-height, fill-shading-offset]
+    buff = ptr32(buf)
+    if oY == 0:
+        t1 = (x%256)-128
+        t2 = (x%18)-9
+        t3 = (x%4)-2
+        buff[0] = 50 - t1*t1//256 - t2*t2//4 - t3*t3*4
+        buff[1] = 15*(x%4)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y < buff[0]) | int(y > 64 - buff[0])
+        ) << (y-oY)
+    return v
+@micropython.viper
+def pattern_stalagmites_fill(x: int, oY: int) -> int:
+    """ PATTERN [stalagmites_fill]:
+    Associated shading pattern for the stalagmite layer.
+    Stalagmites are shaded in a symetric manner while
+    stalactites have shadows to the left. This is just for
+    visual richness.
+    """
+    # buff: [ceiling-height, fill-shading-offset]
+    buff = ptr32(buf)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y+20 > buff[0]) & int(y-buff[1] < 64 - buff[0])
+        ) << (y-oY)
+    return v
+
+
+
 
 
 ##
@@ -308,37 +349,7 @@ def pattern_fallentree(x: int, y: int) -> int:
 
 
 
-##
-# PATTERN [dev2]: TODO
-@micropython.viper
-def pattern_dev2(x: int, oY: int) -> int:
-    # buff: [ceiling-height]
-    buff = ptr32(buf)
-    if oY == 0:
-        #buff[0] = 40-(90*((x%4)-2)*((x%4)-2) - (  (x+1024)% (((x+256)%1024 )//8 ) - ( (x+256)%1024   )//16    )//4   )//8
-        #buff[0] = ((x%40)-20)*((x%40)-20)
-        t1 = (x%256)-128
-        t2 = (x%18)-9
-        t3 = (x%4)-2
-        buff[0] = 50 - t1*t1//256 - t2*t2//4 - t3*t3*4
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            int(y < buff[0]) | int(y > 64 - buff[0])
-        ) << (y-oY)
-    return v
-##
-# PATTERN [dev2_fill]: TODO
-@micropython.viper
-def pattern_dev2_fill(x: int, oY: int) -> int:
-    # buff: [ceiling-height]
-    buff = ptr32(buf)
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            int(y != buff[0]) | int(y != 64 - buff[0]) # TODO XXXXX
-        ) << (y-oY)
-    return v
+
 
 
 ##
@@ -366,7 +377,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_dev2, pattern_dev2_fill,
+    feed[:] = [pattern_wall, pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
@@ -374,7 +385,7 @@ def run_game():
     start_level()
 
     # FPS (intended to be between 60 and 120 variable fps)
-    thumby.display.setFPS(24000000) # TESTING: for speed profiling
+    thumby.display.setFPS(2400000) # TESTING: for speed profiling
 
     # Main gameplay loop
     c = 0;
