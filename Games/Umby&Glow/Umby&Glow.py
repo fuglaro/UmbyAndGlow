@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: extend tape cache to be 3 screens wide (288pixels) for all layers
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
@@ -76,19 +75,20 @@ class Tape:
     The foreground is the parts of the level that are interactive with
     actors such as the ground, roof, and platforms.
     Mid and background layers are purely decorative.
-    Each layer can be scrolled intependently and then composited onto
+    Each layer can be scrolled intependently and then composited onto the
     display buffer.
     Each layer is created by providing deterministic functions that
     draw the pixels from x and y coordinates. Its really just an elaborate
-    graph plotter - a scientific calculator turned console!
-    The tape size is 64 pixels high, with an infinite length, but only
-    72 pixels wide buffered.
+    graph plotter - a scientific calculator turned games console!
+    The tape size is 64 pixels high, with an infinite length, and 216 pixels
+    wide are buffered (72 pixels before tape position, 72 pixels of visible,
+    screen, and 72 pixels beyond the visible screen).
     This is intended for the 72x40 pixel view. The view can be moved
     up and down but when it moves forewards and backwards, the buffer
     is cycled backwards and forewards. This means that the tape
     can be modified (such as for explosion damage) for the 64 pixels high,
-    and 72 pixels wide, but when the tape is rolled forewards, and backwards,
-    the columns that go offscreen are reset.
+    and 216 pixels wide, but when the tape is rolled forewards, and backwards,
+    the columns that go out of buffer are reset.
     There is also an overlay layer and associated mask, which is not
     subject to any tape scrolling or vertical offsets.
     """
@@ -102,13 +102,13 @@ class Tape:
     # Each layer is a layer in the composited render stack.
     # Layers from left to right:
     # - 0: far background
-    # - 144: close background
-    # - 288: close background fill (opaque: off pixels)
-    # - 432: landscape including ground, platforms, and roof
-    # - 576: landscape fill (opaque: off pixels)
-    # - 720: overlay mask (opaque: off pixels)
-    # - 864: overlay
-    _tape = array('I', (0 for i in range(72*2*7)))
+    # - 432: close background
+    # - 864: close background fill (opaque: off pixels)
+    # - 1296: landscape including ground, platforms, and roof
+    # - 1728: landscape fill (opaque: off pixels)
+    # - 2160: overlay mask (opaque: off pixels)
+    # - 2304: overlay
+    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
     # The scroll distance of each layer in the tape,
     # and then the frame number counter and vertical offset appended on the end.
     # The vertical offset (yPos), cannot be different per layer (horizontal
@@ -143,7 +143,7 @@ class Tape:
     def check(self, x: int, y: int) -> bool:
         """ Returns true if the x, y position is solid foreground """
         tape = ptr32(self._tape)
-        p = x%72*2+432
+        p = x%216*2+1296
         return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
 
     @micropython.viper
@@ -167,14 +167,14 @@ class Tape:
             # alternated horizontally and in time. Someone say "time crystal".
             dim = int(1431655765) << (scroll[2]+x)%2
             # Compose the first 32 bits vertically.
-            p0 = (x+scroll[0])%72*2
-            p1 = (x+scroll[1])%72*2
-            p3 = (x+scroll[3])%72*2
+            p0 = (x+scroll[0])%216*2
+            p1 = (x+scroll[1])%216*2
+            p3 = (x+scroll[3])%216*2
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0] | tape[p1+144]) & stage[x2+288]
-                            & stage[x2+432] & tape[p1+288] & tape[p3+576])
+                        ((tape[p0] | tape[p1+432]) & stage[x2+288]
+                            & stage[x2+432] & tape[p1+864] & tape[p3+1728])
                         # Background (non-interactive) monsters
                         | stage[x2])
                     # Dim all mid and background layers
@@ -182,15 +182,15 @@ class Tape:
                     # Foreground monsters (and players)
                     | stage[x2+144]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+432] & stage[x2+432] & tape[p3+576]))
+                    | (tape[p3+1296] & stage[x2+432] & tape[p3+1728]))
                 # Now apply the overlay mask and draw layers.
-                & (tape[x2+720] << y_pos)
-                | (tape[x2+864] << y_pos))
+                & (tape[x2+2160] << y_pos)
+                | (tape[x2+2304] << y_pos))
             # Now compose the second 32 bits vertically.
             b = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0+1] | tape[p1+145]) & stage[x2+289]
-                        & stage[x2+433] & tape[p1+289] & tape[p3+577])
+                        ((tape[p0+1] | tape[p1+433]) & stage[x2+289]
+                        & stage[x2+433] & tape[p1+865] & tape[p3+1729])
                         # Background (non-interactive) monsters
                         | stage[x2+1])
                     # Dim all mid and background layers
@@ -198,10 +198,10 @@ class Tape:
                     # Foreground monsters (and players)
                     | stage[x2+145]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+433] & stage[x2+433] & tape[p3+577]))
+                    | (tape[p3+1297] & stage[x2+433] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
-                & ((tape[x2+720] >> 32-y_pos) | (tape[x2+721] << y_pos-32))
-                | (tape[x2+864] >> 32-y_pos) | (tape[x2+865] << y_pos-32))
+                & ((tape[x2+2160] >> 32-y_pos) | (tape[x2+2161] << y_pos-32))
+                | (tape[x2+2304] >> 32-y_pos) | (tape[x2+2305] << y_pos-32))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> y_pos
@@ -236,8 +236,8 @@ class Tape:
             tapePos = scroll[layer] + move
             scroll[layer] = tapePos
             # Find the tape position for the column that needs to be filled
-            x = tapePos + 71 if move == 1 else tapePos
-            offX = layer*144 + x%72*2
+            x = tapePos + 143 if move == 1 else tapePos - 72
+            offX = layer*432 + x%216*2
             # Update 2 words of vertical pattern for the tape
             # (the top 32 bits, then the bottom 32 bits)
             pattern = self.feed[layer]
@@ -245,8 +245,8 @@ class Tape:
             tape[offX+1] = int(pattern(x, 32))
             if layer != 0:
                 fill_pattern = self.feed[layer + 1]
-                tape[offX+144] = int(fill_pattern(x, 0))
-                tape[offX+145] = int(fill_pattern(x, 32))
+                tape[offX+432] = int(fill_pattern(x, 0))
+                tape[offX+433] = int(fill_pattern(x, 32))
 
     @micropython.viper
     def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
@@ -260,12 +260,12 @@ class Tape:
         """
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
-        offX = l*144 + x%72*2
+        offX = l*432 + x%216*2
         tape[offX] = int(pattern(x, 0))
         tape[offX+1] = int(pattern(x, 32))
         if l != 0 and fill_pattern:
-            tape[offX+144] = int(fill_pattern(x, 0))
-            tape[offX+145] = int(fill_pattern(x, 32))
+            tape[offX+432] = int(fill_pattern(x, 0))
+            tape[offX+433] = int(fill_pattern(x, 32))
 
     @micropython.viper
     def reset_tape(self):
@@ -276,7 +276,7 @@ class Tape:
         for i in range(3):
             layer = 3 if i == 2 else i
             tapePos = scroll[layer]
-            for x in range(tapePos, tapePos+72):
+            for x in range(tapePos-72, tapePos+144):
                 self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
         
     @micropython.viper
@@ -324,18 +324,18 @@ class Tape:
         abc_i = self.abc_i
         h = y - 11 # ignore top 3 bits of the byte height (5 height font)
         # Select the relevant layers
-        mask = 288 if layer == 1 else 720
-        draw = 144 if layer == 1 else 864
+        mask = 864 if layer == 1 else 2160
+        draw = 432 if layer == 1 else 2304
         # Clear space on background mask layer
         b = 0xFE
         for i in range(int(len(text))*4+1):
-            p = (x-1+i)%72*2+mask
+            p = (x-1+i)%216*2+mask
             tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
             tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
         # Draw to the mid background layer
         for i in range(int(len(text))):
             for o in range(3):
-                p = (x+o+i*4)%72*2
+                p = (x+o+i*4)%216*2
                 b = abc_b[int(abc_i[text[i]])*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
                 img2 = b >> 32-h if -32+h < 0 else b << -32+h
@@ -361,11 +361,11 @@ class Tape:
         tape = ptr32(self._tape)
         # Reset the overlay mask layer
         mask = uint(0xFFFFFFFF)
-        for i in range(720, 864):
+        for i in range(2160, 2304):
             tape[i] = mask
         # Reset and clear the overlay layer
         mask = uint(0xFFFFFFFF)
-        for i in range(864, 1008):
+        for i in range(2304, 2448):
             tape[i] = 0
 
 
