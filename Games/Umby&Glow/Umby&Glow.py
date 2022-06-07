@@ -479,7 +479,22 @@ class Stage:
             draw[i] = mask
 
     @micropython.viper
-    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int): # TODO
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int):
+        """ Draw a sprite to a render layer.
+        Sprites must be 8 pixels high but can be any width.
+        It is recommended to pass in different frames of an animated
+        sprite via a memoryview. There are 4 layers that can be
+        rendered to:
+            0: Non-interactive background monster layer.
+            1: Foreground monsters, traps and player.
+            2: Mid and background environment mask (0 bit to clear).
+            3: Foreground environment mask (0 bit to clear).
+        @param layer: (int) the layer or mask layer to render to.
+        @param x: screen x draw position.
+        @param y: screen y draw position (from top).
+        @param img: (ptr8) sprite to draw (single row VLSB).
+        @param w: width of the sprite to draw.
+        """
         p = layer*144
         draw = ptr32(self.stage)
         for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
