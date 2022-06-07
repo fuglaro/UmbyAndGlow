@@ -373,6 +373,7 @@ def start_level():
     """
     # Fill the tape with the starting area
     for i in range(72):
+        scroll_tape(pattern_wall, 0, 1, None)
         scroll_tape(pattern_fence, 1, 1, pattern_fill)
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
