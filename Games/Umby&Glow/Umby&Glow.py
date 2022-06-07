@@ -2,6 +2,8 @@ import time
 import thumby
 from array import array
 
+# TODO: Full gave description and overview.
+
 ##
 # Scrolling tape with each render layer being a section one after the other.
 # Each section is a buffer that cycles (via the tapeScroll positions) as the world
@@ -29,25 +31,33 @@ tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
 @micropython.viper
 def comp(tape: ptr32, tapeScroll: ptr32):
     frame = ptr8(thumby.display.display.buffer)
+    # Get the scoll position of each tape section (render layer)
     tp0 = tapeScroll[0]
     tp1 = tapeScroll[1]
     tp3 = tapeScroll[3]
+    # Obtain and increase the frame counter
     tapeScroll[5] += 1
     ctr = tapeScroll[5]
+    # Loop through each column of pixels
     for x in range(0, 72):
+        # Create a modifier for dimming background layer pixels.
+        # The magic number here is repeating on and off bits, which is alternated
+        # horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
+        # Compose the first 32 bits vertically.
         a = ((tape[(x+tp0)%72*2] & dim)
             | (tape[(x+tp1)%72*2+144] & dim)
             | tape[(x+tp3)%72*2+432])
+        # Compose the second 32 bits vertically.
         b = ((tape[(x+tp0)%72*2+1] & dim)
             | (tape[(x+tp1)%72*2+144+1] & dim)
             | tape[(x+tp3)%72*2+432+1])
+        # Apply the relevant pixels to next vertical column of the display buffer
         frame[x] = a
         frame[72+x] = a >> 8
         frame[144+x] = a >> 16
         frame[216+x] = a >> 24
         frame[288+x] = b
-
 
 ##
 # Drawable pattern - dotted vertical lines repeating
@@ -102,7 +112,7 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 for i in range(0, 72):
     extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
     extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
-    extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
+    extend_tape(pattern_room, memoryview(tape), tapeScroll, 0)
 
 
 
