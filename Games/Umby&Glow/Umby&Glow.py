@@ -3,6 +3,7 @@ import thumby
 
 VIEW_W = 72 # width is in pixels
 VIEW_H = 5 # height is in bytes (8 pixels)
+MID = int(VIEW_H * 8 / 2) - 1 # middle row of pixels
 
 
 ##
@@ -31,22 +32,42 @@ glow = bytearray(VIEW_W*VIEW_H) # the player: glow
 
 ##
 # Drawable pattern - dotted vertical lines repeating
-def walls_pattern(x, y):
+def wall_pattern(x, y):
     return 0 if (x % 16) or (y % 3) else 1
 
 ##
 # Drawable pattern - basic flat roof and floor
 def room_pattern(x, y):
-    return 1 if (y < 3) or (y >= VIEW_H*8 - 3) else 0
+    return 1 if (abs(y-MID) > MID - 3) else 0
 
+##
+# Drawable pattern - basic dotted fences at roof and floor
+def fence_pattern(x, y):
+    return 1 if (abs(y-MID) > MID - 12) and not ((x % 3) or (y % 3)) else 0
+
+##
+#
+#
+#
 def fill(pattern, offsetX, offsetY, layer):
     for x in range(0, VIEW_W):
         for y in range(0, VIEW_H):
+            v = 0
             for b in range(0, 8):
-                layer[x*VIEW_H+y] |= pattern(x + offsetX, (y + offsetY)*8+b) << b
+                v |= pattern(x + offsetX, (y + offsetY)*8+b) << b
+            layer[x*VIEW_H+y] = v
+
+
+##
+# Drawable pattern - basic undulating stalactites and stalagmites
+def saws_pattern(x, y):
+    return 0#1 if (y < 8) or (y >= VIEW_H*8 - 8) else 0 TODO
 
 
 
+fill(wall_pattern, 0, 0, memoryview(back))
+fill(room_pattern, 0, 0, memoryview(land))
+fill(fence_pattern, 0, 0, memoryview(cave))
 
 cave[5] = 5
 cave[35] = 5
@@ -54,16 +75,19 @@ cave[107] = 5
 cave[159] = 5
 cave[35*5+4] = 3
 
-fill(walls_pattern, 0, 0, memoryview(back))
-fill(room_pattern, 0, 0, memoryview(land))
 
+t = 1;
 while(1):
+
+    #fill(wall_pattern, t/4, 0, memoryview(back))
+    fill(room_pattern, t/2, 0, memoryview(land))
+    fill(fence_pattern, t, 0, memoryview(cave))
 
     # Composite a view with new frame data, drawing to screen
     display(memoryview(bytearray(
         back[b] | cave[b] | land[b]
         for b in range(0, VIEW_W*VIEW_H))))
 
-
+    t += 1
 
 
