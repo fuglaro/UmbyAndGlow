@@ -196,11 +196,53 @@ def pattern_wall(x: int, y: int) -> int:
 
 
 ##
+# PATTERN [toothsaw]: TODO
+@micropython.viper
+def pattern_toothsaw(x: int, y: int) -> int:
+    return int(y > (113111^x+11) % 64 // 2 + 24)
+
+##
+# PATTERN [revtoothsaw]: TODO
+@micropython.viper
+def pattern_revtoothsaw(x: int, y: int) -> int:
+    return int(y > (11313321^x) % 64)
+
+##
+# PATTERN [diamondsaw]: TODO
+@micropython.viper
+def pattern_diamondsaw(x: int, y: int) -> int:
+    return int(y > (32423421^x) % 64)
+
+##
+# PATTERN [fallentree]: TODO
+@micropython.viper
+def pattern_fallentree(x: int, y: int) -> int:
+    return int(y > (32423421^(x+y)) % 64)
+
+
+@micropython.viper
+def ihash(x: uint) -> int:
+    # Credit Thomas Wang
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
+
+@micropython.viper
+def shash(x: int, step: int, size: int) -> int:
+    a = int(ihash(x//step)) % size
+    b = int(ihash(x//step + 1)) % size
+
+
+
+    return a + (b-a) * (x%step) // step
+
+##
 # PATTERN [dev]: TODO
 @micropython.viper
 def pattern_dev(x: int, y: int) -> int:
-    return int(y > (((((x*214013+2531011)*214013+2531011)*214013+2531011)*214013+2531011)>>16 & 0xFF))
-
+    return int(y > int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16)))
 
 
 ##
@@ -212,12 +254,12 @@ def start_level():
         scroll_tape(pattern_fence, 1, 1)
         scroll_tape(pattern_room, 3, 1)
     # Set the feed patterns for each layer.
-    feed[:] = [pattern_none, pattern_none, None, pattern_dev, None]
+    feed[:] = [pattern_none, pattern_fence, None, pattern_dev, None]
 start_level()
 
 
 # FPS
-thumby.display.setFPS(80) # TESTING: for speed profiling
+thumby.display.setFPS(2400) # TESTING: for speed profiling
 #thumby.display.setFPS(120) # Intended game speed
 
 # Main gameplay loop
