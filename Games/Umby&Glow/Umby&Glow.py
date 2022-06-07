@@ -2,18 +2,10 @@ import time
 import thumby
 from array import array
 
-VIEW_W = 72 # width is in pixels
-VIEW_H = 5 # height is in bytes (8 pixels)
-MID = int(VIEW_H * 8 / 2) - 1 # middle row of pixels
-
-
-
-
-
 
 ##
-# Scrolling tape with each layer a section after the other.
-# Layers each have 1 bit per pixel from top left, descending then wrapping to the right
+# Scrolling tape with each layer being a section one after the other.
+# Layers each have 1 bit per pixel from top left, descending then wrapping to the right.
 # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
 # Each layer is a layer in the composited render stack.
 # Layers from left to right:
@@ -26,19 +18,8 @@ tape = array('I', (0 for i in range(0, 72*2*5)))
 # The scroll distance of each layer in the tape.
 tapeScroll = array('i', [0, 0, 0, 0, 0])
 
-
-frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
-
 @micropython.viper
-def comp(frame: ptr8,
-
-
-
-
-
-
-
-tape: ptr32, tapeScroll: ptr32): # TODO del
+def comp(tape: ptr32, tapeScroll: ptr32):
     frame = ptr8(thumby.display.display.buffer)
     tp0 = tapeScroll[0]
     tp1 = tapeScroll[1]
@@ -52,44 +33,35 @@ tape: ptr32, tapeScroll: ptr32): # TODO del
         frame[216+x] = a >> 24
         frame[288+x] = b
 
-        
-        
-        # TODO 5th row and beyond
-
- #   0  #  back[(x+backtapePos)%VIEW_W*VIEW_H+y]
-       # | cave[(x+cavetapePos)%VIEW_W*VIEW_H+y]
-    #    | land[(x+landtapePos)%VIEW_W*VIEW_H+y]
-  #      for y in range(0, VIEW_H) for x in range(0, VIEW_W)
-   #     )
-
-
-
 
 ##
 # Drawable pattern - dotted vertical lines repeating
-def wall_pattern(x, y):
+@micropython.viper
+def wall_pattern(x: int, y: int) -> int:
     #return 0 if (x % 16) or (y % 3) else 1
-    #return 1 if x/3%(VIEW_H*8) == y else 0
-    return 1 if x/3%(VIEW_H*8) == y or not ((x % 16) or (y % 3)) else 0
+    #return 1 if x/3%(40) == y else 0
+    return 1 if x%120 == y*3 or not ((x % 16) or (y % 3)) else 0
 
 ##
 # Drawable pattern - basic flat roof and floor
-def room_pattern(x, y):
-    return 1 if (abs(y-MID) > MID - 3) else 0
+@micropython.viper
+def pattern_room(x: int, y: int) -> int:
+    return int(int(abs(y-32)) > 32 - 3) # TODO bitwise abs
 
 ##
 # Drawable pattern - basic dotted fences at roof and floor
-def fence_pattern(x, y):
-    return 1 if (abs(y-MID) > MID - 12) and not ((x % 4) or (y % 4)) else 0
+@micropython.viper
+def pattern_fence(x: int, y: int) -> int:
+    return 1 if bool(int(abs(y-32)) > 32 - 12) and not ((x % 4) or (y % 4)) else 0 # TODO bitwise abs
 
 
 ##
 # Drawable pattern - basic undulating stalactites and stalagmites
-def saws_pattern(x, y):
-    return 0#1 if (y < 8) or (y >= VIEW_H*8 - 8) else 0 TODO
+@micropython.viper
+def pattern_saws(x: int, y: int) -> int:
+    return 0#1 if (y < 8) or (y >= 40 - 8) else 0 TODO
 
 
-# TODO fix naming of pattern functions
 # TODO viper pattern functions
 
 # PATTERN: test (slope plus walls)
@@ -114,7 +86,7 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 
 for i in range(0, 72):
     extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
-    extend_tape(fence_pattern, memoryview(tape), tapeScroll, 1)
+    extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
     extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
 
 
@@ -136,13 +108,12 @@ while(1):
 
 
     # Composite a view with new frame data, drawing to screen
-    comp(frame, tape, tapeScroll)
-    #thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
+    comp(tape, tapeScroll)
     thumby.display.update()
 
     extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
     if (t%2==0):
-        extend_tape(fence_pattern, memoryview(tape), tapeScroll, 1)
+        extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
         if (t%4==0):
             extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
     t += 1
