@@ -43,7 +43,9 @@ Find Lung held hostage
 Lung gives info as sacrifice
 Flood spaceship mainframe
 Go back home
-Cave -> forest -> air -> rocket -> space -> spaceship -> spaceship computer mainframe -> dolphin aquarium -> flooded spaceship -> forrest -> cave
+Cave -> forest -> air -> rocket -> space -> spaceship ->
+    spaceship computer mainframe -> dolphin aquarium ->
+    flooded spaceship -> forrest -> cave
 
 '''
 ##
@@ -96,10 +98,11 @@ def shash(x: int, step: int, size: int) -> int:
 
 ##
 # Scrolling tape with each render layer being a section one after the other.
-# Each section is a buffer that cycles (via the tapeScroll positions) as the world
-# scrolls horizontally. Each section can scroll independently so background layers can
-# move slower than foreground layers.
-# Layers each have 1 bit per pixel from top left, descending then wrapping to the right.
+# Each section is a buffer that cycles (via the tapeScroll positions) as the
+# world scrolls horizontally. Each section can scroll independently so
+# background layers can move slower than foreground layers.
+# Layers each have 1 bit per pixel from top left, descending then wrapping to
+# the right.
 # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
 # Each layer is a layer in the composited render stack.
 # Layers from left to right:
@@ -111,7 +114,8 @@ def shash(x: int, step: int, size: int) -> int:
 tape = array('I', (0 for i in range(0, 72*2*5)))
 # The scroll distance of each layer in the tape,
 # and then the frame number counter and vertical offset appended on the end.
-# The vertical offset (yPos), cannot be different per layer (horizontal parallax only).
+# The vertical offset (yPos), cannot be different per layer (horizontal
+# parallax only).
 # [L1, L2, L3, L4, L5, frameCounter, yPos]
 tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
 # The patterns to feed into each tape section
@@ -126,9 +130,9 @@ buf = array('i', [0])
 
 ##
 # comp
-# Composite all the render layers together and render directly to the display buffer,
-# taking into account the scroll position of each render layer, and dimming the
-# background layers.
+# Composite all the render layers together and render directly to the display
+# buffer, taking into account the scroll position of each render layer, and
+# dimming the background layers.
 @micropython.viper
 def comp():
     tape_ = ptr32(tape)
@@ -145,20 +149,20 @@ def comp():
     # Loop through each column of pixels
     for x in range(0, 72):
         # Create a modifier for dimming background layer pixels.
-        # The magic number here is repeating on and off bits, which is alternated
-        # horizontally and in time. Someone say "time crystal".
+        # The magic number here is repeating on and off bits, which is
+        # alternated horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
         # Compose the first 32 bits vertically.
         p0 = (x+tp0)%72*2
         p1 = (x+tp1)%72*2
         p3 = (x+tp3)%72*2
-        a = uint((tape_[p0] | tape_[p1+144] ^ tape_[p1+288]) & dim
-            | tape_[p3+432] ^ tape_[p3+576])
+        a = uint(((tape_[p0] | tape_[p1+144]) & tape_[p1+288] & dim
+            | tape_[p3+432]) & tape_[p3+576])
         # Compose the second 32 bits vertically.
-        b = uint((tape_[p0+1] | tape_[p1+145] ^ tape_[p1+289]) & dim
-            | tape_[p3+433] ^ tape_[p3+577])
-        # Apply the relevant pixels to next vertical column of the display buffer,
-        # while also accounting for the vertical offset.
+        b = uint(((tape_[p0+1] | tape_[p1+145]) & tape_[p1+289] & dim
+            | tape_[p3+433]) & tape_[p3+577])
+        # Apply the relevant pixels to next vertical column of the display
+        # buffer, while also accounting for the vertical offset.
         frame[x] = a >> yPos
         frame[72+x] = (a >> 8 >> yPos) | (b << (32 - yPos) >> 8)
         frame[144+x] = (a >> 16 >> yPos) | (b << (32 - yPos) >> 16)
@@ -192,7 +196,7 @@ def scroll_tape(pattern, layer: int, direction: int):
         v = 0
         # Loop through each bit in this 32 bit word
         for b in range(0, 32):
-            # Update this 32 bit word with the next bit of fill data from the pattern
+            # Update this 32 bit word with the next bit of pattern data
             v |= int(pattern(x, y)) << b
             y+=1
         # write the current 32 bits to tape
@@ -222,7 +226,7 @@ def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
         f = 0
         # Loop through each bit in this 32 bit word
         for b in range(0, 32):
-            # Update this 32 bit word with the next bit of fill data from the pattern
+            # Update this 32 bit word with the next bit of pattern data
             v |= int(pattern(x, y)) << b
             # And also for the fill pattern
             f |= int(fill_pattern(x, y)) << b
@@ -239,7 +243,7 @@ def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
 # exceed the total vertical size of the tape (minus the tape height).
 @micropython.viper
 def offset_vertically(offset: int):
-    ptr32(tapeScroll)[6] = (offset if offset >= 0 else 0) if offset <= 24 else 24
+    ptr32(tapeScroll)[6] = (offset if offset>=0 else 0) if offset<=24 else 24
 
 
 # TODO: check speed of abs equivelents
@@ -250,10 +254,15 @@ def offset_vertically(offset: int):
 def pattern_none(x: int, y: int) -> int:
     return 0
 ##
+# PATTERN [fill]: completely filled
+@micropython.viper
+def pattern_fill(x: int, y: int) -> int:
+    return 1
+##
 # PATTERN [fence]: - basic dotted fences at roof and high floor
 @micropython.viper
 def pattern_fence(x: int, y: int) -> int:
-    return (1 if y < 12 else 1 if y > 32 else 0) & int(x%10 == 0) & int(y%2 == 0)
+    return (1 if y<12 else 1 if y>32 else 0) & int(x%10 == 0) & int(y%2 == 0)
 ##
 # PATTERN [room]:- basic flat roof and high floor
 @micropython.viper
@@ -307,9 +316,15 @@ def pattern_cave(x: int, y: int) -> int:
     # buff: [ground-height]
     buff = ptr32(buf)
     if (y == 0):
-        buff[0] = int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16))
+        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
     return int(y > buff[0])
-
+##
+# PATTERN [cave_fill]: TODO
+@micropython.viper
+def pattern_cave_fill(x: int, y: int) -> int:
+    # buff: [ground-height]
+    buff = ptr32(buf)
+    return int(y < buff[0]+5)
 
 ##
 # PATTERN [dev]: TODO
@@ -317,7 +332,7 @@ def pattern_cave(x: int, y: int) -> int:
 def pattern_dev(x: int, y: int) -> int:
     buff = ptr32(buf)
     if (y == 0):
-        buff[0] = int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16))
+        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
     return int(y > buff[0])
 
 
@@ -331,10 +346,11 @@ def start_level():
     # Fill the tape with the starting area
     for i in range(0, 72):
         scroll_tape(pattern_fence, 1, 1)
-        scroll_tape(pattern_room, 3, 1)
+        scroll_tape_with_fill(pattern_room, pattern_fill, 3, 1)
     # Set the feed patterns for each layer.
-    # (background, mid-background, mid-background-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_fence, pattern_room, pattern_cave, pattern_wall]
+    # (back, mid-back, mid-back-fill, foreground, foreground-fill)
+    feed[:] = [pattern_wall, pattern_fence, pattern_room,
+        pattern_cave, pattern_cave_fill]
 start_level()
 
 
