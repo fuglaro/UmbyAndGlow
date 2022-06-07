@@ -10,7 +10,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Make help 
+# TODO: Make Glows hook break lose if off top of screen (after 1 sec).
+# TODO: Refactor explosions across Players and explode on monsters.
+# TODO: Make testing mode draw be a cross-hair.
+# TODO: Refactor other player things.
+# TODO: Glow's rocket makes mini-platform when held.
+# TODO: Finish working on help
 # TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Make 2 player (remote monsters out of range go to background)
@@ -47,6 +52,19 @@
 #    spaceship computer mainframe -> dolphin aquarium ->
 #    flooded spaceship -> forrest -> cave
 ###
+
+
+
+
+helper_text = [[ # Umby
+    "Umby can jump high!",
+    "Dont hit the roof too hard!"
+    
+    ], [ # Glow
+    ""]]
+# BITMAP: width: 7, height: 8
+helper = bytearray([0,60,250,170,226,60,0])
+helper_mask = bytearray([126,255,255,255,255,255,126])
 
 
 ##
@@ -165,7 +183,7 @@ def run_game():
     tape.players.append(p1)
     # (Secret) Testing mode
     if not (bR() or bA() or bB()):
-        p1.mode = -99
+        p1.mode = 199
 
     # Force memory cleanup before entering game loop
     gc.collect()
@@ -202,7 +220,7 @@ def run_game():
                     tape.mons.remove(mon)
                     p1.kill(t, mon)
         # If player is in play mode, check for monster collisions
-        if p1.mode >= 0 and tape.check(p1.x-tape.x[0], p1.y, 224):
+        if (not p1.immune) and tape.check(p1.x-tape.x[0], p1.y, 224):
             p1.die(240, "Umby became monster food!")
 
         # Draw the players
