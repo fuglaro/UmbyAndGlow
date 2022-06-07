@@ -110,18 +110,19 @@ land[35*5+4] = 3
 
 thumby.display.setFPS(240)
 
+# PATTERN: test (slope plus walls)
+@micropython.viper
+def pattern_test(x: int, y: int) -> int:
+    return int(x%120 == y*3) | (int(x%16 == 0) & int(y%3 == 0))
 
 @micropython.viper
-def extend_tape(tape: ptr32, tapePos: int): # TODO optimise for single column fill
+def extend_tape(pattern, tape: ptr32, tapePos: int):
     x = tapePos + 72
     for w in range(0, 2):
         y = w*32
         v = 0
         for b in range(0, 32):
-            #p = 1 if bool(x/3%40 == y or not ((x % 16) or (y % 3)) else 0
-            # PATTERN: test
-            p = int(x%120 == y*3) | (int(x % 16 == 0) & int(y % 3 ==0))
-            v |= p << b
+            v |= int(pattern(x, y)) << b
             y+=1
         tape[x%72*2+w] = v
 
@@ -139,7 +140,7 @@ while(1):
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
-    extend_tape(memoryview(tape), tapePos) # TODO no memoryview needed with viper
+    extend_tape(pattern_test, memoryview(tape), tapePos) # TODO no memoryview needed with viper
     tapePos += 1
 
 
