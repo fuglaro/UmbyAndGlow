@@ -30,7 +30,16 @@ tapeScroll = array('i', [0, 0, 0, 0, 0])
 frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
 
 @micropython.viper
-def comp(frame: ptr8, tape: ptr32, tapeScroll: ptr32): # TODO del
+def comp(frame: ptr8,
+
+
+
+
+
+
+
+tape: ptr32, tapeScroll: ptr32): # TODO del
+    frame = ptr8(thumby.display.display.buffer)
     tp0 = tapeScroll[0]
     tp1 = tapeScroll[1]
     tp3 = tapeScroll[3]
@@ -128,7 +137,7 @@ while(1):
 
     # Composite a view with new frame data, drawing to screen
     comp(frame, tape, tapeScroll)
-    thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
+    #thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
     extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
