@@ -13,7 +13,7 @@
 '''
 
 # TODO: Instead of replacing sections of the tape by scrolling, allow for replacing columns of the tape.
-# TODO: extend tape cache to be 3 screens wide (288pixels) for mid and foreground
+# TODO: extend tape cache to be 3 screens wide (288pixels) for all layers
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
@@ -248,6 +248,37 @@ class Tape:
                 fill_pattern = self.feed[layer + 1]
                 tape[offX+144] = int(fill_pattern(x, 0))
                 tape[offX+145] = int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        """ Updates a tape layer for a given x position
+        (relative to the start of the tape) with a pattern function.
+        This can be used to draw to a layer without scrolling.
+        These layers can be rendered to:
+            0: Far background layer
+            1: Mid background layer
+            2: Foreground layer
+        """
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*144 + x%72*2
+        tape[offX] = int(pattern(x, 0))
+        tape[offX+1] = int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+144] = int(fill_pattern(x, 0))
+            tape[offX+145] = int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def reset_tape(self):
+        """ Reset the tape buffers for all layers to the
+        current feed.
+        """
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            tapePos = scroll[layer]
+            for x in range(tapePos, tapePos+72):
+                self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
         
     @micropython.viper
     def offset_vertically(self, offset: int):
@@ -774,20 +805,18 @@ def set_level(tape, start):
     """
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    # Fill the tape with the starting area
-    tape.feed[:] = [pattern_wall,
-        pattern_fence, pattern_fill,
-        pattern_room, pattern_fill]
-    tape.scroll_tape(start-72, start-72, start-72)
-    for i in range(72):
-        tape.scroll_tape(1, 1, 1)
-    # Draw starting instructions
-    tape.write(1, "THAT WAY!", start+19, 26)
-    tape.write(1, "------>", start+37, 32)
-    # Ready tape for main area
     tape.feed[:] = [pattern_toplit_wall,
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
+    tape.reset_tape()
+    # Fill the tape with the starting area
+    tape.scroll_tape(0, 0, start)
+    for i in range(start, 72):
+        tape.redraw_tape(2, i, pattern_room, pattern_fill)
+    # Draw starting instructions
+    tape.write(1, "THAT WAY!", start+19, 26)
+    tape.write(1, "------>", start+37, 32)
+
 
 @micropython.native
 def run_game():
