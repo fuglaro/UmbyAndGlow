@@ -59,6 +59,7 @@ _FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 from array import array
 from time import ticks_ms
 import math
+import os
 from thumby import display
 import thumby
 
@@ -1651,8 +1652,23 @@ def run_game():
     glow, coop, load = run_menu(tape, stage, spawn)
 
     # Ready the level for playing
-    t = 0;
+    sav = __file__[:-3] + "-" + ("glow" if glow else "umby") + ".sav"
+    print(sav)
+    #f = open(sav, "w")
+    #f.write("500")
+    #f.close()
     start = 3
+    #if load:
+    #    try:
+    #        f = open(sav, "r")
+    #        start = int(f.read())
+    #        f.close()
+    #    except:
+    #        pass
+
+    tape.message(0, start) # TODO debug
+
+    t = 0;
     set_level(tape, spawn, start)
     if glow:
         p1 = Glow(tape, stage, start+10, 20)
@@ -1670,6 +1686,7 @@ def run_game():
         if (t % 60 == 0):
             print(ticks_ms() - profiler)
             profiler = ticks_ms()
+            # Save game
 
         # Update the game engine by a tick
         p1.tick(t)
