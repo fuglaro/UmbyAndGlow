@@ -739,7 +739,7 @@ class Umby:
         self.rocket_x = 0
         self.rocket_y = 0
 
-    # TODO @micropython.native
+    @micropython.native
     def tick(self, t, tape):
         """ Updated Umby for one game tick.
         @param t: the current game tick count
@@ -780,40 +780,9 @@ class Umby:
                 if _chd or _chl or _chr: # detatch from ground grip
                     self._y_pos -= 1
                 self._y_vel = -0.8
-            # CONTROLS: Apply rocket
-            if not bU() or not bD() or not bB(): # Rocket aiming
-                if not bU(): # Aim up
-                    self._aim_angle += 0.02
-                elif not bD(): # Aim down
-                    self._aim_angle -= 0.02
-                elif not self.rocket_active: # Power rocket
-                    self._aim_pow += 0.03
-                # Resolve rocket aim to the x by y vector form
-                self.aim_x = int(math.sin(self._aim_angle)*self._aim_pow*10)
-                self.aim_y = int(math.cos(self._aim_angle)*self._aim_pow*10)
-            # Actually launch the rocket when button is released
-            if bB() and self._aim_pow > 1.0 and not self.rocket_active:
-                self.rocket_active = 1
-                self._rocket_x = self._x_pos
-                self._rocket_y = self._y_pos - 1
-                self._rocket_x_vel = math.sin(self._aim_angle)*self._aim_pow/2
-                self._rocket_y_vel = math.cos(self._aim_angle)*self._aim_pow/2
-                self._aim_pow = 1.0
-                self.aim_x = int(math.sin(self._aim_angle)*self._aim_pow*10)
-                self.aim_y = int(math.cos(self._aim_angle)*self._aim_pow*10)
-            # Apply rocket dynamics if it is active
-            if self.rocket_active:
-                # Apply rocket motion
-                self._rocket_x += self._rocket_x_vel
-                self._rocket_y += self._rocket_y_vel
-                self.rocket_x = int(self._rocket_x)
-                self.rocket_y = int(self._rocket_y)
-                # Apply gravity
-                self._rocket_y_vel += 2.5 / _FPS
-                # Check fallen through ground
-                if self.rocket_y > 80:
-                    # Diffuse rocket
-                    self.rocket_active = 0
+
+            # Now handle rocket engine
+            self._tick_rocket(tape)
 
             # DEATH: Check for head smacking
             if _chu and self._y_vel < -0.4:
@@ -829,43 +798,104 @@ class Umby:
     
         # Respawn mode
         elif self.mode == 1:
-            # Move Umby towards the respawn location
-            if self._x_pos > self._respawn_x:
-                self._x_pos -= 1
-                self._y_pos += 0 if int(self._y_pos) == 32 else \
-                    1 if self._y_pos < 32 else -1
-                if self._x_pos == self._respawn_x + 120:
-                    # Hide any death message
-                    tape.clear_overlay()
-                if self._x_pos < self._respawn_x + 30:
-                    # Draw the starting platform
-                    tape.redraw_tape(2, self._x_pos-5,
-                        pattern_room, pattern_fill)
-            else:
-                # Return to normal play mode
-                self.mode = 0#Play
-                tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
+            self._tick_respawn(tape)
 
         # Testing mode
         else:
-            # Explore the level by flying, free of interaction
-            if not bU():
-                self._y_pos -= 1
-            elif not bD():
-                self._y_pos += 1
-            if not bL():
-                self._x_pos -= 1
-            elif not bR():
-                self._x_pos += 1
+            self._tick_testing()
+
+        # Update the viper friendly variables.
+        self.x_pos = int(self._x_pos)
+        self.y_pos = int(self._y_pos)
+
+    @micropython.native
+    def _tick_rocket(self, tape):
+        """ Handle one game tick for Umby's rocket """
+        angle = self._aim_angle
+        power = self._aim_pow
+        # CONTROLS: Apply rocket
+        if not bU() or not bD() or not bB(): # Rocket aiming
+            if not bU(): # Aim up
+                self._aim_angle += 0.02
+            elif not bD(): # Aim down
+                self._aim_angle -= 0.02
+            elif not self.rocket_active: # Power rocket
+                self._aim_pow += 0.03
+            angle = self._aim_angle
+            # Resolve rocket aim to the x by y vector form
+            self.aim_x = int(math.sin(angle)*power*10.0)
+            self.aim_y = int(math.cos(angle)*power*10.0)
+        # Actually launch the rocket when button is released
+        if bB() and power > 1.0 and not self.rocket_active:
+            self.rocket_active = 1
+            self._rocket_x = self._x_pos
+            self._rocket_y = self._y_pos - 1
+            self._rocket_x_vel = math.sin(angle)*power/2.0
+            self._rocket_y_vel = math.cos(angle)*power/2.0
+            self._aim_pow = 1.0
+            self.aim_x = int(math.sin(angle)*10.0)
+            self.aim_y = int(math.cos(angle)*10.0)
+        # Apply rocket dynamics if it is active
+        if self.rocket_active:
+            # Apply rocket motion
+            self._rocket_x += self._rocket_x_vel
+            self._rocket_y += self._rocket_y_vel
+            self.rocket_x = int(self._rocket_x)
+            self.rocket_y = int(self._rocket_y)
+            # Apply gravity
+            self._rocket_y_vel += 2.5 / _FPS
+            # Check fallen through ground
+            if self.rocket_y > 80:
+                # Diffuse rocket
+                self.rocket_active = 0
+
+
 
 
 
         # TODO: rocket, and trim code
 
 
-        # Update the viper friendly variables.
-        self.x_pos = int(self._x_pos)
-        self.y_pos = int(self._y_pos)
+
+    @micropython.native
+    def _tick_respawn(self, tape):
+        """ After Umby dies, a respawn process begins,
+        showing a death message, while taking Umby back
+        to a respawn point on a new starting platform.
+        This handles a game tick when a respawn process is
+        active
+        """
+        # Move Umby towards the respawn location
+        if self._x_pos > self._respawn_x:
+            self._x_pos -= 1
+            self._y_pos += 0 if int(self._y_pos) == 32 else \
+                1 if self._y_pos < 32 else -1
+            if self._x_pos == self._respawn_x + 120:
+                # Hide any death message
+                tape.clear_overlay()
+            if self._x_pos < self._respawn_x + 30:
+                # Draw the starting platform
+                tape.redraw_tape(2, self._x_pos-5,
+                    pattern_room, pattern_fill)
+        else:
+            # Return to normal play mode
+            self.mode = 0#Play
+            tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
+
+    @micropython.native
+    def _tick_testing(self):
+        """ Handle one game tick for when in test mode.
+        Test mode allows you to explore the level by flying,
+        free of interactions.
+        """
+        if not bU():
+            self._y_pos -= 1
+        elif not bD():
+            self._y_pos += 1
+        if not bL():
+            self._x_pos -= 1
+        elif not bR():
+            self._x_pos += 1
 
     @micropython.viper
     def draw(self, t: int, x: int, stage):
@@ -889,8 +919,8 @@ class Umby:
         stage.mask(0, x_pos-4-x, y_pos-6, self._back_mask, 9, 0)
         stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3, fm)
         # Draw Umby's aim
-        stage.draw(t*6//_FPS % 2, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
-        stage.mask(1, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
+        stage.draw(t*6//_FPS % 2, x_pos-x+aim_x, y_pos-7+aim_y, self._aim, 1, 0)
+        stage.mask(1, x_pos-x+aim_x, y_pos-7+aim_y, self._aim, 1, 0)
         # Draw Umby's rocket
         if self.rocket_active:
             stage.draw(1, rock_x-x, rock_y-7, self._aim, 1, 0)
