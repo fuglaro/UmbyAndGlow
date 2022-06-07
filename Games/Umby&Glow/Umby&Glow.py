@@ -2,9 +2,11 @@ import time
 import thumby
 from array import array
 
-
 ##
-# Scrolling tape with each layer being a section one after the other.
+# Scrolling tape with each render layer being a section one after the other.
+# Each section is a buffer that cycles (via the tapeScroll positions) as the world
+# scrolls horizontally. Each section can scroll independently so background layers can
+# move slower than foreground layers.
 # Layers each have 1 bit per pixel from top left, descending then wrapping to the right.
 # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
 # Each layer is a layer in the composited render stack.
@@ -16,9 +18,14 @@ from array import array
 # - 720: landscape fill (opaque off pixels)
 tape = array('I', (0 for i in range(0, 72*2*5)))
 # The scroll distance of each layer in the tape,
-# and then the frame number counter.
+# and then the frame number counter appended on the end.
+# [L1, L2, L3, L4, L5, frameCounter]
 tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
 
+##
+# Composite all the render layers together and render directly to the display buffer,
+# taking into account the scroll position of each render layer, and dimming the
+# background layers.
 @micropython.viper
 def comp(tape: ptr32, tapeScroll: ptr32):
     frame = ptr8(thumby.display.display.buffer)
@@ -28,10 +35,13 @@ def comp(tape: ptr32, tapeScroll: ptr32):
     tapeScroll[5] += 1
     ctr = tapeScroll[5]
     for x in range(0, 72):
-        a = ((tape[(x+tp0)%72*2] & (int(1431655765) << (ctr+x)%2)) # low dim
-            | (tape[(x+tp1)%72*2+144] if ctr%3 else 0) # mid dim
-            | tape[(x+tp3)%72*2+432]) # full bright
-        b = tape[(x+tp0)%72*2+1] | tape[(x+tp1)%72*2+144] | tape[(x+tp3)%72*2+432]
+        dim = int(1431655765) << (ctr+x)%2
+        a = ((tape[(x+tp0)%72*2] & dim)
+            | (tape[(x+tp1)%72*2+144] & dim)
+            | tape[(x+tp3)%72*2+432])
+        b = ((tape[(x+tp0)%72*2+1] & dim)
+            | (tape[(x+tp1)%72*2+144+1] & dim)
+            | tape[(x+tp3)%72*2+432+1])
         frame[x] = a
         frame[72+x] = a >> 8
         frame[144+x] = a >> 16
@@ -99,8 +109,8 @@ for i in range(0, 72):
 
 
 
-# profiling: thumby.display.setFPS(12000)
-thumby.display.setFPS(60)
+thumby.display.setFPS(1200)
+#thumby.display.setFPS(120)
 
 
 t = 0;
@@ -115,14 +125,8 @@ while(1):
     # Composite a view with new frame data, drawing to screen
     comp(tape, tapeScroll)
     thumby.display.update()
-    comp(tape, tapeScroll)
-    thumby.display.update()
-    comp(tape, tapeScroll)
-    thumby.display.update()
-    comp(tape, tapeScroll)
-    thumby.display.update()
 
-    extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
+    extend_tape(pattern_test, memoryview(tape), tapeScroll, 3)
     if (t%2==0):
         extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
         if (t%4==0):
