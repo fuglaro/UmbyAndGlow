@@ -1,3 +1,23 @@
+# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of 
+# this software and associated documentation files (the “Software”), to deal in 
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
 import time
 import thumby
 from array import array
@@ -23,6 +43,8 @@ tape = array('I', (0 for i in range(0, 72*2*5)))
 # and then the frame number counter appended on the end.
 # [L1, L2, L3, L4, L5, frameCounter]
 tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
+# The patterns to feed into each tape section
+feed = [None, None, None, None, None]
 
 ##
 # Composite all the render layers together and render directly to the display buffer,
@@ -60,39 +82,36 @@ def comp(tape: ptr32, tapeScroll: ptr32):
         frame[288+x] = b
 
 ##
-# Drawable pattern - dotted vertical lines repeating
+# Fast bitwise abs
+@micropython.viper
+def abs(v: int) -> int:
+    m = v >> 31
+    return (v + m) ^ m
+
+##
+# PATTERN [wall]: dotted vertical lines repeating
 @micropython.viper
 def pattern_wall(x: int, y: int) -> int:
-    #return 0 if (x % 16) or (y % 3) else 1
-    #return 1 if x/3%(40) == y else 0
-    return 1 if x%120 == y*3 or not ((x % 16) or (y % 3)) else 0
-
+    return int(x%16 == 0) & int(y%3 == 0)
 ##
-# Drawable pattern - basic flat roof and floor
+# PATTERN [room]:- basic flat roof and high floor
 @micropython.viper
 def pattern_room(x: int, y: int) -> int:
-    return int(int(abs(y-32)) > 32 - 3) # TODO bitwise abs
-
+    return int(int(abs(y-19)) > 19 - 3)
 ##
-# Drawable pattern - basic dotted fences at roof and floor
+# PATTERN [fence]: - basic dotted fences at roof and high floor
 @micropython.viper
 def pattern_fence(x: int, y: int) -> int:
-    return 1 if bool(int(abs(y-32)) > 32 - 12) and not ((x % 4) or (y % 4)) else 0 # TODO bitwise abs
-
-
+    return int(int(abs(y-19)) > 19 - 12) & int(x%10 == 0) & int(y%2 == 0)
 ##
-# Drawable pattern - basic undulating stalactites and stalagmites
-@micropython.viper
-def pattern_saws(x: int, y: int) -> int:
-    return 0#1 if (y < 8) or (y >= 40 - 8) else 0 TODO
-
-
-# TODO viper pattern functions
-
-# PATTERN: test (slope plus walls)
+# PATTERN [test]: long slope plus walls
 @micropython.viper
 def pattern_test(x: int, y: int) -> int:
     return int(x%120 == y*3) | (int(x%12 == 0) & int(y%3 == 0))
+
+
+
+
 
 @micropython.viper
 def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
@@ -109,18 +128,28 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 
 
 
-#for i in range(0, 72):
-#    extend_tape(pattern_wall, memoryview(tape), tapeScroll, 3)
-#    extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
-#    extend_tape(pattern_room, memoryview(tape), tapeScroll, 0)
+
+
+
+##
+# Prepare everything for a level of gameplay including
+# the starting tape, and the feed patterns for each layer.
+def start_level():
+    # Fill the tape with the starting area
+    for i in range(0, 72):
+        extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
+        extend_tape(pattern_room, memoryview(tape), tapeScroll, 3)
+    # Set the feed patterns for each layer.
+    feed[:] = [pattern_wall, pattern_fence, None, pattern_room, None]
+start_level()
 
 
 
 
 
 
-#thumby.display.setFPS(1200)
-thumby.display.setFPS(30)
+thumby.display.setFPS(1200)
+#thumby.display.setFPS(30)
 
 
 t = 0;
@@ -136,11 +165,11 @@ while(1):
     comp(tape, tapeScroll)
     thumby.display.update()
 
-    extend_tape(pattern_room, memoryview(tape), tapeScroll, 3)
+    extend_tape(feed[3], memoryview(tape), tapeScroll, 3)
     if (t%2==0):
-        extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
+        extend_tape(feed[1], memoryview(tape), tapeScroll, 1)
         if (t%4==0):
-            extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
+            extend_tape(feed[0], memoryview(tape), tapeScroll, 0)
     t += 1
 
 
