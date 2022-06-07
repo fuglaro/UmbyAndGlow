@@ -18,9 +18,37 @@
 # TODO: Make 2 player
 # TODO: Write script / story
 # TODO: Extend game dynamics and add 8 more levels
-# TODO: Full gave description and overview (for arcade_description.txt file)
+# TODO: Full game description and overview (for arcade_description.txt file)
 # TODO: Make demo video
 # TODO: Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
+
+
+''' # TODO turn story into script and delete.
+
+Umby and Glow save their cave.
+
+1.1) Umby, Glow in cave, with monsters and traps being about.
+1.2) Umby and Glow find monsters have infiltrated their cave.
+1.3) They suspect it is Lung.
+1.4) They decide to find out where they have come from.
+1.5) They leave their cave.
+
+Suspect bad worm
+Follow monsters to alien spaceship
+Find Lung held hostage
+Lung gives info as sacrifice
+Flood spaceship mainframe
+Go back home
+Cave -> forest -> air -> rocket -> space -> spaceship -> spaceship computer mainframe -> dolphin aquarium -> flooded spaceship -> forrest -> cave
+
+'''
+
+##
+# Script of the two worms.
+# Umby, Glow
+script = [
+(,)    
+]
 
 import time
 import thumby
