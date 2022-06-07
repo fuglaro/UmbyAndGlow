@@ -1,5 +1,6 @@
 import time
 import thumby
+from array import array
 
 VIEW_W = 72 # width is in pixels
 VIEW_H = 5 # height is in bytes (8 pixels)
@@ -19,7 +20,41 @@ trap = bytearray(VIEW_W*VIEW_H) # npcs and traps that kill the players
 umby = bytearray(VIEW_W*VIEW_H) # the player: umby
 glow = bytearray(VIEW_W*VIEW_H) # the player: glow
 
+##
+#
+tape = array('I', (0 for i in range(0, 72*2)))
 
+
+frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
+@micropython.viper
+def comp_bytes(frame: ptr8, tape: ptr8, offsetX: int): # TODO del
+    for y in range(0, 5):
+        for x in range(0, 72):
+            frame[y*72+x] = tape[(x+offsetX)%72*5+y]
+ #   0  #  back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
+       # | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
+    #    | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
+  #      for y in range(0, VIEW_H) for x in range(0, VIEW_W)
+   #     )
+@micropython.viper
+def comp(frame: ptr8, tape: ptr32, offsetX: int): # TODO del
+    for x in range(0, 72):
+        w = tape[(x+offsetX)%72*2]
+        frame[x] = w
+        frame[72+x] = w >> 8
+        frame[144+x] = w >> 16
+        frame[216+x] = w >> 24
+        
+        
+        
+        # TODO 5th row and beyond
+
+
+@micropython.viper
+def foo() -> int:
+    return 16
+
+print(foo())
 
 
 
@@ -34,7 +69,8 @@ landOffsetX = 0
 # Drawable pattern - dotted vertical lines repeating
 def wall_pattern(x, y):
     #return 0 if (x % 16) or (y % 3) else 1
-    return 1 if x/3%(VIEW_H*8) == y else 0
+    #return 1 if x/3%(VIEW_H*8) == y else 0
+    return 1 if x/3%(VIEW_H*8) == y or not ((x % 16) or (y % 3)) else 0
 
 ##
 # Drawable pattern - basic flat roof and floor
@@ -49,8 +85,8 @@ def fence_pattern(x, y):
 ##
 #
 #
-#
-def fill(pattern, layer, offsetX=0, width=VIEW_W):
+# TODO del
+def fill_bytes(pattern, layer, offsetX=0, width=VIEW_W):
     for x in range(offsetX, offsetX+width):
         for y in range(0, VIEW_H):
             v = 0
@@ -58,6 +94,13 @@ def fill(pattern, layer, offsetX=0, width=VIEW_W):
                 v |= pattern(x, y*8+b) << b
             layer[x%VIEW_W*VIEW_H+y] = v
 
+def fill(pattern, layer, offsetX=0, width=VIEW_W): # TODO optimise for single column fill
+    for x in range(offsetX, offsetX+width):
+        for y in range(0, 2):
+            v = 0
+            for b in range(0, 32):
+                v |= pattern(x, y*32+b) << b
+            layer[x%VIEW_W*2+y] = v
 
 ##
 # Drawable pattern - basic undulating stalactites and stalagmites
@@ -66,9 +109,12 @@ def saws_pattern(x, y):
 
 
 
-fill(wall_pattern, memoryview(back))
-fill(room_pattern, memoryview(land))
-fill(fence_pattern, memoryview(cave))
+fill_bytes(wall_pattern, memoryview(back))
+fill_bytes(room_pattern, memoryview(land))
+fill_bytes(fence_pattern, memoryview(cave))
+
+fill(wall_pattern, memoryview(tape))
+
 
 land[5] = 5
 land[35] = 5
@@ -81,6 +127,7 @@ thumby.display.setFPS(240)
 
 
 
+
 t = 0;
 timer = time.ticks_ms()
 while(1):
@@ -88,22 +135,21 @@ while(1):
     if (t % 60 == 0):
         print(time.ticks_ms() - timer)
         timer = time.ticks_ms()
-    
-    if (t % 4 == 0):
+
+    # TODO optimise
+    if (t % 1 == 0):
         backOffsetX += 1
-        fill(wall_pattern, memoryview(back), backOffsetX+VIEW_W-1, 1)
+        fill_bytes(wall_pattern, memoryview(back), backOffsetX+VIEW_W-1, 1) # TODO del
+        fill(wall_pattern, memoryview(tape), backOffsetX+VIEW_W-1, 1)
     caveOffsetX += 1 if t % 2 == 0 else 0
     landOffsetX += 1
     
-
+    offsetX = t
 
     # Composite a view with new frame data, drawing to screen
-    thumby.display.blit(memoryview(bytearray(
-    0  #  back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
-       # | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
-    #    | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
-        for y in range(0, VIEW_H) for x in range(0, VIEW_W)
-        )), 0, 0, VIEW_W, VIEW_H*8, -1, 0, 0)
+    #comp_bytes(frame, back, offsetX) # TODO remove
+    comp(frame, tape, offsetX)
+    thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
 
