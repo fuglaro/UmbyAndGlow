@@ -12,7 +12,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Make Menu (interactive paused starting game)
+# TODO: Make load/save
 # TODO: Make help 
 # TODO: Make AI Umby
 # TODO: Make AI Glow
@@ -126,16 +126,16 @@ class Tape:
     midx = memoryview(_tape_scroll)[1:2]
     
     # Alphabet for writing text - 3x5 text size (4x6 with spacing)
-    # BITMAP: width: 111, height: 8
-    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,
-        136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,
-        216,248,128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,
-        184,248,40,216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,
-        216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,
-        0,80,0,32,32,32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248])
-    # Index lookup for printable characters
+    # BITMAP: width: 117, height: 8
+    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
+        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
+        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
+        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
+        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
+        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
+        200,176])
     abc_i = dict((v, i) for i, v in enumerate(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]"))
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
@@ -1583,23 +1583,75 @@ def set_level(tape, spawn, start):
     # Fill the tape in the starting level
     tape.reset_tape(start)
     # Reset monster spawner to the new level
+    spawn.rates[:] = bytearray([200])
     spawn.reset(start)
-    # Fill the visible tape with the starting platform
-    for i in range(start, start+72):
-        tape.redraw_tape(2, i, pattern_room, pattern_fill)
-    # Draw starting instructions
-    tape.write(1, "THAT WAY!", start+19, 26)
-    tape.write(1, "------>", start+37, 32)
+    if start > -9999:
+        # Fill the visible tape with the starting platform
+        for i in range(start, start+72):
+            tape.redraw_tape(2, i, pattern_room, pattern_fill)
+        # Draw starting instructions
+        tape.write(1, "THAT WAY!", start+19, 26)
+        tape.write(1, "------>", start+37, 32)
 
+@micropython.native
+def run_menu(tape, stage, spawn):
+    """ Loads a starting menu and returns the selections.
+    @returns: a tuple of the following values:
+        * Umby (0), Glow (1)
+        * 1P (0), 2P (1)
+        * New (0), Load (1)
+    """
+    t = 0
+    set_level(tape, spawn, -9999)
+    spawn.add(BonesTheMonster, -9960, 25)
+    m = spawn.mons[0]
+    ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
+    h = s = 0
+    while(bA()):
+        # Update the menu text
+        if h == 0 and (t == 0 or not (bU() and bD() and bL() and bR())):
+            s = (s + (1 if not bD() else -1 if not bU() else 0)) % 3
+            ch[s] = (ch[s] + (1 if not bR() else -1 if not bL() else 0)) % 2
+            @micropython.native
+            def sel(i):
+                return (("  " if ch[i] else "<<")
+                    + ("----" if i == s else "    ")
+                    + (">>" if ch[i] else "  "))
+            tape.clear_overlay()
+            msg = "UMBY "+sel(0)+" GLOW "
+            msg += "1P   "+sel(1)+"   2P "
+            msg += "NEW  "+sel(2)+" LOAD"
+            tape.message(0, msg)
+            h = 1
+        elif bU() and bD() and bL() and bR():
+            h = 0
+        # Update the display buffer new frame data
+        stage.clear()
+        # Make the camera follow the monster
+        m.tick(t)
+        m.draw(t)
+        tape.auto_camera_parallax(m.x, m.y, t)
+        # Composite everything together to the render buffer
+        tape.comp(stage.stage)
+        # Flush to the display, waiting on the next frame interval
+        display.update()
+        t += 1
+    tape.clear_overlay()
+    return ch[0], ch[1], ch[2]
 
 @micropython.native
 def run_game():
     """ Initialise the game and run the game loop """
+    # Basic setup
     display.setFPS(_FPS)
     tape = Tape()
     stage = Stage()
     spawn = MonsterSpawner(tape, stage)
-    spawn.rates[:] = bytearray([200])
+    # Start menu
+    glow, coop, load = run_menu(tape, stage, spawn)
+
+    # Ready the level for playing
+    t = 0;
     start = 3
     set_level(tape, spawn, start)
     #p1 = Umby(tape, stage, start+10, 20)
@@ -1608,14 +1660,11 @@ def run_game():
 
 
 
-    #p1.mode = -99 # Testing mode
-
+    p1.mode = -99 # XXX Testing mode
 
 
 
     # Main gameplay loop
-    v = 0
-    t = 0;
     profiler = ticks_ms()
     while(1):
         # Speed profiling
@@ -1653,7 +1702,6 @@ def run_game():
 
         # Composite everything together to the render buffer
         tape.comp(stage.stage)
-
         # Flush to the display, waiting on the next frame interval
         display.update()
 
