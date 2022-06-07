@@ -122,7 +122,7 @@ feed = [None, None, None, None, None]
 # Simple cache used across the writing of a single column of the tape.
 # Since the tape patterns must be stateless across columns for rewinding, this
 # should not store data across columns.
-buf = array('i', [0])
+buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
 
 @micropython.viper
 def comp():
@@ -198,6 +198,15 @@ def offset_vertically(offset: int):
 
 ## Patterns ##
 
+@micropython.viper
+def pattern_template(x: int, oY: int) -> int:
+    """ PATTERN [template]: Template for patterns. Not intended for use. """
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 # pattern (1=lit pixel, for fill layer, 0=clear pixel)
+        ) << (y-oY)
+    return v
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
     """ PATTERN [none]: empty"""
@@ -345,21 +354,26 @@ def pattern_diamondsaw(x: int, y: int) -> int:
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
-
-
-
-
-
-
-
-##
-# PATTERN [dev]: TODO
 @micropython.viper
-def pattern_dev(x: int, oY: int) -> int:
+def pattern_panelsv(x: int, oY: int) -> int:
+    """ PATTERN [panels]: TODO """
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            1
+            1 if (x*y)%100 == 0 else 0
+        ) << (y-oY)
+    return v
+
+
+
+
+@micropython.viper
+def pattern_dev(x: int, oY: int) -> int:
+    """ PATTERN [dev]: TODO """
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if (x*x)%y == 0 else 0
         ) << (y-oY)
     return v
 
@@ -378,7 +392,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_stalagmites, pattern_stalagmites_fill,
+    feed[:] = [pattern_dev, pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
@@ -404,7 +418,7 @@ def run_game():
     
     
         # TESTING: infinitely scroll the tape
-        offset_vertically((c // 10) % 24)
+        #offset_vertically((c // 10) % 24)
         if (c % 1 == 0):
             scroll_tape(feed[3], 3, 1, feed[4])
             if (c % 2 == 0):
