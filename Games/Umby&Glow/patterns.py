@@ -19,7 +19,6 @@
 # beautiful little piece of hardware.
 
 from array import array
-from tape import ihash
 
 # Simple cache used across the writing of a single column of the tape.
 # Since the tape patterns must be stateless across columns (for rewinding), this
@@ -33,6 +32,17 @@ def abs(v: int) -> int:
     ### Fast bitwise abs ###
     m = v >> 31
     return (v + m) ^ m
+
+@micropython.viper
+def ihash(x: uint) -> int:
+    ### 32 bit deterministic semi-random hash fuction
+    # Credit: Thomas Wang
+    ###
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
 
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:

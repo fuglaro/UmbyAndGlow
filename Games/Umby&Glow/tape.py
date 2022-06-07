@@ -15,6 +15,8 @@
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
+from patterns import ihash
+from actors import Monster
 
 _FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 
@@ -37,18 +39,6 @@ else: # Otherwise use the raw one if on the thumby device
         display.show()
         sleep_ms(1000//_FPS + timer - ticks_ms())
         timer = ticks_ms()
-
-
-@micropython.viper
-def ihash(x: uint) -> int:
-    ### 32 bit deterministic semi-random hash fuction
-    # Credit: Thomas Wang
-    ###
-    x = (x ^ 61) ^ (x >> 16)
-    x += (x << 3)
-    x ^= (x >> 4)
-    x *= 0x27d4eb2d
-    return int(x ^ (x >> 15))
 
 
 class Tape:
@@ -107,16 +97,17 @@ class Tape:
     midx = memoryview(_tape_scroll)[1:2]
     
     # Alphabet for writing text - 3x5 text size (4x6 with spacing)
-    # BITMAP: width: 117, height: 8
+    # @ = Umby and ^ = Glow
+    # BITMAP: width: 123, height: 8
     abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
         248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
         128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
         216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
         184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
-        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
-        200,176])
+        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,128,240,48,8,
+        120,96,16,248,0,144,200,176])
     abc_i = dict((v, i) for i, v in enumerate(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^12"))
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
@@ -178,7 +169,7 @@ class Tape:
     def add(self, mon_type, x, y):
         ### Add a monster of the given type ###
         if len(self.mons) < 10: # Limit to maximum 10 monsters at once
-            self.mons.append(mon_type(self, x, y))
+            self.mons.append(Monster(self, mon_type, x, y))
 
     @micropython.viper
     def check(self, x: int, y: int, b: int) -> bool:

@@ -28,32 +28,6 @@ bB = Pin(24, Pin.IN, Pin.PULL_UP).value
 bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
 
-
-# TODO: Some monster things
-
-# Skittle (bug horizontal move (no vert on ground, waving in air)
-bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
-# BITMAP: width: 9, height: 8
-bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
-
-# Scout (slow wanderer on the ground, slow mover)
-bitmap6 = bytearray([2,62,228,124,228,62,2])
-# BITMAP: width: 7, height: 8
-bitmap7 = bytearray([63,255,255,254,255,255,63])
-
-# Stomper (swings up and down vertically)
-# BITMAP: width: 7, height: 8
-bitmap8 = bytearray([36,110,247,124,247,110,36])
-# BITMAP: width: 7, height: 8
-bitmap9 = bytearray([239,255,255,254,255,255,239])
-
-# TODO: One the crawls along the ground and digs in to then pounce
-# TODO: make a monster that spawns other monsters! (HARD)
-# TODO: Do a monster that flys into the background
-# TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
-
-
-
 class Player:
     ### Umby and Glow ###
 
@@ -644,10 +618,54 @@ class Player:
             tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
             tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
 
-# Monster types
-Bones = 1
+
+## Monster types ##
+
+
+
+
+# TODO: Some monster things
+
+# Skittle (bug horizontal move (no vert on ground, waving in air)
+bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
+# BITMAP: width: 9, height: 8
+bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
+
+# Scout (slow wanderer on the ground, slow mover)
+bitmap6 = bytearray([2,62,228,124,228,62,2])
+# BITMAP: width: 7, height: 8
+bitmap7 = bytearray([63,255,255,254,255,255,63])
+
+# Stomper (swings up and down vertically)
+# BITMAP: width: 7, height: 8
+bitmap8 = bytearray([36,110,247,124,247,110,36])
+# BITMAP: width: 7, height: 8
+bitmap9 = bytearray([239,255,255,254,255,255,239])
+
+# TODO: One the crawls along the ground and digs in to then pounce
+# TODO: make a monster that spawns other monsters! (HARD)
+# TODO: Do a monster that flys into the background
+# TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
+
+
+
+
+### Bones is a monster that flyes about then charges the player.
+# Bones looks a bit like a skull.
+# It will fly in a random direction until it hits a wall in which case
+# it will change direction again. There is a very small chance that
+# Bones will fly over walls and ground and Bones will continue until
+# surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
+# offscreen to the top or bottom plus 10, it will change direction.
+# It will also change direction on occasion.
+# When the player is within a short range, Bones will charge the player
+# and will not stop.
+###
+_Bones = const(1)
+Bones = _Bones
 
 class _MonsterPainter:
+    ### Draws the different monsters ###
     # BITMAP: width: 7, height: 8, frames: 3
     _bones = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,
         242,139,222,139,242,28])
@@ -657,77 +675,75 @@ class _MonsterPainter:
     @micropython.viper
     def draw(self, tape, tid: int, mode: int, x: int, y: int, t: int):
         ### Draw Monster to the draw buffers ###
-        # Select animation frame
-        f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
-        # Draw Bones' layers and masks
-        tape.draw(1, x-3, y-4, self._bones, 7, f) # Bones
-        tape.mask(1, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
-        tape.mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
+        if tid == _Bones:
+            # Select animation frame
+            f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
+            # Draw Bones' layers and masks
+            tape.draw(1, x-3, y-4, self._bones, 7, f) # Bones
+            tape.mask(1, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
+            tape.mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
+_painter = _MonsterPainter()
 
-class BonesTheMonster:
-    ### Bones is a monster that flyes about then charges the player.
-    # Bones looks a bit like a skull.
-    # It will fly in a random direction until it hits a wall in which case
-    # it will change direction again. There is a very small chance that
-    # Bones will fly over walls and ground and Bones will continue until
-    # surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
-    # offscreen to the top or bottom plus 10, it will change direction.
-    # It will also change direction on occasion.
-    # When the player is within a short range, Bones will charge the player
-    # and will not stop.
-    ###
-    _painter = _MonsterPainter()
 
-    def __init__(self, tape, x, y):
+class Monster:
+    ### Engine for all the different monsters ###
+    # Modes:
+    #     0 - Random flying, prefering space, and ready to charge player
+    #     1 - Charging player 1 (this device's player)
+    #     2 - Charging player 2 (other device's player)
+    mode = 0
+    _dx = _dy = 0 # directional motion
+
+    @micropython.native
+    def __init__(self, tape, tid, x, y):
+        self.tid = tid
         self._tp = tape
-        self.x = int(x) # Middle of Bones
-        self.y = int(y) # Middle of Bones
-        # Mode: 0 - flying, 1 - charging
-        self.mode = 0
-        self._x = x # floating point precision
-        self._y = y # floating point precision
-        self._dx = 0
-        self._dy = 0
+        self.x, self.y = int(x), int(y) # Middle of Bones
+        self._x, self._y = x, y # floating point precision
+
+        # Set the bahavior for each monster type.
+        if tid == _Bones:
+            self.mode = 0
 
     @micropython.native
     def tick(self, t):
-        ### Update Bones for one game tick ###
-        # Find the potential new coordinates
+        ### Update Monster dynamics, based on mode, for one game tick ###
         tape = self._tp
         x, y = self.x, self.y
-        if self.mode == 0: # Flying
-            nx = self._x + self._dx
-            ny = self._y + self._dy
+        mode = self.mode
+
+        # Flying
+        if mode == 0:
+            nx, ny = self._x+self._dx, self._y+self._dy
             # Change direction if needed
             if ((self._dx == 0 and self._dy == 0)
             or ny < -10 or ny > 74 or t%128==0
             or (tape.check_tape(int(nx), int(ny)) and t%12 and not (
                 tape.check_tape(x, y) or y < 0 or y >= 64))):
-                self._dx = sin(t+nx)/4.0
-                self._dy = cos(t+nx)/4.0
-            else:
-                self._x = nx
-                self._y = ny
-                self.x = int(nx)
-                self.y = int(ny)
+                self._dx, self._dy = sin(t+nx)/4.0, cos(t+nx)/4.0
+            else: # Continue moving
+                self._x, self._y = nx, ny
             # Check for charging condition
-            for plyr in tape.players:
-                px = plyr.x - x
-                py = plyr.y - y
+            for pi, plyr in enumerate(tape.players):
+                px, py = plyr.x-x, plyr.y-y
                 if px*px + py*py < 300:
-                    self._target = plyr
-                    self.mode = 1
-            # Check for own death conditions
-            if x < tape.x[0]:
-                tape.mons.remove(self)
-        elif t%4==0: # Charging
-            t = self._target
-            self.x += 1 if x < t.x else -1 if x > t.x else 0
-            self.y += 1 if y < t.y else -1 if y > t.y else 0
+                    self.mode = pi+1
+
+        # Charging player 1 or 2
+        elif 1 <= mode <=2:
+            if t%4==0: # Charge rate
+                t = tape.players[mode-1]
+                self._x += 1 if x < t.x else -1 if x > t.x else 0
+                self._y += 1 if y < t.y else -1 if y > t.y else 0
+
+        # Update the viper friendly variables
+        self.x, self.y = int(self._x), int(self._y)
+        # Check for standard death conditions
+        if self.x < tape.x[0] - 72: # Too far left, destroy monster
+            tape.mons.remove(self)
 
     @micropython.viper
     def draw(self, t: int):
-        tid = Bones
-        self._painter.draw(self._tp, tid, int(self.mode),
+        _painter.draw(self._tp, self.tid, int(self.mode),
             self.x-self._tp.x[0], self.y, t)
 

@@ -10,8 +10,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Refactor Monsters to be type switchable single obkects (ready for coop comms)
-# TODO: PLayer draw - if offscreen show aim where they are.
+# TODO: Player img - if offscreen show aim where they are.
 # TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Make 2 player (remote monsters out of range go to background)
@@ -87,7 +86,7 @@ from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
 from tape import Tape, display_update
-from actors import Player, BonesTheMonster, bU, bD, bL, bR, bB, bA
+from actors import Player, Bones, Monster, bU, bD, bL, bR, bB, bA
 from patterns import *
 
 
@@ -106,7 +105,7 @@ def set_level(start):
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
     # Reset monster spawner to the new level
-    tape.types = [BonesTheMonster]
+    tape.types = [Bones]
     tape.rates = bytearray([200])
     tape.reset(start)
     if start > -9999:
@@ -127,7 +126,7 @@ def run_menu():
     ###
     t = 0
     set_level(-9999)
-    tape.add(BonesTheMonster, -9960, 25)
+    tape.add(Bones, -9960, 25)
     m = tape.mons[0]
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     h = s = 0
