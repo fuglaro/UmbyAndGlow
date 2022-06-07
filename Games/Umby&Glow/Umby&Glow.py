@@ -113,7 +113,7 @@ def shash(x: int, step: int, size: int) -> int:
 # - 288: close background fill (opaque off pixels)
 # - 432: landscape including ground, platforms, and roof
 # - 576: landscape fill (opaque off pixels)
-tape = array('I', (0 for i in range(0, 72*2*5)))
+tape = array('I', (0 for i in range(72*2*5)))
 # The scroll distance of each layer in the tape,
 # and then the frame number counter and vertical offset appended on the end.
 # The vertical offset (yPos), cannot be different per layer (horizontal
@@ -137,15 +137,14 @@ def comp():
     scroll = ptr32(tapeScroll)
     frame = ptr8(thumby.display.display.buffer)
     # Obtain and increase the frame counter
-    scroll[5] += 1
-    ctr = scroll[5]
+    scroll[5] += 1 # Counter
     yPos = scroll[6]
     # Loop through each column of pixels
-    for x in range(0, 72):
+    for x in range(72):
         # Create a modifier for dimming background layer pixels.
         # The magic number here is repeating on and off bits, which is
         # alternated horizontally and in time. Someone say "time crystal".
-        dim = int(1431655765) << (ctr+x)%2
+        dim = int(1431655765) << (scroll[5]+x)%2
         # Compose the first 32 bits vertically.
         p0 = (x+scroll[0])%72*2
         p1 = (x+scroll[1])%72*2
@@ -181,19 +180,11 @@ def scroll_tape(pattern, layer: int, direction: int):
     scroll[layer] = tapePos
     # Find the tape position for the column that needs to be filled
     x = tapePos + 72 - (1 if direction == 1 else 0)
-    # Do the top 32 bits, then the bottom 32 bits
-    for w in range(0, 2):
-        # y will iterate through the vertical tape position, for the 32 bits
-        y = w*32
-        # v collects the data for the current 32 bits
-        v = 0
-        # Loop through each bit in this 32 bit word
-        for b in range(0, 32):
-            # Update this 32 bit word with the next bit of pattern data
-            v |= int(pattern(x, y)) << b
-            y+=1
-        # write the current 32 bits to tape
-        tape_[layer*144 + x%72*2+w] = v
+    offX = layer*144 + x%72*2
+    # Update 2 words of vertical pattern for the tape
+    # (the top 32 bits, then the bottom 32 bits)
+    tape_[offX] = int(pattern(x, 0))
+    tape_[offX+1] = int(pattern(x, 32))
 
 @micropython.viper
 def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
@@ -207,26 +198,14 @@ def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
     scroll[layer] = tapePos
     # Find the tape position for the column that needs to be filled
     x = tapePos + 72 - (1 if direction == 1 else 0)
-    offX = x%72*2
-    # Do the top 32 bits, then the bottom 32 bits
-    for w in range(0, 2):
-        # y will iterate through the vertical tape position, for the 32 bits
-        y = w*32
-        # v collects the data for the current 32 bits
-        v = 0
-        # f collects the data for the current 32 bits of the fill layer
-        f = 0
-        # Loop through each bit in this 32 bit word
-        for b in range(0, 32):
-            # Update this 32 bit word with the next bit of pattern data
-            v |= int(pattern(x, y)) << b
-            # And also for the fill pattern
-            f |= int(fill_pattern(x, y)) << b
-            y+=1
-        # write the current 32 bits to tape
-        tape_[layer*144 + offX+w] = v
-        # same for the fill later
-        tape_[(layer+1)*144 + offX+w] = f
+    offX = layer*144 + x%72*2
+    # Update 2 words of vertical pattern for the tape
+    # (the top 32 bits, then the bottom 32 bits)
+    tape_[offX] = int(pattern(x, 0))
+    tape_[offX+1] = int(pattern(x, 32))
+    # Do the same for the fill pattern
+    tape_[offX+144] = int(fill_pattern(x, 0))
+    tape_[offX+145] = int(fill_pattern(x, 32))
 
 @micropython.viper
 def offset_vertically(offset: int):
@@ -240,79 +219,106 @@ def offset_vertically(offset: int):
 ## Patterns ##
 
 @micropython.viper
-def pattern_none(x: int, y: int) -> int:
+def pattern_none(x: int, oY: int) -> int:
     """PATTERN [none]: empty"""
     return 0
 
 @micropython.viper
-def pattern_fill(x: int, y: int) -> int:
+def pattern_fill(x: int, oY: int) -> int:
     """PATTERN [fill]: completely filled"""
-    return 1
+    return int(0xFFFFFFFF) # 1 for all bits
 
 @micropython.viper
-def pattern_fence(x: int, y: int) -> int:
+def pattern_fence(x: int, oY: int) -> int:
     """PATTERN [fence]: - basic dotted fences at roof and high floor"""
-    return (1 if y<12 else 1 if y>32 else 0) & int(x%10 == 0) & int(y%2 == 0)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            (1 if y<12 else 1 if y>32 else 0) & int(x%10 == 0) & int(y%2 == 0)
+        ) << (y-oY)
+    return v
 
 @micropython.viper
-def pattern_room(x: int, y: int) -> int:
+def pattern_room(x: int, oY: int) -> int:
     """PATTERN [room]:- basic flat roof and high floor"""
-    return 1 if y < 3 else 1 if y > 37 else 0
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if y < 3 else 1 if y > 37 else 0
+        ) << (y-oY)
+    return v
 
 @micropython.viper
-def pattern_test(x: int, y: int) -> int:
+def pattern_test(x: int, oY: int) -> int:
     """PATTERN [test]: long slope plus walls"""
-    return int(x%120 == y*3) | (int(x%12 == 0) & int(y%2 == 0))
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(x%120 == y*3) | (int(x%12 == 0) & int(y%2 == 0))
+        ) << (y-oY)
+    return v
 
 @micropython.viper
-def pattern_wall(x: int, y: int) -> int:
+def pattern_wall(x: int, oY: int) -> int:
     """PATTERN [wall]: dotted vertical lines repeating"""
-    return int(x%16 == 0) & int(y%3 == 0)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(x%16 == 0) & int(y%3 == 0)
+         ) << (y-oY)
+    return v
 
 @micropython.viper
-def pattern_cave(x: int, y: int) -> int:
+def pattern_cave(x: int, oY: int) -> int:
     """PATTERN [cave]:
     Cave system with ceiling and ground. Ceiling is never less
     than 5 deep. Both have a random terrain and can intersect.
     """
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
-    if (y == 0):
-        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
-        buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
-        buff[2] = int(x % (buff[0]//8) == 0)
-    return int(y > buff[0]) | int(y < buff[1]) | int(y <= 5)
+    buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
+    buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
+    buff[2] = int(x % (buff[0]//8) == 0)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y > buff[0]) | int(y < buff[1]) | int(y <= 5)
+         ) << (y-oY)
+    return v
 @micropython.viper
-def pattern_cave_fill(x: int, y: int) -> int:
+def pattern_cave_fill(x: int, oY: int) -> int:
     """PATTERN [cave_fill]:
     Fill pattern for the cave. The ceiling is semi-reflective
     at the plane at depth 5. The ground has vertical lines.
     """
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
-    return ((int(y < buff[0]//2*3) | buff[2]) # ground fill
-        & (int(y > 10-buff[1]) | int(y == 5) | buff[1]%y)) # ceiling fill
-
-
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            ((int(y < buff[0]//2*3) | buff[2]) # ground fill
+            & (int(y > 10-buff[1]) | int(y == 5) | buff[1]%y)) # ceiling fill
+        ) << (y-oY)
+    return v
 
 
 ##
-# PATTERN [toothsaw]: TODO use
+# PATTERN [toothsaw]: TODO use and update for word
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
     return int(y > (113111^x+11) % 64 // 2 + 24)
 ##
-# PATTERN [revtoothsaw]: TODO use
+# PATTERN [revtoothsaw]: TODO use and update for word
 @micropython.viper
 def pattern_revtoothsaw(x: int, y: int) -> int:
     return int(y > (11313321^x) % 64)
 ##
-# PATTERN [diamondsaw]: TODO use
+# PATTERN [diamondsaw]: TODO use and update for word
 @micropython.viper
 def pattern_diamondsaw(x: int, y: int) -> int:
     return int(y > (32423421^x) % 64)
 ##
-# PATTERN [fallentree]: TODO use
+# PATTERN [fallentree]: TODO use and update for word
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
@@ -321,12 +327,13 @@ def pattern_fallentree(x: int, y: int) -> int:
 ##
 # PATTERN [dev]: TODO
 @micropython.viper
-def pattern_dev(x: int, y: int) -> int:
-    buff = ptr32(buf)
-    if (y == 0):
-        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
-    return int(y > buff[0])
-
+def pattern_dev(x: int, oY: int) -> int:
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1
+        ) << (y-oY)
+    return v
 
 
 ## Game Engine ##
@@ -336,12 +343,12 @@ def start_level():
     the starting tape, and the feed patterns for each layer.
     """
     # Fill the tape with the starting area
-    for i in range(0, 72):
-        scroll_tape(pattern_fence, 1, 1)
+    for i in range(72):
+        scroll_tape_with_fill(pattern_fence, pattern_fill, 1, 1)
         scroll_tape_with_fill(pattern_room, pattern_fill, 3, 1)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_fence, pattern_room,
+    feed[:] = [pattern_wall, pattern_fence, pattern_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
