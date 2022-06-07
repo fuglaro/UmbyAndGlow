@@ -238,7 +238,7 @@ class Tape:
         elif x > c + 40:
             self.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
         # Reset the vertical offset as needed
-        y -= 16
+        y -= 20
         ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
 
 
@@ -561,7 +561,7 @@ class Umby:
         """ Updated Umby for one game tick """
 
 
-        #---- TESTING: Explore the level by flying without clipping 
+        #---- TESTING: Explore the level by flying without clipping
         if not bU():
             self.y_pos -= 1
         elif not bD():
