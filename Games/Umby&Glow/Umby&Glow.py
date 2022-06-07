@@ -123,12 +123,12 @@ class Tape:
     
     # Alphabet for writing text - 3x5 text size (4x6 with spacing)
     # BITMAP: width: 105, height: 8
-    abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,136,
-        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
-        128,128,248,48,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
-        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
-        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
-        32,32,80,136,136,80,32,8,168,56])
+    abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,
+        136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,
+        248,128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,
+        40,216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,
+        216,184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,
+        32,32,32,80,136,136,80,32,8,168,56])
     # Index lookup for printable characters
     abc_i = dict((v, i) for i, v in enumerate(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?"))
@@ -200,8 +200,8 @@ class Tape:
                     # Foreground (with monster mask and fill)
                     | (tape[p3+1297] & stage[x2+433] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
-                & ((tape[x2+2160] >> 32-y_pos) | (tape[x2+2161] << y_pos-32))
-                | (tape[x2+2304] >> 32-y_pos) | (tape[x2+2305] << y_pos-32))
+                & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
+                | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> y_pos
@@ -322,7 +322,7 @@ class Tape:
         tape = ptr32(self._tape)
         abc_b = ptr8(self.abc)
         abc_i = self.abc_i
-        h = y - 11 # ignore top 3 bits of the byte height (5 height font)
+        h = y - 8 # y position is from bottom of text
         # Select the relevant layers
         mask = 864 if layer == 1 else 2160
         draw = 432 if layer == 1 else 2304
@@ -330,29 +330,51 @@ class Tape:
         b = 0xFE
         for i in range(int(len(text))*4+1):
             p = (x-1+i)%216*2+mask
-            tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
-            tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
+            tape[p] ^= tape[p] & (b >> -1-h if h+1 < 0 else b << h+1)
+            tape[p+1] ^= tape[p+1] & (b >> 31-h if h-31 < 0 else b << h-31)
         # Draw to the mid background layer
         for i in range(int(len(text))):
             for o in range(3):
                 p = (x+o+i*4)%216*2
                 b = abc_b[int(abc_i[text[i]])*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
-                img2 = b >> 32-h if -32+h < 0 else b << -32+h
-                # Draw to the mid background layer
+                img2 = b >> 32-h if h-32 < 0 else b << h-32
+                # Draw to the draw layer
                 tape[p+draw] |= img1
                 tape[p+draw+1] |= img2
                 # Stencil text out of the clear background mask layer
                 tape[p+mask] |= img1
                 tape[p+mask+1] |= img2
 
-    @micropython.viper
-    def message(self, position: int, text):
+    @micropython.native
+    def message(self, position, text):
         """ Write a message to the top (left), center (middle), or
         bottom (right) of the screen in the overlay layer.
         @param position: (int) 0 - center, 1 - top, 2 - bottom.
         """
-        self.write(3, text, 0, 10)
+        # Split the text into lines that fit on screen.
+        lines = [""]
+        for word in text.split(' '):
+            if (len(lines[-1]) + len(word) + 1)*4 > 72:
+                lines.append("")
+            lines[-1] += (" " if lines[-1] else "") + word
+        # Draw centered (if applicable)
+        if position == 0:
+            x = 25-len(lines)*3
+            while (lines):
+                line = lines.pop(0)
+                self.write(3, line, 36-(len(line)*2), x)
+                x += 6
+        else:
+            # Draw top (if applicable)
+            if position == 1:
+                x = 5
+            # Draw bottom (if applicable)
+            if position == 2:
+                x = 40 - 6*len(lines)
+            while (lines):
+                self.write(2, lines.pop(0), 0, x)
+                x += 6
 
     @micropython.viper
     def clear_overlay(self):
@@ -822,7 +844,9 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
-    #umby.mode = 99 # Testing mode
+    umby.mode = 99 # Testing mode
+
+    tape.message(2, "Umby fell into the abyss!")
 
     # Main gameplay loop
     v = 0
