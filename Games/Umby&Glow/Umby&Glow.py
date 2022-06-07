@@ -18,6 +18,7 @@
 # TODO: Make 2 player
 # TODO: Write script / story
 # TODO: Extend game dynamics and add 8 more levels
+# TODO: Remove unused functions
 # TODO: Full game description and overview (for arcade_description.txt file)
 # TODO: Make demo video
 # TODO: Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
@@ -45,7 +46,6 @@ Go back home
 Cave -> forest -> air -> rocket -> space -> spaceship -> spaceship computer mainframe -> dolphin aquarium -> flooded spaceship -> forrest -> cave
 
 '''
-
 ##
 # Script - the story through the dialog of the characters.
 script = [
@@ -61,6 +61,18 @@ from array import array
 def abs(v: int) -> int:
     m = v >> 31
     return (v + m) ^ m
+
+##
+# 32 bit deterministic random hash fuction
+# Credit: Thomas Wang
+@micropython.viper
+def ihash(x: uint) -> int:
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
+
 
 ##
 # Scrolling tape with each render layer being a section one after the other.
@@ -84,6 +96,11 @@ tape = array('I', (0 for i in range(0, 72*2*5)))
 tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
 # The patterns to feed into each tape section
 feed = [None, None, None, None, None]
+# Simple cache used across the writing of a single column of the tape.
+# Since the tape patterns must be stateless across columns for rewinding, this
+# should not store data across columns.
+buf = array('i', [0])
+
 
 ##
 # comp
@@ -167,6 +184,9 @@ def scroll_tape(pattern, layer: int, direction: int):
 def offset_vertically(offset: int):
     ptr32(tapeScroll)[6] = (offset if offset >= 0 else 0) if offset <= 24 else 24
 
+
+# TODO: check speed of abs equivelents
+
 ##
 # PATTERN [none]: empty
 @micropython.viper
@@ -176,12 +196,12 @@ def pattern_none(x: int, y: int) -> int:
 # PATTERN [fence]: - basic dotted fences at roof and high floor
 @micropython.viper
 def pattern_fence(x: int, y: int) -> int:
-    return int(int(abs(y-19)) > 19 - 12) & int(x%10 == 0) & int(y%2 == 0)
+    return (1 if y < 12 else 1 if y > 32 else 0) & int(x%10 == 0) & int(y%2 == 0)
 ##
 # PATTERN [room]:- basic flat roof and high floor
 @micropython.viper
 def pattern_room(x: int, y: int) -> int:
-    return int(int(abs(y-19)) > 19 - 3)
+    return 1 if y < 3 else 1 if y > 37 else 0
 ##
 # PATTERN [test]: long slope plus walls
 @micropython.viper
@@ -220,29 +240,24 @@ def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
 
 
-@micropython.viper
-def ihash(x: uint) -> int:
-    # Credit Thomas Wang
-    x = (x ^ 61) ^ (x >> 16)
-    x += (x << 3)
-    x ^= (x >> 4)
-    x *= 0x27d4eb2d
-    return int(x ^ (x >> 15))
 
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:
     a = int(ihash(x//step)) % size
     b = int(ihash(x//step + 1)) % size
-
-
-
     return a + (b-a) * (x%step) // step
+
+
+
 
 ##
 # PATTERN [dev]: TODO
 @micropython.viper
 def pattern_dev(x: int, y: int) -> int:
-    return int(y > int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16)))
+    buff = ptr32(buf)
+    if (y == 0):
+        buff[0] = int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16))
+    return int(y > buff[0])
 
 
 ##
