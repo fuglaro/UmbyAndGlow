@@ -17,7 +17,7 @@
 # TODO: Make help 
 # TODO: Make AI Umby
 # TODO: Make AI Glow
-# TODO: Make 2 player
+# TODO: Make 2 player (remote monsters out of range go to background)
 # TODO: Make script/story outline
 # TODO: Write script / story
 # TODO: Add 8 more levels, extended game dynamics, and more monsters!
@@ -1140,16 +1140,21 @@ class Glow(Player): # TODO
         self.aim_x = int(math.sin(self._aim_angle)*10.0)
         self.aim_y = int(math.cos(self._aim_angle)*10.0)
         # Grappling hook variables
-        self._fall_held = 0
-        self._hook_x = 0
+        self._bAOnce = 0 # Had a press down of A button
+        self._hook_x = 0 # Position where hook attaches ceiling
         self._hook_y = 0
         self._hook_ang = 0.0
         self._hook_vel = 0.0
         self._hook_len = 0.0
 
+    @micropython.native
+    def _bAO(self):
+        if self._bAOnce == 1:
+            self._bAOnce = -1
+            return 1
+        return 0
 
-
-    # TODO: glow climbing/fall/gravity-flip/grapple-hook/mud-sinking
+    # TODO: grapple-hook/mud-sinking
     # TODO: fix death conditions
 
 
@@ -1189,7 +1194,7 @@ class Glow(Player): # TODO
         # CONTROLS: Grappling hook swing
         if self.mode == 1:
             # Apply motion
-            self._hook_ang += self._hook_vel / 128.0
+            self._hook_ang += self._hook_vel/128.0
             ang = self._hook_ang
             # Apply gravity
             g = ang*ang/2.0
@@ -1203,8 +1208,6 @@ class Glow(Player): # TODO
             self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
 
 
-            # TODO: Trig the release and attach velocities.
-
             # Update position variables based on swing
             self._x = self._hook_x + math.sin(self._hook_ang)*self._hook_len
             self._y = self._hook_y + math.cos(self._hook_ang)*self._hook_len
@@ -1214,22 +1217,47 @@ class Glow(Player): # TODO
                     self.mode = 2
                 elif vel*ang > 0: # Rebound off ceiling
                     self._hook_vel = -self._hook_vel
+            elif self._bAO(): # Release grappling hook
+                self.mode = 2
+                # Convert angular momentum to free falling momentum
+                ang2 = ang + vel/128.0
+                x2 = self._hook_x + math.sin(ang2)*self._hook_len
+                y2 = self._hook_y + math.cos(ang2)*self._hook_len
+                self._x_vel = x2 - self._x
+                self._y_vel = y2 - self._y
+            
+
+
         elif self.mode == 2: # Normal movement (without grappling hook)
             # CONTROLS: Activate hook
-            if free_falling and not bA() and not self._fall_held:
+            if free_falling and self._bAO():
     
     
     
                 # TODO activate grappling hook in aim direction
-    
-    
+                # Shoot hook straight up
+                i = y-1
+                while i > 0 and not tape.check(x, i):
+                    i -= 1
+                self._hook_x = x
+                self._hook_y = i
+                self._hook_ang = 0.0
+                self._hook_vel = 0.0
+                self._hook_len = y - i
+
+            # TODO: Trig the release and attach velocities.
+
+
+
+
+
+                # Start normal grappling hook mode
                 self.mode = 1
             # CONTROLS: Fall (force when jumping)
             elif free_falling or not bA():
                 if not free_falling:
+                    self._bAO() # Claim 'A' so we don't immediately grapple
                     self._x_vel = -0.5 if not bL() else 0.5 if not bR() else 0.0
-                if not bA():
-                    self._fall_held = 1
                 # Apply gravity to vertical speed
                 self._y_vel += 1.5 / _FPS
                 # Update positions with momentum
@@ -1263,10 +1291,12 @@ class Glow(Player): # TODO
 
 
 
-
-        if bA() and self._fall_held:
-            self._fall_held = 0
-
+        # Update the state of the A button pressed detector
+        if not bA():
+            if self._bAOnce == 0:
+                self._bAOnce = 1
+        else:
+            self._bAOnce = 0
 
 
 
