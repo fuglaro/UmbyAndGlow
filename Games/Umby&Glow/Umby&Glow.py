@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Make basic game dynamics (Umby)
 # TODO: Make Monsters (level 1)
 # TODO: Make AI Glow
 # TODO: Make script/story outline
@@ -719,7 +718,7 @@ class Stage:
     stage = array('I', (0 for i in range(72*2*4)))
     
     @micropython.viper
-    def clear(self): # TODO
+    def clear(self):
         """ Reset the render and mask laters to their default blank state """
         draw = ptr32(self.stage)
         for i in range(288):
