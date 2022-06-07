@@ -530,18 +530,19 @@ class Stage:
             draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
 
     @micropython.viper
-    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int):
+    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
         """ Draw a sprite to a mask (clear) layer.
         This is similar to the "draw" method but applies a mask
-        sprite to a mask later, and animated sprites are not supported.
+        sprite to a mask later.
         There are 2 layers that can be rendered to:
             0: Mid and background environment mask (1 bit to clear).
             1: Foreground environment mask (1 bit to clear).
         """
+        o = x-f*w
         p = (layer+2)*144
         draw = ptr32(self.stage)
         for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-            b = uint(img[i-x])
+            b = uint(img[i-o])
             draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
 
@@ -556,8 +557,8 @@ class Umby:
     # BITMAP: width: 3, height: 8, frames: 6
     _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
     _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
-    # BITMAP: width: 3, height: 8
-    _fore_mask = bytearray([112,240,112])
+    # BITMAP: width: 3, height: 8, frames: 3
+    _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 
@@ -618,11 +619,13 @@ class Umby:
         # of looking left and right, and changes to movement art of
         # 4 when moving left and 5 when moving right.
         f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
+        # 0 when still, 1 when left moving, 2 when right
+        fm = 1 if not bL() else 2 if not bR() else 0
         # Draw the layers and masks
         stage.draw(0, x_pos-1-x, y_pos-6, self._sdw, 3, f)
         stage.draw(1, x_pos-1-x, y_pos-6, self._art, 3, f)
-        stage.mask(0, x_pos-4-x, y_pos-6, self._back_mask, 9)
-        stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3)
+        stage.mask(0, x_pos-4-x, y_pos-6, self._back_mask, 9, 0)
+        stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3, fm)
 
 
 ## Game Engine ##
