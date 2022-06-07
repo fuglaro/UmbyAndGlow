@@ -783,7 +783,93 @@ class Stage:
             draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
 
-class Umby:
+
+class Player:
+    """ Standard functions that are the same for all players """
+    # Player behavior mode such as Play, Testing, and Respawn
+    mode = 0#Play (normal)
+    rocket_x = 0
+    rocket_y = 0
+    rocket_active = 0
+
+    @micropython.native
+    def die(self, rewind_distance, death_message):
+        """ Put Player into a respawning state """
+        tape = self._tape
+        self.mode = 1#Respawn
+        self._respawn_x = tape.x[0] - rewind_distance
+        tape.message(0, death_message)
+
+    @micropython.native
+    def kill(self, t, monster):
+        """ Explode the rocket, killing the monster or nothing.
+        Also carves space out of the ground.
+        """
+        rx = self.rocket_x
+        ry = self.rocket_y
+        tape = self._tape
+        # Tag the wall with an explostion mark
+        tag = t%4
+        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
+        # Tag the wall with a death message
+        if monster:
+            self._tape.tag("[RIP]", monster.x, monster.y)
+        # Carve blast hole out of ground
+        pattern = bang(rx, ry, 8, 0)
+        fill = bang(rx, ry, 10, 1)
+        for x in range(rx-10, rx+10):
+            tape.scratch_tape(2, x, pattern, fill)
+        # DEATH: Check for death by rocket blast
+        dx = rx-self.x
+        dy = ry-self.y
+        if dx*dx + dy*dy < 64:
+            self.die(240, self.name + " kissed a rocket!")
+        # Get ready to end rocket
+        self.rocket_active = 2
+
+    @micropython.native
+    def _tick_respawn(self):
+        """ After the player dies, a respawn process begins,
+        showing a death message, while taking Umby back
+        to a respawn point on a new starting platform.
+        This handles a game tick when a respawn process is
+        active
+        """
+        tape = self._tape
+        # Move Umby towards the respawn location
+        if self.x > self._respawn_x:
+            self.x -= 1
+            self._y += 0 if int(self._y) == 20 else \
+                1 if self._y < 20 else -1
+            if self.x == self._respawn_x + 120:
+                # Hide any death message
+                tape.clear_overlay()
+            if self.x < self._respawn_x + 30:
+                # Draw the starting platform
+                tape.redraw_tape(2, self.x-5, pattern_room, pattern_fill)
+        else:
+            # Return to normal play mode
+            self.mode = 0#Play
+            tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
+
+    @micropython.native
+    def _tick_testing(self):
+        """ Handle one game tick for when in test mode.
+        Test mode allows you to explore the level by flying,
+        free of interactions.
+        """
+        if not bU():
+            self._y -= 1
+        elif not bD():
+            self._y += 1
+        if not bL():
+            self.x -= 1
+        elif not bR():
+            self.x += 1
+
+
+class Umby(Player):
     """ One of the players you can play with.
     Umby is an earth worm. They can jump, aim, and fire rockets.
     Umby can also make platforms by releasing rocket trails.
@@ -805,8 +891,7 @@ class Umby:
     _aim_fore_mask = bytearray([224,224,224])
     # BITMAP: width: 5, height: 8
     _aim_back_mask = bytearray([112,248,248,248,112])
-    # Umby behavior mode such as Play, Testing, and Respawn
-    mode = 0#Play (normal)
+    name = "Umby"
 
     def __init__(self, tape, stage, x, y):
         self._tape = tape
@@ -820,12 +905,8 @@ class Umby:
         # Rocket variables
         self._aim_angle = 2.5
         self._aim_pow = 1.0
-        self.rocket_active = 0
-        # Viper friendly variants (ints)
         self.aim_x = int(math.sin(self._aim_angle)*10)
         self.aim_y = int(math.cos(self._aim_angle)*10)
-        self.rocket_x = 0
-        self.rocket_y = 0
 
     @micropython.native
     def die(self, rewind_distance, death_message):
@@ -1079,20 +1160,31 @@ class Umby:
 
 
 
-class Glow: # TODO
+class Glow(Player): # TODO
     """ One of the players you can play with.
-    Umby is an earth worm. They can jump, aim, and fire rockets.
-    Umby can also make platforms by releasing rocket trails.
+    Glow is a cave dwelling glow worm. They can crawl along the roof,
+    fall at will, swing with a grappling hook, and fire rockets.
+    Unlike Umby, Rockets are self propelled and accelerate into a horizontal
+    flight, They are launched backwards and downwards in the oppostite
+    direction of the grappling hook aim, but accelerate horizontally
+    into the opposite direction of the rocket aim at time of launch.
+    Unlike Umby, Glow has two aims pointing in opposite directions,
+    one for the grappling hook, and one for the rocket aim. Aim can only
+    be moved up or down, and will switch to the horizontal direction for
+    the last direction Glow pressed.
     Monsters, traps, and falling offscreen will kill them.
-    Hitting their head on a platform or a roof, while jumping, will
-    also kill them.
+    Glow is not good with mud, and will sink and suffocate when touching
+    the ground while the grappling hook is not activated. Suffocation will
+    only occur if Glow is covered in mud from 1 pixel above head to toe,
+    otherwise Glow will slowly sink. This means glow can fall through
+    thin platforms like Umby's platforms.
     """
     # BITMAP: width: 3, height: 8, frames: 6
-    _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+    _art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
     # Umby's shadow
-    _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
+    _sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
     # BITMAP: width: 3, height: 8, frames: 3
-    _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
+    _fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
     # BITMAP: width: 3, height: 8
@@ -1101,63 +1193,32 @@ class Glow: # TODO
     _aim_fore_mask = bytearray([224,224,224])
     # BITMAP: width: 5, height: 8
     _aim_back_mask = bytearray([112,248,248,248,112])
-    # Umby behavior mode such as Play, Testing, and Respawn
-    mode = 0#Play (normal)
+    name = "Glow"
 
     def __init__(self, tape, stage, x, y):
         self._tape = tape
         self._stage = stage
         # Motion variables
-        self.x = x # Middle of Umby
-        self._y = y # Bottom of Umby
+        self.x = x # Middle of Glow
+        self._y = y # Bottom of Glow (but top because they upside-down!)
         self._y_vel = 0.0
         # Viper friendly variants (ints)
         self.y = int(y)
         # Rocket variables
-        self._aim_angle = 2.5
+        self._aim_angle = -0.5
         self._aim_pow = 1.0
-        self.rocket_active = 0
-        # Viper friendly variants (ints)
-        self.aim_x = int(math.sin(self._aim_angle)*10)
-        self.aim_y = int(math.cos(self._aim_angle)*10)
-        self.rocket_x = 0
-        self.rocket_y = 0
+        self.dir = 1
+        self.aim_x = int(math.sin(self._aim_angle)*10.0)
+        self.aim_y = int(math.cos(self._aim_angle)*10.0)
 
-    @micropython.native
-    def die(self, rewind_distance, death_message):
-        """ Put Umby into a respawning state """
-        tape = self._tape
-        self.mode = 1#Respawn
-        self._respawn_x = tape.x[0] - rewind_distance
-        tape.message(0, death_message)
 
-    @micropython.native
-    def kill(self, t, monster):
-        """ Explode the rocket, killing the monster or nothing.
-        Also carves space out of the ground.
-        """
-        rx = self.rocket_x
-        ry = self.rocket_y
-        tape = self._tape
-        # Tag the wall with an explostion mark
-        tag = t%4
-        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
-        # Tag the wall with a death message
-        if monster:
-            self._tape.tag("[RIP]", monster.x, monster.y)
-        # Carve blast hole out of ground
-        pattern = bang(rx, ry, 8, 0)
-        fill = bang(rx, ry, 10, 1)
-        for x in range(rx-10, rx+10):
-            tape.scratch_tape(2, x, pattern, fill)
-        # DEATH: Check for death by rocket blast
-        dx = rx-self.x
-        dy = ry-self.y
-        if dx*dx + dy*dy < 64:
-            self.die(240, "Umby kissed a rocket!")
-        # Get ready to end rocket
-        self.rocket_active = 2
+
+
+
+
+
+
+
 
     @micropython.native
     def tick(self, t):
@@ -1167,12 +1228,12 @@ class Glow: # TODO
         tape = self._tape
         x = self.x
         y = self.y
-        _chd = tape.check(x, y+1)
-        _chu = tape.check(x, y-4)
+        _chd = tape.check(x, y-1)
+        _chu = tape.check(x, y+3)
         _chl = tape.check(x-1, y)
-        _chlu = tape.check(x-1, y-3)
+        _chlu = tape.check(x-1, y+3)
         _chr = tape.check(x+1, y)
-        _chru = tape.check(x+1, y-3)
+        _chru = tape.check(x+1, y+3)
         # Normal Play mode
         if self.mode == 0:
             # Apply gravity and grund check
@@ -1180,7 +1241,7 @@ class Glow: # TODO
                 # Apply gravity to vertical speed
                 self._y_vel += 2.5 / _FPS
                 # Update vertical position with vertical speed
-                self._y += self._y_vel
+                self._y -= self._y_vel
             else:
                 # Stop falling when hit ground but keep some fall speed ready
                 self._y_vel = 0.5
@@ -1191,13 +1252,13 @@ class Glow: # TODO
                     if t%3:
                         self.x -= 1
                 elif t%3==0 and not _chu: # Climbing
-                    self._y -= 1
+                    self._y += 1
             elif not bR():
                 if not _chr and not _chru: # Movement
                     if t%3:
                         self.x += 1
                 elif t%3==0 and not _chu: # Climbing
-                    self._y -= 1
+                    self._y += 1
 
             # CONTROLS: Apply jump - allow continual jump until falling begins
             if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
@@ -1241,26 +1302,34 @@ class Glow: # TODO
         angle = self._aim_angle
         power = self._aim_pow
         # CONTROLS: Apply rocket
-        if not bU() or not bD() or not bB(): # Rocket aiming
+        # Rocket aiming
+        if not bU() or not bD() or not bB() or not bL() or not bR():
+            new_aim_angle = self._aim_angle
             if not bU(): # Aim up
-                self._aim_angle += 0.02
+                new_aim_angle += 0.02
             elif not bD(): # Aim down
-                self._aim_angle -= 0.02
-            elif not self.rocket_active: # Power rocket
+                new_aim_angle -= 0.02
+            if not bL(): # Aim left
+                self.dir = -1
+            elif not bR(): # Aim right
+                self.dir = 1
+            if not bB() and not self.rocket_active: # Power rocket
                 self._aim_pow += 0.03
+            if new_aim_angle > -2.0 and new_aim_angle < 0:
+                self._aim_angle = new_aim_angle
             angle = self._aim_angle
             # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(math.sin(angle)*power*10.0)
+            self.aim_x = int(math.sin(angle)*power*10.0)*self.dir
             self.aim_y = int(math.cos(angle)*power*10.0)
         # Actually launch the rocket when button is released
         if bB() and power > 1.0 and not self.rocket_active:
             self.rocket_active = 1
             self._rocket_x = self.x
-            self._rocket_y = self._y - 1
-            self._rocket_x_vel = math.sin(angle)*power/2.0
+            self._rocket_y = self._y + 1
+            self._rocket_x_vel = math.sin(angle)*power/2.0*self.dir
             self._rocket_y_vel = math.cos(angle)*power/2.0
             self._aim_pow = 1.0
-            self.aim_x = int(math.sin(angle)*10.0)
+            self.aim_x = int(math.sin(angle)*10.0)*self.dir
             self.aim_y = int(math.cos(angle)*10.0)
         # Apply rocket dynamics if it is active
         if self.rocket_active == 1:
@@ -1296,45 +1365,8 @@ class Glow: # TODO
         if self.rocket_active == 2 and bB():
             self.rocket_active = 0
 
-    @micropython.native
-    def _tick_respawn(self):
-        """ After Umby dies, a respawn process begins,
-        showing a death message, while taking Umby back
-        to a respawn point on a new starting platform.
-        This handles a game tick when a respawn process is
-        active
-        """
-        tape = self._tape
-        # Move Umby towards the respawn location
-        if self.x > self._respawn_x:
-            self.x -= 1
-            self._y += 0 if int(self._y) == 32 else \
-                1 if self._y < 32 else -1
-            if self.x == self._respawn_x + 120:
-                # Hide any death message
-                tape.clear_overlay()
-            if self.x < self._respawn_x + 30:
-                # Draw the starting platform
-                tape.redraw_tape(2, self.x-5, pattern_room, pattern_fill)
-        else:
-            # Return to normal play mode
-            self.mode = 0#Play
-            tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
 
-    @micropython.native
-    def _tick_testing(self):
-        """ Handle one game tick for when in test mode.
-        Test mode allows you to explore the level by flying,
-        free of interactions.
-        """
-        if not bU():
-            self._y -= 1
-        elif not bD():
-            self._y += 1
-        if not bL():
-            self.x -= 1
-        elif not bR():
-            self.x += 1
+
 
     @micropython.viper
     def draw(self, t: int):
@@ -1355,14 +1387,24 @@ class Glow: # TODO
         # 0 when still, 1 when left moving, 2 when right
         fm = 1 if not bL() else 2 if not bR() else 0
         # Draw Umby's layers and masks
-        stage.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
-        stage.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
-        stage.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
-        stage.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
+        stage.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
+        stage.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
+        stage.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
+        stage.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
         # Draw Umby's aim
-        stage.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
-        stage.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
-        stage.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
+        l = t*6//_FPS%2
+        # Rope aim
+        x = x_pos-p-aim_x//2-1
+        y = y_pos-6-aim_y//2
+        stage.draw(l, x, y, self._aim, 3, 0)
+        stage.mask(1, x, y, self._aim_fore_mask, 3, 0)
+        stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
+        # Rocket aim
+        x = x_pos-p+aim_x-1
+        y = y_pos-6+aim_y
+        stage.draw(l, x, y, self._aim, 3, 0)
+        stage.mask(1, x, y, self._aim_fore_mask, 3, 0)
+        stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
         # Draw Umby's rocket
         if self.rocket_active:
             stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
@@ -1560,7 +1602,8 @@ def run_game():
     spawn.rates[:] = bytearray([200])
     start = 3
     set_level(tape, spawn, start)
-    p1 = Umby(tape, stage, start+10, 20)
+    #p1 = Umby(tape, stage, start+10, 20)
+    p1 = Glow(tape, stage, start+10, 20)
     spawn.players.append(p1)
 
 
