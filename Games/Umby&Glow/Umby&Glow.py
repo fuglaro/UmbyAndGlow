@@ -28,10 +28,10 @@ tape = array('I', (0 for i in range(0, 72*2)))
 frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
 
 @micropython.viper
-def comp(frame: ptr8, tape: ptr32, offsetX: int): # TODO del
+def comp(frame: ptr8, tape: ptr32, tapePos: int): # TODO del
     for x in range(0, 72):
-        a = tape[(x+offsetX)%72*2]
-        b = tape[(x+offsetX)%72*2+1]
+        a = tape[(x+tapePos)%72*2]
+        b = tape[(x+tapePos)%72*2+1]
         frame[x] = a
         frame[72+x] = a >> 8
         frame[144+x] = a >> 16
@@ -42,23 +42,11 @@ def comp(frame: ptr8, tape: ptr32, offsetX: int): # TODO del
         
         # TODO 5th row and beyond
 
- #   0  #  back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
-       # | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
-    #    | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
+ #   0  #  back[(x+backtapePos)%VIEW_W*VIEW_H+y]
+       # | cave[(x+cavetapePos)%VIEW_W*VIEW_H+y]
+    #    | land[(x+landtapePos)%VIEW_W*VIEW_H+y]
   #      for y in range(0, VIEW_H) for x in range(0, VIEW_W)
    #     )
-
-@micropython.viper
-def foo() -> int:
-    return 16
-
-print(foo())
-
-
-
-backOffsetX = 0
-caveOffsetX = 0
-landOffsetX = 0
 
 
 
@@ -84,16 +72,16 @@ def fence_pattern(x, y):
 #
 #
 # TODO del
-def fill_bytes(pattern, layer, offsetX=0, width=VIEW_W):
-    for x in range(offsetX, offsetX+width):
+def fill_bytes(pattern, layer, tapePos=0, width=VIEW_W):
+    for x in range(tapePos, tapePos+width):
         for y in range(0, VIEW_H):
             v = 0
             for b in range(0, 8):
                 v |= pattern(x, y*8+b) << b
             layer[x%VIEW_W*VIEW_H+y] = v
 
-def fill(pattern, layer, offsetX=0, width=VIEW_W): # TODO optimise for single column fill
-    for x in range(offsetX, offsetX+width):
+def fill(pattern, layer, tapePos=0, width=VIEW_W): # TODO optimise for single column fill
+    for x in range(tapePos, tapePos+width):
         for y in range(0, 2):
             v = 0
             for b in range(0, 32):
@@ -124,31 +112,29 @@ thumby.display.setFPS(240)
 
 
 
+def extend_tape(tape, tapePos): # TODO optimise for single column fill
+    x = tapePos + 72
+    for y in range(0, 2):
+        v = 0
+        for b in range(0, 32):
+            v |= wall_pattern(x, y*32+b) << b
+        tape[x%72*2+y] = v
 
-
-t = 0;
+tapePos = 0;
 timer = time.ticks_ms()
 while(1):
 
-    if (t % 60 == 0):
+    if (tapePos % 60 == 0):
         print(time.ticks_ms() - timer)
         timer = time.ticks_ms()
 
-    # TODO optimise
-    if (t % 1 == 0):
-        backOffsetX += 1
-        fill(wall_pattern, memoryview(tape), backOffsetX+VIEW_W-1, 1)
-    caveOffsetX += 1 if t % 2 == 0 else 0
-    landOffsetX += 1
-    
-    offsetX = t
 
     # Composite a view with new frame data, drawing to screen
-    comp(frame, tape, offsetX)
+    comp(frame, tape, tapePos)
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
-
-    t += 1
+    extend_tape(memoryview(tape), tapePos) # TODO no memoryview needed with viper
+    tapePos += 1
 
 
