@@ -607,9 +607,9 @@ class Umby:
         f = 0 if not bL() else 2 if not bR() else t*2 // _FPS % 4
         f = 1 if f == 3 else f
         # Draw the layers and masks
-        stage.draw(1, x_pos-1-x, y_pos-8, self._art, 3, f)
-        stage.mask(0, x_pos-4-x, y_pos-8, self._back_mask, 9)
-        stage.mask(1, x_pos-1-x, y_pos-8, self._fore_mask, 3)
+        stage.draw(1, x_pos-1-x, y_pos-7, self._art, 3, f)
+        stage.mask(0, x_pos-4-x, y_pos-7, self._back_mask, 9)
+        stage.mask(1, x_pos-1-x, y_pos-7, self._fore_mask, 3)
 
 
 ## Game Engine ##
