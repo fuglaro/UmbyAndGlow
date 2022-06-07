@@ -1146,37 +1146,43 @@ class MonsterSpawner:
     Spawn rates are customisable.
     """
     _types = [BonesTheMonster] # Monster classes to spawn
-    # Likelihood of each monster class spawning (out of 255)
+    # Likelihood of each monster class spawning (out of 255) for every 5 steps
     rates = bytearray([0])
-    self._x = 0 # How far along the tape spawning has completed
+    # How far along the tape spawning has completed
+    _x = array('I', [0])
     mons = [] # Active monsters
 
-    def __init__(self, tape):
+    def __init__(self, tape, stage):
         self._tape = tape
+        self._stage = stage
 
-    def reset(start):
+    def reset(self, start):
         """ Remove all monsters and set a new spawn starting position """
         mons = []
-        self._x = start
+        self._x[0] = start
 
     @micropython.viper
-    def spawn(self, monsters):
+    def spawn(self):
         """ Spawn new monsters as needed """
-        x = int(self._x)
+        x = ptr32(self._x)
         p = int(self._tape.x[0])
         # Only spawn when scrolling into unseen land
-        if x >= p:
+        if x[0] >= p:
             return
-        rates = p8(self.rates)
-        r = int(uint(ihash(x)))
+        rates = ptr8(self.rates)
+        r = int(uint(ihash(p)))
+        # Loop through each monster type randomly spawning
+        # at the configured rate.
         for i in range(0, int(len(self._types))):
             if rates[i] and r%(256-rates[i]) == 0:
-                self.add(self._types[i])
+                self.add(self._types[i], p+72+36, r%64)
             r = r >> 1 # Fast reuse of random number
+        x[0] = p 
 
-    def add(self, mon_type):
-        pass # TODO
-
+    @micropython.native
+    def add(self, mon_type, x, y):
+        """ Add a monster of the given type """
+        self.mons.append(mon_type(self._tape, self._stage, self, x, y))
 
 ## Game Play ##
 
@@ -1208,7 +1214,8 @@ def run_game():
     display.setFPS(_FPS)
     tape = Tape()
     stage = Stage()
-    spawn = MonsterSpawner(tape)
+    spawn = MonsterSpawner(tape, stage)
+    spawn.rates[:] = bytearray([200])
     start = 3
     set_level(tape, spawn, start)
     p1 = Umby(tape, stage, start+10, 20)
@@ -1218,8 +1225,6 @@ def run_game():
     p1.mode = 99 # Testing mode
 
 
-
-    mons.append(BonesTheMonster(tape, stage, spawn, start+30, 30))
 
     # Main gameplay loop
     v = 0
@@ -1236,6 +1241,9 @@ def run_game():
 
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, t)
+
+        # Spawn new monsters as needed
+        spawn.spawn()
 
         # Update the display buffer new frame data
         stage.clear()
