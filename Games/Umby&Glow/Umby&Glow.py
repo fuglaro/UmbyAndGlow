@@ -315,14 +315,14 @@ class Tape:
             tape[offX+433] &= int(fill_pattern(x, 32))
 
     @micropython.viper
-    def reset_tape(self):
+    def reset_tape(self, p: int):
         """ Reset the tape buffers for all layers to the
-        current feed.
+        given position and fill with the current feed.
         """
         scroll = ptr32(self._tape_scroll)
         for i in range(3):
             layer = 3 if i == 2 else i
-            tapePos = scroll[layer]
+            tapePos = scroll[layer] = (p if layer == 3 else 0)
             for x in range(tapePos-72, tapePos+144):
                 self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
         
@@ -1076,9 +1076,8 @@ class BonesTheMonster:
     It will fly in a random direction until it hits a wall in which case
     it will change direction again. There is a very small chance that
     Bones will fly over walls and ground and Bones will continue until
-    surfacing. If Bones goes offscreen to the left, it will die; offscreen
-    to the right plus a further 72 pixels, it will die; offscreen plus 10,
-    it will change direction.
+    surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
+    offscreen ito the top or bottom plus 10, it will change direction.
     When the player is within a short range, Bones will charge the player
     and will not stop.
     """
@@ -1088,9 +1087,10 @@ class BonesTheMonster:
     # BITMAP: width: 9, height: 8
     _mask = bytearray([28,62,247,243,239,243,247,62,28])
 
-    def __init__(self, tape, stage, x, y):
+    def __init__(self, tape, stage, spawn, x, y):
         self._tape = tape
         self._stage = stage
+        self._spawn = spawn
         self.x = x # Middle of Bones
         self.y = y # Middle of Bones
         # Mode: 0 - flying, 1 - charging
@@ -1137,16 +1137,50 @@ bitmap8 = bytearray([36,110,247,124,247,110,36])
 bitmap9 = bytearray([239,255,255,254,255,255,239])
 
 # TODO One the crawls along the ground and digs in to then pounce
+# TODO make a monster that spawns other monsters! (HARD)
 
 
 
+class MonsterSpawner:
+    """ Spawns monsters as the tape scrolls
+    Spawn rates are customisable.
+    """
+    _types = [BonesTheMonster] # Monster classes to spawn
+    # Likelihood of each monster class spawning (out of 255)
+    rates = bytearray([0])
+    self._x = 0 # How far along the tape spawning has completed
+    mons = [] # Active monsters
 
+    def __init__(self, tape):
+        self._tape = tape
 
+    def reset(start):
+        """ Remove all monsters and set a new spawn starting position """
+        mons = []
+        self._x = start
+
+    @micropython.viper
+    def spawn(self, monsters):
+        """ Spawn new monsters as needed """
+        x = int(self._x)
+        p = int(self._tape.x[0])
+        # Only spawn when scrolling into unseen land
+        if x >= p:
+            return
+        rates = p8(self.rates)
+        r = int(uint(ihash(x)))
+        for i in range(0, int(len(self._types))):
+            if rates[i] and r%(256-rates[i]) == 0:
+                self.add(self._types[i])
+            r = r >> 1 # Fast reuse of random number
+
+    def add(self, mon_type):
+        pass # TODO
 
 
 ## Game Play ##
 
-def set_level(tape, start):
+def set_level(tape, spawn, start):
     """ Prepare everything for a level of gameplay including
     the starting tape, and the feed patterns for each layer.
     @param start: The starting x position of the tape.
@@ -1156,9 +1190,11 @@ def set_level(tape, start):
     tape.feed[:] = [pattern_toplit_wall,
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
-    tape.reset_tape()
-    # Fill the tape with the starting area
-    tape.scroll_tape(0, 0, start)
+    # Fill the tape in the starting level
+    tape.reset_tape(start)
+    # Reset monster spawner to the new level
+    spawn.reset(start)
+    # Fill the visible tape with the starting platform
     for i in range(start, start+72):
         tape.redraw_tape(2, i, pattern_room, pattern_fill)
     # Draw starting instructions
@@ -1172,15 +1208,18 @@ def run_game():
     display.setFPS(_FPS)
     tape = Tape()
     stage = Stage()
-    mons = [] # Monsters
+    spawn = MonsterSpawner(tape)
     start = 3
-    set_level(tape, start)
-    umby = Umby(tape, stage, start+10, 20)
-    #umby.mode = 99 # Testing mode
+    set_level(tape, spawn, start)
+    p1 = Umby(tape, stage, start+10, 20)
 
 
 
-    mons.append(BonesTheMonster(tape, stage, start+30, 30))
+    p1.mode = 99 # Testing mode
+
+
+
+    mons.append(BonesTheMonster(tape, stage, spawn, start+30, 30))
 
     # Main gameplay loop
     v = 0
@@ -1193,26 +1232,27 @@ def run_game():
             profiler = ticks_ms()
 
         # Update the game engine by a tick
-        umby.tick(t)
+        p1.tick(t)
 
         # Make the camera follow the action
-        tape.auto_camera_parallax(umby.x, umby.y, t)
+        tape.auto_camera_parallax(p1.x, p1.y, t)
 
         # Update the display buffer new frame data
         stage.clear()
         # Add all the monsters, and check for collisions along the way
-        for mon in mons:
+        for mon in spawn.mons:
             mon.draw(t)
             # Check if a rocket hits this monster
-            if umby.rocket_active:
-                if stage.check(umby.rocket_x, umby.rocket_y, 128):
-                    mons.remove(mon)
-                    umby.kill(t, mon)
-        if stage.check(umby.x-tape.x[0], umby.y, 224):
-            umby.die(240, "Umby became monster food!")
+            if p1.rocket_active:
+                if stage.check(p1.rocket_x, p1.rocket_y, 128):
+                    spawn.mons.remove(mon)
+                    p1.kill(t, mon)
+        # If player is in play mode, check for monster collisions
+        if p1.mode == 0 and stage.check(p1.x-tape.x[0], p1.y, 224):
+            p1.die(240, "Umby became monster food!")
 
         # Draw the players
-        umby.draw(t)
+        p1.draw(t)
         # Composite everything together to the render buffer
         tape.comp(stage.stage)
 
