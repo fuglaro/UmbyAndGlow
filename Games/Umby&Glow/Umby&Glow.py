@@ -553,10 +553,11 @@ class Umby:
     Hitting their head on a platform or a roof, while jumping, will
     also kill them.
     """
-    # BITMAP: width: 3, height: 8, frames: 3
-    _art = bytearray([96,224,0,0,224,0,0,224,96])
+    # BITMAP: width: 3, height: 8, frames: 6
+    _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+    _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
     # BITMAP: width: 3, height: 8
-    _fore_mask = bytearray([224,224,224])
+    _fore_mask = bytearray([112,240,112])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 
@@ -576,25 +577,31 @@ class Umby:
         # Apply gravity and grund check
         if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
             # Apply gravity to vertical speed
-            self._y_vel += 0.5 / _FPS
+            self._y_vel += 0.98 / _FPS
             # Update vertical position with vertical speed
             self._y_pos += 1 if self._y_vel > 1 else self._y_vel
-            # Update the viper friendly variable.
-            self.y_pos = int(self._y_pos)
+        else:
+            # Stop falling when hit ground
+            self._y_vel = 0
+            
 
         # TODO: fall off tape
 
 
         #---- TESTING: Explore the level by flying without clipping
         if not bU():
-            self.y_pos -= 1
+            self._y_pos -= 1
         elif not bD():
-            self.y_pos += 1
+            self._y_pos += 1
         if not bL():
-            self.x_pos -= 1
+            self._x_pos -= 1
         elif not bR():
-            self.x_pos += 1
+            self._x_pos += 1
         #---- TESTING: END
+
+        # Update the viper friendly variables.
+        self.x_pos = int(self._x_pos)
+        self.y_pos = int(self._y_pos)
 
     @micropython.viper
     def draw(self, t: int, x: int, stage):
@@ -602,21 +609,23 @@ class Umby:
         x_pos = int(self.x_pos)
         y_pos = int(self.y_pos)
         # Get animation frame
-        # Steps through 0,1,2,1 every half second, or
-        # 0 when moving left and 2 when moving right.
-        f = 0 if not bL() else 2 if not bR() else t*2 // _FPS % 4
-        f = 1 if f == 3 else f
+        # Steps through 0,1,2,3 every half second for animation
+        # of looking left and right, and changes to movement art of
+        # 4 when moving left and 5 when moving right.
+        f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
         # Draw the layers and masks
-        stage.draw(1, x_pos-1-x, y_pos-7, self._art, 3, f)
-        stage.mask(0, x_pos-4-x, y_pos-7, self._back_mask, 9)
-        stage.mask(1, x_pos-1-x, y_pos-7, self._fore_mask, 3)
+        stage.draw(0, x_pos-1-x, y_pos-6, self._sdw, 3, f)
+        stage.draw(1, x_pos-1-x, y_pos-6, self._art, 3, f)
+        stage.mask(0, x_pos-4-x, y_pos-6, self._back_mask, 9)
+        stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3)
 
 
 ## Game Engine ##
 
-def set_level(tape):
+def set_level(tape, start):
     """ Prepare everything for a level of gameplay including
     the starting tape, and the feed patterns for each layer.
+    @param start: The starting x position of the tape.
     """
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
@@ -624,7 +633,7 @@ def set_level(tape):
     tape.feed[:] = [pattern_wall,
         pattern_fence, pattern_fill,
         pattern_room, pattern_fill]
-    tape.scroll_tape(-72, -72, -72)
+    tape.scroll_tape(start-72, start-72, start-72)
     for i in range(72):
         tape.scroll_tape(1, 1, 1)
     # Ready tape for main area
@@ -638,8 +647,9 @@ def run_game():
     display.setFPS(_FPS)
     tape = Tape()
     stage = Stage()
-    set_level(tape)
-    umby = Umby(10, 20)
+    start = 3
+    set_level(tape, start)
+    umby = Umby(start+10, 20)
 
     # Main gameplay loop
     v = 0
