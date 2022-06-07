@@ -33,7 +33,8 @@ landOffsetX = 0
 ##
 # Drawable pattern - dotted vertical lines repeating
 def wall_pattern(x, y):
-    return 0 if (x % 16) or (y % 3) else 1
+    #return 0 if (x % 16) or (y % 3) else 1
+    return 1 if x/3%(VIEW_H*8) == y else 0
 
 ##
 # Drawable pattern - basic flat roof and floor
@@ -49,13 +50,13 @@ def fence_pattern(x, y):
 #
 #
 #
-def fill(pattern, offsetX, offsetY, layer):
-    for x in range(0, VIEW_W):
+def fill(pattern, layer, offsetX=0, width=VIEW_W):
+    for x in range(offsetX, offsetX+width):
         for y in range(0, VIEW_H):
             v = 0
             for b in range(0, 8):
-                v |= pattern(x + offsetX, (y + offsetY)*8+b) << b
-            layer[x*VIEW_H+y] = v
+                v |= pattern(x, y*8+b) << b
+            layer[x%VIEW_W*VIEW_H+y] = v
 
 
 ##
@@ -65,9 +66,9 @@ def saws_pattern(x, y):
 
 
 
-fill(wall_pattern, 0, 0, memoryview(back))
-fill(room_pattern, 0, 0, memoryview(land))
-fill(fence_pattern, 0, 0, memoryview(cave))
+fill(wall_pattern, memoryview(back))
+fill(room_pattern, memoryview(land))
+fill(fence_pattern, memoryview(cave))
 
 land[5] = 5
 land[35] = 5
@@ -75,28 +76,32 @@ land[107] = 5
 land[159] = 5
 land[35*5+4] = 3
 
-thumby.display.setFPS(60)
+thumby.display.setFPS(240)
 
 
 
 
-t = 1;
+t = 0;
+timer = time.ticks_ms()
 while(1):
+
+    if (t % 60 == 0):
+        print(time.ticks_ms() - timer)
+        timer = time.ticks_ms()
     
-    backOffsetX += 1 if t % 4 == 0 else 0
+    if (t % 4 == 0):
+        backOffsetX += 1
+        fill(wall_pattern, memoryview(back), backOffsetX+VIEW_W-1, 1)
     caveOffsetX += 1 if t % 2 == 0 else 0
     landOffsetX += 1
     
 
-    #fill(wall_pattern, int(t/4), 0, memoryview(back))
-    #fill(fence_pattern, int(t/2), 0, memoryview(cave))
-    #fill(room_pattern, t, 0, memoryview(land))
-    
+
     # Composite a view with new frame data, drawing to screen
     thumby.display.blit(memoryview(bytearray(
-        back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
-        | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
-        | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
+    0  #  back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
+       # | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
+    #    | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
         for y in range(0, VIEW_H) for x in range(0, VIEW_W)
         )), 0, 0, VIEW_W, VIEW_H*8, -1, 0, 0)
     thumby.display.update()
