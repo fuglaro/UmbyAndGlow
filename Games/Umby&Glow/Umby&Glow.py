@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
@@ -330,10 +329,18 @@ def pattern_stalagmites_fill(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
+@micropython.viper
+def pattern_toplit_wall(x: int, oY: int) -> int:
+    """ PATTERN [toplit_wall]: organic background with roof shine """
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if (x*x)%y == 0 else 0
+        ) << (y-oY)
+    return v
 
 
-
-
+## Interesting pattern library for future considerations ## 
 ##
 # PATTERN [toothsaw]: TODO use and update for word
 @micropython.viper
@@ -367,15 +374,7 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 
 
-@micropython.viper
-def pattern_dev(x: int, oY: int) -> int:
-    """ PATTERN [dev]: TODO """
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            1 if (x*x)%y == 0 else 0
-        ) << (y-oY)
-    return v
+
 
 
 
@@ -392,7 +391,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_dev, pattern_stalagmites, pattern_stalagmites_fill,
+    feed[:] = [pattern_toplit_wall, pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
@@ -418,7 +417,7 @@ def run_game():
     
     
         # TESTING: infinitely scroll the tape
-        #offset_vertically((c // 10) % 24)
+        offset_vertically((c // 10) % 24)
         if (c % 1 == 0):
             scroll_tape(feed[3], 3, 1, feed[4])
             if (c % 2 == 0):
