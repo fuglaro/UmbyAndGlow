@@ -85,6 +85,7 @@ class _Player:
     rocket_x = 0 # (int)
     rocket_y = 0 # (int)
     rocket_active = 0 # (int)
+    _aim_pow = 1.0
     # Grappling hook variables
     hook_x = 0 # (int) Position where hook attaches ceiling
     hook_y = 0 # (int)
@@ -92,6 +93,43 @@ class _Player:
     _hook_ang = 0.0
     _hook_vel = 0.0
     _hook_len = 0.0
+    # Packed (byte) variables.
+    #   Direction and movement states.
+    mstates = bytearray([1]) # 0: dir(left:0, right:1), 1: rocket_dir, 2: moving
+    # TODO: consider adding rocket_active states
+
+    def __init__(self, tape, x, y):
+        self._tp = tape
+        # Motion variables
+        self._x = x # Middle of Umby
+        self._y = y # Bottom of Umby
+        # Viper friendly variants (ints)
+        self.x = int(x)
+        self.y = int(y)
+        self.aim_x = int(sin(self._aim_ang)*10.0)
+        self.aim_y = int(cos(self._aim_ang)*10.0)
+
+    ### Getter and setter for the direction the player is facing ###
+    @property
+    @micropython.viper
+    def dir(self) -> int:
+        return 1 if ptr8(self.mstates)[0] & 1 else -1
+    @dir.setter
+    @micropython.viper
+    def dir(self, d: int):
+        m = ptr8(self.mstates)
+        m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
+
+    ### Getter and setter for whether the player is trying to move ###
+    @property
+    @micropython.viper
+    def moving(self) -> int:
+        return 1 if ptr8(self.mstates)[0] & 4 else 0
+    @moving.setter
+    @micropython.viper
+    def moving(self, d: int):
+        m = ptr8(self.mstates)
+        m[0] = ((m[0] | 4) ^ 4) | (0 if d == 0 else 4)
 
     @property
     def immune(self):
@@ -140,6 +178,9 @@ class _Player:
         ### Updated Player for one game tick.
         # @param t: the current game tick count
         ###
+        if not (bL() and bR()): # Update direction
+            self.dir = -1 if not bL() else 1
+        self.moving = 1 if not (bL() and bR()) else 0 # Update moving
         # Normal Play modes
         if self.mode < 199:
             self._tick_play(t)
@@ -216,18 +257,8 @@ class Umby(_Player):
     name = "Umby"
 
     def __init__(self, tape, x, y):
-        self._tp = tape
-        # Motion variables
-        self._x = x # Middle of Umby
-        self._y = y # Bottom of Umby
-        # Viper friendly variants (ints)
-        self.x = int(x)
-        self.y = int(y)
-        # Rocket variables
-        self._aim_angle = 2.5
-        self._aim_pow = 1.0
-        self.aim_x = int(sin(self._aim_angle)*10)
-        self.aim_y = int(cos(self._aim_angle)*10)
+        self._aim_ang = 2.5
+        _Player.__init__(self, tape, x, y)
 
     @micropython.native
     def _tick_play(self, t):
@@ -251,16 +282,12 @@ class Umby(_Player):
             # Stop falling when hit ground but keep some fall speed ready
             self._y_vel = 0.5
         # CONTROLS: Apply movement
-        if not bL():
-            if not (_chl or _chlu) and t%3: # Movement
-                self._x -= 1
-            elif t%3==0 and not _chu: # Climbing
-                self._y -= 1
-        elif not bR():
-            if not (_chr or _chru) and t%3: # Movement
-                self._x += 1
-            elif t%3==0 and not _chu: # Climbing
-                self._y -= 1
+        if t%3: # Movement
+            self._x += (-1 if not (bL() or _chl or _chlu) else
+                1 if not (bR() or _chr or _chru) else 0)
+        if t%3==0: # Climbing
+            self._y += (-1 if (not bL() and (_chl or _chlu)) or
+                (not bR() and (_chr or _chru)) else 0)
         # CONTROLS: Apply jump - allow continual jump until falling begins
         if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
             if _chd or _chl or _chr: # detatch from ground grip
@@ -286,16 +313,16 @@ class Umby(_Player):
         # During flight, further presses of the rocket button
         # will leave a rocket trail that will act as a platform.
         ###
-        angle = self._aim_angle
+        angle = self._aim_ang
         power = self._aim_pow
         tape = self._tp
         # CONTROLS: Apply rocket
         if not (bU() and bD() and bB()): # Rocket aiming
             # CONTROLS: Aiming
-            self._aim_angle += 0.02 if not bU() else -0.02 if not bD() else 0
+            self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
             if not (bB() or self.rocket_active): # Power rocket
                 self._aim_pow += 0.03
-            angle = self._aim_angle
+            angle = self._aim_ang
             # Resolve rocket aim to the x by y vector form
             self.aim_x = int(sin(angle)*power*10.0)
             self.aim_y = int(cos(angle)*power*10.0)
@@ -351,13 +378,15 @@ class Umby(_Player):
         aim_y = int(self.aim_y)
         rock_x = int(self.rocket_x)
         rock_y = int(self.rocket_y)
+        m = int(self.moving)
+        d = int(self.dir)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
         # 4 when moving left and 5 when moving right.
-        f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
+        f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
         # 0 when still, 1 when left moving, 2 when right
-        fm = 1 if not bL() else 2 if not bR() else 0
+        fm = 0 if not m else 1 if d < 0 else 2
         # Draw Umby's layers and masks
         tape.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
         tape.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
@@ -404,25 +433,14 @@ class Glow(_Player):
     _sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
     # BITMAP: width: 3, height: 8, frames: 3
     _fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
-
     name = "Glow"
 
     def __init__(self, tape, x, y):
-        self._tp = tape
         self.mode = 10
-        # Motion variables
-        self._x = x # Middle of Glow
-        self._y = y # Bottom of Glow (but top because they upside-down!)
-        # Viper friendly variants (ints)
-        self.x = int(x)
-        self.y = int(y)
+        self._aim_ang = -0.5
+        _Player.__init__(self, tape, x, y)
         # Rocket variables
-        self._aim_angle = -0.5
-        self._aim_pow = 1.0
-        self.dir = 1
-        self._r_dir = 1
-        self.aim_x = int(sin(self._aim_angle)*10.0)
-        self.aim_y = int(cos(self._aim_angle)*10.0)
+        self.rocket_dir = 1
         # Grappling hook variables
         self._bAOnce = -1 # Had a press down of A button
 
@@ -504,7 +522,7 @@ class Glow(_Player):
             # CONTROLS: Activate hook
             if free_falling and self._bAO() and self.y < 64:
                 # Activate grappling hook in aim direction
-                self._hook_ang = self._aim_angle * self.dir
+                self._hook_ang = self._aim_ang * self.dir
                 # Find hook landing position
                 x2 = -sin(self._hook_ang)/2
                 y2 = -cos(self._hook_ang)/2
@@ -583,26 +601,20 @@ class Glow(_Player):
         # ground it clears a blast radius, or kills Glow, if hit.
         # See the class doc strings for more details.
         ###
-        angle = self._aim_angle
+        angle = self._aim_ang
         power = self._aim_pow
         grappling = self.mode == 11
         tape = self._tp
         # CONTROLS: Apply rocket
         # Rocket aiming
         if not bU() or not bD() or not bB() or not bL() or not bR():
-            angle = self._aim_angle
-            if not bU() and not grappling: # Aim up
-                angle += 0.02
-            elif not bD() and not grappling: # Aim down
-                angle -= 0.02
-            if not bL(): # Aim left
-                self.dir = -1
-            elif not bR(): # Aim right
-                self.dir = 1
+            if not grappling:
+                self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
             if not bB(): # Power rocket
                 self._aim_pow += 0.03
+            angle = self._aim_ang
             angle = -2.0 if angle < -2.0 else 0 if angle > 0 else angle
-            self._aim_angle = angle
+            self._aim_ang = angle
             # Resolve rocket aim to the x by y vector form
             self.aim_x = int(sin(angle)*power*10.0)*self.dir
             self.aim_y = int(cos(angle)*power*10.0)
@@ -616,7 +628,7 @@ class Glow(_Player):
             self._aim_pow = 1.0
             self.aim_x = int(sin(angle)*10.0)*self.dir
             self.aim_y = int(cos(angle)*10.0)
-            self._r_dir = self.dir
+            self.rocket_dir = self.dir
         # Apply rocket dynamics if it is active
         if self.rocket_active == 1:
             # Apply rocket motion
@@ -627,9 +639,9 @@ class Glow(_Player):
             rx = self.rocket_x
             ry = self.rocket_y
             # Apply flight boosters
-            self._rocket_x_vel += 2.5 / _FPS * self._r_dir
-            if ((self._rocket_x_vel > 0 and self._r_dir > 0)
-            or (self._rocket_x_vel < 0 and self._r_dir < 0)):
+            self._rocket_x_vel += 2.5 / _FPS * self.rocket_dir
+            if ((self._rocket_x_vel > 0 and self.rocket_dir > 0)
+            or (self._rocket_x_vel < 0 and self.rocket_dir < 0)):
                 self._rocket_y_vel *= 0.9
             # Check fallen through ground or above ceiling,
             # or out of range
@@ -695,7 +707,7 @@ class Glow(_Player):
         if self.rocket_active:
             rock_x = int(self.rocket_x)
             rock_y = int(self.rocket_y)
-            dire = int(self._r_dir)
+            dire = int(self.rocket_dir)
             tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
             tape.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
