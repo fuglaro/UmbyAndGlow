@@ -129,7 +129,10 @@ class Tape:
     # very primitive and only allow checking for pixel collisions
     # between what is on the buffer and another provided sprite.
     # The Render buffer is two words (64 pixels) high, and
-    # 72 pixels wide. Sprites passed in must be a byte tall,
+    # 72 pixels wide for the background and mask layers, and
+    # 132 pixels wide (30 pixels extra to the right and left for collision
+    # checks) for the primary interactive actor layer.
+    # Sprites passed in must be a byte tall,
     # but any width.
     # There are 4 layers on the render buffer, 2 for rendering
     # background and foreground monsters, and 2 for clearing
@@ -139,11 +142,11 @@ class Tape:
     # This includes layers for turning on pixels and clearing lower layers.
     # Clear layers have 0 bits for clearing and 1 for passing through.
     # This includes the following layers:
-    # - 0: Non-interactive background monsters.
-    # - 144: Foreground monsters.
-    # - 288: Mid and background clear.
-    # - 432: Foreground clear.
-    stage = array('I', (0 for i in range(72*2*4)))
+    # - 0: Mid and background clear.
+    # - 144: Foreground clear.
+    # - 288: Non-interactive background monsters.
+    # - 432: Foreground monsters.
+    _stage = array('I', (0 for i in range(72*2*3+132*2)))
     # Monster classes to spawn
     types = []
     # Likelihood of each monster class spawning (out of 255) for every 5 steps
@@ -186,8 +189,10 @@ class Tape:
         #     value 128. Additional active bits will be checked going upwards
         #     from themost significant bit/pixel to least significant.
         ###
-        stage = ptr32(self.stage)
-        p = x%72*2+144
+        stage = ptr32(self._stage)
+        if x < -30 or x >= 102:
+            return False # Out of buffer range is always False
+        p = x%132*2+492
         h = y - 8 # y position is from bottom of text
         img1 = b >> 0-h if h < 0 else b << h
         img2 = b >> 32-h if h-32 < 0 else b << h-32
@@ -209,9 +214,11 @@ class Tape:
         # @param f: the frame of the sprite to draw.
         ###
         o = x-f*w
-        p = layer*144
-        draw = ptr32(self.stage)
-        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+        p = (layer+2)*144 + (60 if layer == 1 else 0)
+        r1 = -30 if layer == 1 else 0
+        r2 = 101 if layer == 1 else 71
+        draw = ptr32(self._stage)
+        for i in range(x if x >= r1 else r1, x+w if x+w <= r2 else r2):
             b = uint(img[i-o])
             draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
@@ -226,8 +233,8 @@ class Tape:
         #     1: Foreground environment mask (1 bit to clear).
         ###
         o = x-f*w
-        p = (layer+2)*144
-        draw = ptr32(self.stage)
+        p = layer*144
+        draw = ptr32(self._stage)
         for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
             b = uint(img[i-o])
             draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
@@ -241,7 +248,7 @@ class Tape:
         ###
         tape = ptr32(self._tape)
         scroll = ptr32(self._tape_scroll)
-        stg = ptr32(self.stage)
+        stg = ptr32(self._stage)
         frame = ptr8(_display_buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
@@ -259,32 +266,32 @@ class Tape:
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0] | tape[p1+432]) & stg[x2+288]
-                            & stg[x2+432] & tape[p1+864] & tape[p3+1728])
+                        ((tape[p0] | tape[p1+432]) & stg[x2]
+                            & stg[x2+144] & tape[p1+864] & tape[p3+1728])
                         # Background (non-interactive) monsters
-                        | stg[x2])
+                        | stg[x2+288])
                     # Dim all mid and background layers
                     & dim
                     # Foreground monsters (and players)
-                    | stg[x2+144]
+                    | stg[x2+492]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+1296] & stg[x2+432] & tape[p3+1728]))
+                    | (tape[p3+1296] & stg[x2+144] & tape[p3+1728]))
                 # Now apply the overlay mask and draw layers.
                 & (tape[x2+2160] << y_pos)
                 | (tape[x2+2304] << y_pos))
             # Now compose the second 32 bits vertically.
             b = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0+1] | tape[p1+433]) & stg[x2+289]
-                        & stg[x2+433] & tape[p1+865] & tape[p3+1729])
+                        ((tape[p0+1] | tape[p1+433]) & stg[x2+1]
+                        & stg[x2+145] & tape[p1+865] & tape[p3+1729])
                         # Background (non-interactive) monsters
-                        | stg[x2+1])
+                        | stg[x2+289])
                     # Dim all mid and background layers
                     & dim
                     # Foreground monsters (and players)
-                    | stg[x2+145]
+                    | stg[x2+493]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+1297] & stg[x2+433] & tape[p3+1729]))
+                    | (tape[p3+1297] & stg[x2+145] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
                 & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
                 | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
@@ -297,10 +304,10 @@ class Tape:
             frame[288+x] = b >> y_pos
         # Clear the stage buffers now that we have pulled the render
         # Reset the render and mask laters to their default blank state
-        for i in range(288):
+        for i in range(288, 696):
             stg[i] = 0
         mask = uint(0xFFFFFFFF)
-        for i in range(288, 576):
+        for i in range(288):
             stg[i] = mask
 
     @micropython.viper
