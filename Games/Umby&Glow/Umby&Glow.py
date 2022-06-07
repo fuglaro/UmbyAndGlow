@@ -118,7 +118,18 @@ class Tape:
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
-    
+
+    @micropython.viper
+    def check(): # TODO
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tape_scroll)
+
+
+
+
+
+
+
     @micropython.viper
     def comp(self, stage: ptr32):
         """ Composite all the render layers together and render directly to
@@ -556,12 +567,21 @@ class Umby:
     def __init__(self, x, y):
         self._x_pos = x
         self._y_pos = y
+        self._x_vel = 0.0
+        self._y_vel = 0.0
         self.x_pos = int(x)
         self.y_pos = int(y)
 
     @micropython.native
-    def tick(self):
+    def tick(self, tape):
         """ Updated Umby for one game tick """
+        # Apply gravity and grund check
+        if True: # TODO: check ground
+            self._y_vel += 0.5 / _FPS
+            self._y_pos += 1 if self._y_vel > 1 else self._y_vel
+            self.y_pos = int(self._y_pos)
+
+        # TODO: fall off tape
 
 
         #---- TESTING: Explore the level by flying without clipping
@@ -618,7 +638,7 @@ def run_game():
     tape = Tape()
     stage = Stage()
     set_level(tape)
-    umby = Umby(10, 38)
+    umby = Umby(10, 20)
 
     # Main gameplay loop
     v = 0
@@ -631,7 +651,7 @@ def run_game():
             profiler = ticks_ms()
 
         # Update the game engine by a tick
-        umby.tick()
+        umby.tick(tape)
 
         # Make the camera follow the action
         tape.auto_camera_parallax(umby.x_pos, umby.y_pos)
