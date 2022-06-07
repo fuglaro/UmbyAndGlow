@@ -10,7 +10,6 @@ MID = int(VIEW_H * 8 / 2) - 1 # middle row of pixels
 
 
 ##
-# Layers - 1 bit per pixel from top left, descending then wrapping to the right
 back = bytearray(VIEW_W*VIEW_H) # non-interaction background layer
 cave = bytearray(VIEW_W*VIEW_H) # non-interaction middle ground layer
 cavefill = bytearray(VIEW_W*VIEW_H) # non-interaction middle ground layer (cleared pixels)
@@ -21,8 +20,17 @@ umby = bytearray(VIEW_W*VIEW_H) # the player: umby
 glow = bytearray(VIEW_W*VIEW_H) # the player: glow
 
 ##
-#
-tape = array('I', (0 for i in range(0, 72*2)))
+# Scrolling tape with each layer a section after the other.
+# Layers each have 1 bit per pixel from top left, descending then wrapping to the right
+# The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
+# Each layer is a layer in the composited render stack.
+# Layers from left to right:
+# - 0: far background
+# - 144: close background
+# - 288: close background fill (opaque off pixels)
+# - 432: landscape including ground, platforms, and roof
+# - 720: landscape fill (opaque off pixels)
+tape = array('I', (0 for i in range(0, 72*2*5)))
 
 
 frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
@@ -94,12 +102,35 @@ def saws_pattern(x, y):
     return 0#1 if (y < 8) or (y >= VIEW_H*8 - 8) else 0 TODO
 
 
+# TODO fix naming of pattern functions
+# TODO viper pattern functions
+
+# PATTERN: test (slope plus walls)
+@micropython.viper
+def pattern_test(x: int, y: int) -> int:
+    return int(x%120 == y*3) | (int(x%12 == 0) & int(y%3 == 0))
+
+@micropython.viper
+def extend_tape(pattern, tape: ptr32, tapePos: int, layer: int):
+    x = tapePos + 72
+    for w in range(0, 2):
+        y = w*32
+        v = 0
+        for b in range(0, 32):
+            v |= int(pattern(x, y)) << b
+            y+=1
+        tape[layer*144 + x%72*2+w] = v
 
 fill_bytes(wall_pattern, memoryview(back))
 fill_bytes(room_pattern, memoryview(land))
 fill_bytes(fence_pattern, memoryview(cave))
 
-fill(wall_pattern, memoryview(tape))
+for tapePos in range(0, 72):
+    extend_tape(pattern_test, memoryview(tape), tapePos, 0)
+    extend_tape(fence_pattern, memoryview(tape), tapePos, 2)
+    extend_tape(room_pattern, memoryview(tape), tapePos, 4)
+
+
 
 
 land[5] = 5
@@ -110,23 +141,9 @@ land[35*5+4] = 3
 
 thumby.display.setFPS(240)
 
-# PATTERN: test (slope plus walls)
-@micropython.viper
-def pattern_test(x: int, y: int) -> int:
-    return int(x%120 == y*3) | (int(x%16 == 0) & int(y%3 == 0))
 
-@micropython.viper
-def extend_tape(pattern, tape: ptr32, tapePos: int):
-    x = tapePos + 72
-    for w in range(0, 2):
-        y = w*32
-        v = 0
-        for b in range(0, 32):
-            v |= int(pattern(x, y)) << b
-            y+=1
-        tape[x%72*2+w] = v
 
-tapePos = 0;
+tapePos = 72;
 timer = time.ticks_ms()
 while(1):
 
@@ -140,7 +157,7 @@ while(1):
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
-    extend_tape(pattern_test, memoryview(tape), tapePos) # TODO no memoryview needed with viper
+    extend_tape(pattern_test, memoryview(tape), tapePos, 0)
     tapePos += 1
 
 
