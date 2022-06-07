@@ -779,14 +779,21 @@ def pattern_panelsv(x: int, oY: int) -> int:
 ## Actors ##
 
 class Player:
-    """ Standard functions that are the same for all players """
+    """ Umby or Glow """
     # Player behavior mode such as Play, Testing, and Respawn
+    # BITMAP: width: 9, height: 8
+    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+    # BITMAP: width: 3, height: 8
+    _aim = bytearray([64,224,64])
+     # BITMAP: width: 3, height: 8
+    _aim_fore_mask = bytearray([224,224,224])
+    # BITMAP: width: 5, height: 8
+    _aim_back_mask = bytearray([112,248,248,248,112])
     mode = 0#Play (normal)
     rocket_x = 0
     rocket_y = 0
     rocket_active = 0
 
-    @micropython.native
     def die(self, rewind_distance, death_message):
         """ Put Player into a respawning state """
         self.mode = -1#Respawn
@@ -897,14 +904,6 @@ class Umby(Player):
     _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
     # BITMAP: width: 3, height: 8, frames: 3
     _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
-    # BITMAP: width: 9, height: 8
-    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
-    # BITMAP: width: 3, height: 8
-    _aim = bytearray([64,224,64])
-     # BITMAP: width: 3, height: 8
-    _aim_fore_mask = bytearray([224,224,224])
-    # BITMAP: width: 5, height: 8
-    _aim_back_mask = bytearray([112,248,248,248,112])
     name = "Umby"
 
     def __init__(self, x, y):
@@ -1093,14 +1092,7 @@ class Glow(Player):
     _sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
     # BITMAP: width: 3, height: 8, frames: 3
     _fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
-    # BITMAP: width: 9, height: 8
-    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
-    # BITMAP: width: 3, height: 8
-    _aim = bytearray([64,224,64])
-     # BITMAP: width: 3, height: 8
-    _aim_fore_mask = bytearray([224,224,224])
-    # BITMAP: width: 5, height: 8
-    _aim_back_mask = bytearray([112,248,248,248,112])
+
     name = "Glow"
 
     def __init__(self, x, y):
@@ -1535,7 +1527,6 @@ class MonsterSpawner:
             r = r >> 1 # Fast reuse of random number
         x[0] = p 
 
-    @micropython.native
     def add(self, mon_type, x, y):
         """ Add a monster of the given type """
         if len(self.mons) < 10: # Limit to maximum 10 monsters at once
@@ -1567,7 +1558,6 @@ def set_level(spawn, start):
         tape.write(1, "THAT WAY!", start+19, 26)
         tape.write(1, "------>", start+37, 32)
 
-@micropython.native
 def run_menu(spawn):
     """ Loads a starting menu and returns the selections.
     @returns: a tuple of the following values:
