@@ -12,6 +12,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+# TODO: Turn function comments to doc strings
 # TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
@@ -278,7 +279,27 @@ def pattern_test(x: int, y: int) -> int:
 @micropython.viper
 def pattern_wall(x: int, y: int) -> int:
     return int(x%16 == 0) & int(y%3 == 0)
-
+##
+# PATTERN [cave]: Cave system with ceiling and ground. Ceiling is never less
+#                 than 5 deep. Both have a random terrain and can intersect.
+##
+# PATTERN [cave_fill]: Fill pattern for the cave. The ceiling is semi-reflective
+#                      at the plane at depth 5. The ground has vertical lines.
+@micropython.viper
+def pattern_cave(x: int, y: int) -> int:
+    # buff: [ground-height, ceiling-height, ground-fill-on]
+    buff = ptr32(buf)
+    if (y == 0):
+        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
+        buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
+        buff[2] = int(x % (buff[0]//8) == 0)
+    return int(y > buff[0]) | int(y < buff[1]) | int(y <= 5)
+@micropython.viper
+def pattern_cave_fill(x: int, y: int) -> int:
+    # buff: [ground-height, ceiling-height, ground-fill-on]
+    buff = ptr32(buf)
+    return ((int(y < buff[0]//2*3) | buff[2]) # ground fill
+        & (int(y > 10-buff[1]) | int(y == 5) | buff[1]%y)) # ceiling fill
 
 
 ##
@@ -309,22 +330,7 @@ def pattern_fallentree(x: int, y: int) -> int:
 
 
 
-##
-# PATTERN [cave]: TODO
-@micropython.viper
-def pattern_cave(x: int, y: int) -> int:
-    # buff: [ground-height]
-    buff = ptr32(buf)
-    if (y == 0):
-        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
-    return int(y > buff[0])
-##
-# PATTERN [cave_fill]: TODO
-@micropython.viper
-def pattern_cave_fill(x: int, y: int) -> int:
-    # buff: [ground-height]
-    buff = ptr32(buf)
-    return int(y < buff[0]+5)
+
 
 ##
 # PATTERN [dev]: TODO
@@ -354,9 +360,8 @@ def start_level():
 start_level()
 
 
-# FPS
-thumby.display.setFPS(2400) # TESTING: for speed profiling
-#thumby.display.setFPS(120) # Intended game speed
+# FPS (intended to be between 60 and 120 variable fps)
+thumby.display.setFPS(24000000) # TESTING: for speed profiling
 
 # Main gameplay loop
 c = 0;
@@ -375,11 +380,12 @@ while(1):
 
     # TESTING: infinitely scroll the tape
     offset_vertically((c // 10) % 24)
-    scroll_tape_with_fill(feed[3], feed[4], 3, 1)
-    if (c % 2 == 0):
-        scroll_tape_with_fill(feed[1], feed[2], 1, 1)
-        if (c % 4 == 0):
-            scroll_tape(feed[0], 0, 1)
+    if (c % 1 == 0):
+        scroll_tape_with_fill(feed[3], feed[4], 3, 1)
+        if (c % 2 == 0):
+            scroll_tape_with_fill(feed[1], feed[2], 1, 1)
+            if (c % 4 == 0):
+                scroll_tape(feed[0], 0, 1)
     c += 1
 
 
