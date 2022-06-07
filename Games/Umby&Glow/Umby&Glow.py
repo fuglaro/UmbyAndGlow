@@ -52,45 +52,11 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-import time
-import thumby
+_FPS = const(2400000) # FPS (intended to be near 120 fps)
+
+from time import ticks_ms
+from thumby import display
 from array import array
-
-
-## Utility Functions ##
-
-@micropython.viper
-def abs(v: int) -> int:
-    """ Fast bitwise abs"""
-    m = v >> 31
-    return (v + m) ^ m
-
-@micropython.viper
-def ihash(x: uint) -> int:
-    """ 32 bit deterministic semi-random hash fuction
-    Credit: Thomas Wang
-    """
-    x = (x ^ 61) ^ (x >> 16)
-    x += (x << 3)
-    x ^= (x >> 4)
-    x *= 0x27d4eb2d
-    return int(x ^ (x >> 15))
-
-@micropython.viper
-def shash(x: int, step: int, size: int) -> int:
-    """ (smooth) deterministic semi-random hash.
-    For x, this will get two random values, one for the nearest
-    interval of 'step' before x, and one for the nearest interval
-    of 'step' after x. The result will be the interpolation between
-    the two random values for where x is positioned along the step.
-    @param x: the position to retrieve the interpolated random value.
-    @param step: the interval between random samples.
-    @param size: the maximum magnitude of the random values.
-    """
-    a = int(ihash(x//step)) % size
-    b = int(ihash(x//step + 1)) % size
-    return a + (b-a) * (x%step) // step
-
 
 ## Tape Management ##
 
@@ -148,7 +114,7 @@ class Tape:
         """
         tape = ptr32(self._tape)
         scroll = ptr32(self._tapeScroll)
-        frame = ptr8(thumby.display.display.buffer)
+        frame = ptr8(display.display.buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
         yPos = scroll[4]
@@ -231,10 +197,46 @@ class Tape:
 # but is really just a good way to get richness cheaply on this
 # beautiful little piece of hardware.
 
+# Utility functions
+
+@micropython.viper
+def abs(v: int) -> int:
+    """ Fast bitwise abs"""
+    m = v >> 31
+    return (v + m) ^ m
+
+@micropython.viper
+def ihash(x: uint) -> int:
+    """ 32 bit deterministic semi-random hash fuction
+    Credit: Thomas Wang
+    """
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
+
+@micropython.viper
+def shash(x: int, step: int, size: int) -> int:
+    """ (smooth) deterministic semi-random hash.
+    For x, this will get two random values, one for the nearest
+    interval of 'step' before x, and one for the nearest interval
+    of 'step' after x. The result will be the interpolation between
+    the two random values for where x is positioned along the step.
+    @param x: the position to retrieve the interpolated random value.
+    @param step: the interval between random samples.
+    @param size: the maximum magnitude of the random values.
+    """
+    a = int(ihash(x//step)) % size
+    b = int(ihash(x//step + 1)) % size
+    return a + (b-a) * (x%step) // step
+
+
 # Simple cache used across the writing of a single column of the tape.
 # Since the tape patterns must be stateless across columns (for rewinding), this
 # should not store data across columns.
 buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+
 
 @micropython.viper
 def pattern_template(x: int, oY: int) -> int:
@@ -440,26 +442,26 @@ def set_level(tape):
         pattern_cave, pattern_cave_fill]
 
 def run_game():
-    """ Initialise the game and run the game loop"""
+    """ Initialise the game and run the game loop """
+    display.setFPS(_FPS)
     tape = Tape()
     set_level(tape)
 
-    # FPS (intended to be between 60 and 120 variable fps)
-    thumby.display.setFPS(2400000) # TESTING: for speed profiling
-
     # Main gameplay loop
     c = 0;
-    profiler = time.ticks_ms()
+    profiler = ticks_ms()
     while(1):
         # Speed profiling
         if (c % 60 == 0):
-            print(time.ticks_ms() - profiler)
-            profiler = time.ticks_ms()
-    
+            print(ticks_ms() - profiler)
+            profiler = ticks_ms()
+
+
+
         # Update the display buffer new frame data
         tape.comp()
         # Flush to the display, waiting on the next frame interval
-        thumby.display.update()
+        display.update()
     
     
         # TESTING: infinitely scroll the tape
