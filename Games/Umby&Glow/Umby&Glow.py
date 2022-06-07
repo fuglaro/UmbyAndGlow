@@ -12,7 +12,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Turn function comments to doc strings
+# TODO: optimise calls to pattern. Once for each 32 bit word.
+# TODO: remove unused values from tapeScroll (fill layers)
+
 # TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
@@ -61,35 +63,34 @@ from array import array
 
 ## Utility Functions ##
 
-##
-# Fast bitwise abs
 @micropython.viper
 def abs(v: int) -> int:
+    """ Fast bitwise abs"""
     m = v >> 31
     return (v + m) ^ m
 
-##
-# 32 bit deterministic semi-random hash fuction
-# Credit: Thomas Wang
 @micropython.viper
 def ihash(x: uint) -> int:
+    """ 32 bit deterministic semi-random hash fuction
+    Credit: Thomas Wang
+    """
     x = (x ^ 61) ^ (x >> 16)
     x += (x << 3)
     x ^= (x >> 4)
     x *= 0x27d4eb2d
     return int(x ^ (x >> 15))
-##
-# (smooth) deterministic semi-random hash.
-# For x, this will get two random values,
-# one for the nearest interval of 'step' before x,
-# and one for the nearest interval of 'step' after x.
-# The result will be the interpolation between the two
-# random values for where x is positioned along the step.
-# @param x: the position to retrieve the interpolated random value.
-# @param step: the interval between random samples.
-# @param size: the maximum magnitude of the random values.
+
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:
+    """ (smooth) deterministic semi-random hash.
+    For x, this will get two random values, one for the nearest
+    interval of 'step' before x, and one for the nearest interval
+    of 'step' after x. The result will be the interpolation between
+    the two random values for where x is positioned along the step.
+    @param x: the position to retrieve the interpolated random value.
+    @param step: the interval between random samples.
+    @param size: the maximum magnitude of the random values.
+    """
     a = int(ihash(x//step)) % size
     b = int(ihash(x//step + 1)) % size
     return a + (b-a) * (x%step) // step
@@ -126,16 +127,12 @@ feed = [None, None, None, None, None]
 # should not store data across columns.
 buf = array('i', [0])
 
-# TODO remove unused values from tapeScroll (fill layers)
-
-
-##
-# comp
-# Composite all the render layers together and render directly to the display
-# buffer, taking into account the scroll position of each render layer, and
-# dimming the background layers.
 @micropython.viper
 def comp():
+    """ Composite all the render layers together and render directly to the display
+    buffer, taking into account the scroll position of each render layer, and
+    dimming the background layers.
+    """
     tape_ = ptr32(tape)
     scroll = ptr32(tapeScroll)
     frame = ptr8(thumby.display.display.buffer)
@@ -170,18 +167,17 @@ def comp():
         frame[216+x] = (a >> 24 >> yPos) | (b << (32 - yPos) >> 24)
         frame[288+x] = (b >> yPos)
 
-##
-# scroll_tape
-# Scroll the tape one pixel forwards, or backwards for a specified layer.
-# Updates the tape scroll position of that layer.
-# Fills in the new column with pattern data from a specified
-# pattern function. Since this is a rotating buffer, this writes
-# over the column that has been scrolled offscreen.
-# @param pattern: a function, returning fill data, given x and y paramaters.
-# @param layer: the layer to scroll and write to.
-# @param direction: -1 -> rewind backwards, 1 -> extend forwrds.
 @micropython.viper
 def scroll_tape(pattern, layer: int, direction: int):
+    """ Scroll the tape one pixel forwards, or backwards for a specified layer.
+    Updates the tape scroll position of that layer.
+    Fills in the new column with pattern data from a specified
+    pattern function. Since this is a rotating buffer, this writes
+    over the column that has been scrolled offscreen.
+    @param pattern: a function, returning fill data, given x and y paramaters.
+    @param layer: the layer to scroll and write to.
+    @param direction: -1 -> rewind backwards, 1 -> extend forwrds.
+    """
     tape_ = ptr32(tape)
     scroll = ptr32(tapeScroll)
     # Advance the tapeScroll position for the layer
@@ -203,12 +199,11 @@ def scroll_tape(pattern, layer: int, direction: int):
         # write the current 32 bits to tape
         tape_[layer*144 + x%72*2+w] = v
 
-##
-# scroll_tape_with_fill
-# Similar to scroll_tape but also fills out the fill layer
-# with a fill pattern.
 @micropython.viper
 def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
+    """ Similar to scroll_tape but also fills out the fill
+    layer with a fill pattern.
+    """
     tape_ = ptr32(tape)
     scroll = ptr32(tapeScroll)
     # Advance the tapeScroll position for the layer
@@ -237,56 +232,53 @@ def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
         # same for the fill later
         tape_[(layer+1)*144 + offX+w] = f
 
-##
-# offset_vertically
-# Shift the view on the tape to a new vertical position, by
-# specifying the offset from the top position. This cannot
-# exceed the total vertical size of the tape (minus the tape height).
 @micropython.viper
 def offset_vertically(offset: int):
+    """ Shift the view on the tape to a new vertical position, by
+    specifying the offset from the top position. This cannot
+    exceed the total vertical size of the tape (minus the tape height).
+    """
     ptr32(tapeScroll)[6] = (offset if offset>=0 else 0) if offset<=24 else 24
 
 
-# TODO: check speed of abs equivelents
+## Patterns ##
 
-##
-# PATTERN [none]: empty
 @micropython.viper
 def pattern_none(x: int, y: int) -> int:
+    """PATTERN [none]: empty"""
     return 0
-##
-# PATTERN [fill]: completely filled
+
 @micropython.viper
 def pattern_fill(x: int, y: int) -> int:
+    """PATTERN [fill]: completely filled"""
     return 1
-##
-# PATTERN [fence]: - basic dotted fences at roof and high floor
+
 @micropython.viper
 def pattern_fence(x: int, y: int) -> int:
+    """PATTERN [fence]: - basic dotted fences at roof and high floor"""
     return (1 if y<12 else 1 if y>32 else 0) & int(x%10 == 0) & int(y%2 == 0)
-##
-# PATTERN [room]:- basic flat roof and high floor
+
 @micropython.viper
 def pattern_room(x: int, y: int) -> int:
+    """PATTERN [room]:- basic flat roof and high floor"""
     return 1 if y < 3 else 1 if y > 37 else 0
-##
-# PATTERN [test]: long slope plus walls
+
 @micropython.viper
 def pattern_test(x: int, y: int) -> int:
+    """PATTERN [test]: long slope plus walls"""
     return int(x%120 == y*3) | (int(x%12 == 0) & int(y%2 == 0))
-##
-# PATTERN [wall]: dotted vertical lines repeating
+
 @micropython.viper
 def pattern_wall(x: int, y: int) -> int:
+    """PATTERN [wall]: dotted vertical lines repeating"""
     return int(x%16 == 0) & int(y%3 == 0)
-##
-# PATTERN [cave]: Cave system with ceiling and ground. Ceiling is never less
-#                 than 5 deep. Both have a random terrain and can intersect.
-##
-# PATTERN [cave_fill]: Fill pattern for the cave. The ceiling is semi-reflective
-#                      at the plane at depth 5. The ground has vertical lines.
+
 @micropython.viper
 def pattern_cave(x: int, y: int) -> int:
+    """PATTERN [cave]:
+    Cave system with ceiling and ground. Ceiling is never less
+    than 5 deep. Both have a random terrain and can intersect.
+    """
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
     if (y == 0):
@@ -296,10 +288,16 @@ def pattern_cave(x: int, y: int) -> int:
     return int(y > buff[0]) | int(y < buff[1]) | int(y <= 5)
 @micropython.viper
 def pattern_cave_fill(x: int, y: int) -> int:
+    """PATTERN [cave_fill]:
+    Fill pattern for the cave. The ceiling is semi-reflective
+    at the plane at depth 5. The ground has vertical lines.
+    """
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
     return ((int(y < buff[0]//2*3) | buff[2]) # ground fill
         & (int(y > 10-buff[1]) | int(y == 5) | buff[1]%y)) # ceiling fill
+
+
 
 
 ##
@@ -307,29 +305,21 @@ def pattern_cave_fill(x: int, y: int) -> int:
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
     return int(y > (113111^x+11) % 64 // 2 + 24)
-
 ##
 # PATTERN [revtoothsaw]: TODO use
 @micropython.viper
 def pattern_revtoothsaw(x: int, y: int) -> int:
     return int(y > (11313321^x) % 64)
-
 ##
 # PATTERN [diamondsaw]: TODO use
 @micropython.viper
 def pattern_diamondsaw(x: int, y: int) -> int:
     return int(y > (32423421^x) % 64)
-
 ##
 # PATTERN [fallentree]: TODO use
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
-
-
-
-
-
 
 
 ##
@@ -345,10 +335,10 @@ def pattern_dev(x: int, y: int) -> int:
 
 ## Game Engine ##
 
-##
-# Prepare everything for a level of gameplay including
-# the starting tape, and the feed patterns for each layer.
 def start_level():
+    """ Prepare everything for a level of gameplay including
+    the starting tape, and the feed patterns for each layer.
+    """
     # Fill the tape with the starting area
     for i in range(0, 72):
         scroll_tape(pattern_fence, 1, 1)
