@@ -274,6 +274,26 @@ class Tape:
             tape[offX+433] = int(fill_pattern(x, 32))
 
     @micropython.viper
+    def scratch_tape(self, layer: int, x: int, pattern, fill_pattern):
+        """ Carves a hole out of a tape layer for a given x position
+        (relative to the start of the tape) with a pattern function.
+        Draw layer: 1-leave, 0-carve
+        Fill layer: 0-leave, 1-carve
+        These layers can be rendered to:
+            0: Far background layer
+            1: Mid background layer
+            2: Foreground layer
+        """
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] &= int(pattern(x, 0))
+        tape[offX+1] &= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] |= int(fill_pattern(x, 0))
+            tape[offX+433] |= int(fill_pattern(x, 32))
+
+    @micropython.viper
     def reset_tape(self):
         """ Reset the tape buffers for all layers to the
         current feed.
@@ -381,6 +401,15 @@ class Tape:
             while (lines):
                 self.write(2, lines.pop(0), 0, x)
                 x += 6
+
+    @micropython.viper
+    def tag(self, text, x: int, y: int):
+        """ Write text to the mid background layer centered
+        on the given tape foreground scoll position.
+        """
+        scroll = ptr32(self._tape_scroll)
+        p = x-scroll[3]+scroll[1] # Translate position to mid background
+        self.write(1, text, p-int(len(text))*2, y+3)
 
     @micropython.viper
     def clear_overlay(self):
@@ -589,6 +618,29 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
+def bang(blast_x, blast_y, blast_size, is_fill):
+    """ PATTERN (DYNAMIC) [bang]: explosion blast with customisable
+    position and size. Intended to be used for scratch_tape.
+    Comes with it's own inbuilt fill patter for also blasting away
+    the fill layer.
+    @returns: a pattern (or fill) function.
+    """
+    @micropython.viper
+    def pattern(x: int, oY: int) -> int:
+        s = int(blast_size)
+        f = int(is_fill)
+        _by = int(blast_y)
+        tx = x-int(blast_x)
+        v = 0
+        for y in range(oY, oY+32):
+            ty = y-_by
+            a = 0 if tx*tx+ty*ty < s*s else 1
+            v |= (
+                a if f == 0 else (0 if a else 1)
+            ) << (y-oY)
+        return v
+    return pattern
+
 # Pattern Library:
 # Interesting pattern library for future considerations ## 
 @micropython.viper
@@ -783,7 +835,7 @@ class Umby:
                 self._y_vel = -0.8
 
             # Now handle rocket engine
-            self._tick_rocket(tape)
+            self._tick_rocket(t, tape)
 
             # DEATH: Check for head smacking
             if _chu and self._y_vel < -0.4:
@@ -810,7 +862,7 @@ class Umby:
         self.y_pos = int(self._y_pos)
 
     @micropython.native
-    def _tick_rocket(self, tape):
+    def _tick_rocket(self, t, tape):
         """ Handle one game tick for Umby's rocket """
         angle = self._aim_angle
         power = self._aim_pow
@@ -845,16 +897,31 @@ class Umby:
             self.rocket_y = int(self._rocket_y)
             # Apply gravity
             self._rocket_y_vel += 2.5 / _FPS
+            rx = self.rocket_x
+            ry = self.rocket_y
+
             # Check fallen through ground
-            if self.rocket_y > 80:
+            if ry > 80:
                 # Diffuse rocket
+                self.rocket_active = 0
+
+            # Check if the rocket hit the ground
+            if tape.check(rx, ry):
+                # Explode rocket
+                tag = t%4
+                tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+                    "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
+
+                # Carve blast hole out of ground
+                for x in range(rx-10, rx+10):
+                    tape.scratch_tape(2, x,
+                        bang(rx, ry, 8, 0), bang(rx, ry, 10, 1))
+                # End rocket
                 self.rocket_active = 0
 
 
 
-
-
-        # TODO: rocket, and trim code
+        # TODO: rocket bang, trail, death by rocket
 
 
 
@@ -925,6 +992,8 @@ class Umby:
         # Draw Umby's rocket
         if self.rocket_active:
             stage.draw(1, rock_x-x, rock_y-7, self._aim, 1, 0)
+            stage.draw(0, rock_x-x+(-1 if aim_x>0 else 1), rock_y-7,
+                self._aim, 1, 0) # Rocket tail
 
 
 ## Game Engine ##
