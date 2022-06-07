@@ -808,7 +808,6 @@ class Umby:
 
 
 
-        # TODO: allow digging straight down
         # TODO: rocket
 
 
