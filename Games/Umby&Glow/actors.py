@@ -78,36 +78,28 @@ class _Player:
     #      11: Swinging from grapple
     #      12: Clinging (from ceiling)
     mode = 0 # (int)
-    _bAOnce = -1 # Had a press down of A button (-1 held, 1 pressed, 0 none)
+    _bAOnce = _bBOnce = -1 # Had pressed button (-1 held, 1 pressed, 0 none)
     # Movement variables
-    _x_vel = 0.0
-    _y_vel = 0.0
+    _x_vel, _y_vel = 0.0, 0.0
     # Rocket variables
-    rocket_x = 0 # (int)
-    rocket_y = 0 # (int)
-    rocket_active = 0 # (int)
+    rocket_x, rocket_y = 0, 0 # (int)
     _aim_ang = 0.0
     _aim_pow = 1.0
     # Grappling hook variables
-    hook_x = 0 # (int) Position where hook attaches ceiling
-    hook_y = 0 # (int)
+    hook_x, hook_y = 0, 0 # (int) Position where hook attaches ceiling
     # Internal calulation of hook parameters (resolved to player x, y in tick)
-    _hook_ang = 0.0
-    _hook_vel = 0.0
-    _hook_len = 0.0
+    _hook_ang = _hook_vel = _hook_len = 0.0
     # Packed (byte) variables.
-    #   Direction and movement states.
-    mstates = bytearray([1]) # 0: dir(left:0, right:1), 1: rocket_dir, 2: moving
-    # TODO: consider adding rocket_active states
+    #   Direction and boolean states.
+    #     0: dir(left:0, right:1), 1: rocket_dir, 2: moving, 3: rocket_on
+    mstates = bytearray([1])
 
     def __init__(self, tape, x, y):
         self._tp = tape
         # Motion variables
-        self._x = x # Middle of Umby
-        self._y = y # Bottom of Umby
+        self._x, self._y = x, y
         # Viper friendly variants (ints)
-        self.x = int(x)
-        self.y = int(y)
+        self.x, self.y = int(x), int(y)
         self.aim_x = int(sin(self._aim_ang)*10.0)
         self.aim_y = int(cos(self._aim_ang)*10.0)
 
@@ -133,6 +125,17 @@ class _Player:
         m = ptr8(self.mstates)
         m[0] = ((m[0] | 2) ^ 2) | (0 if d == -1 else 2)
 
+    ### Getter and setter for whether the rocket is active ###
+    @property
+    @micropython.viper
+    def rocket_on(self) -> int:
+        return 1 if ptr8(self.mstates)[0] & 8 else 0
+    @rocket_on.setter
+    @micropython.viper
+    def rocket_on(self, d: int):
+        m = ptr8(self.mstates)
+        m[0] = ((m[0] | 8) ^ 8) | (0 if d == 0 else 8)
+
     ### Getter and setter for whether the player is trying to move ###
     @property
     @micropython.viper
@@ -154,6 +157,16 @@ class _Player:
             return 1
         return 0
 
+    @micropython.native
+    def _bBO(self):
+        ### Returns true if the B button was hit
+        # since the last time thie was called
+        ###
+        if self._bBOnce == 1:
+            self._bBOnce = -1
+            return 1
+        return 0
+
     @property
     def immune(self):
         ### Returns if Umby is in a mode that can't be killed ###
@@ -161,12 +174,11 @@ class _Player:
 
     def die(self, rewind_distance, death_message):
         ### Put Player into a respawning state ###
-        tape = self._tp
         self._x_vel = 0.0 # Reset speed
         self._y_vel = 0.0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
-        self._respawn_x = tape.x[0] - rewind_distance
-        tape.message(0, death_message)
+        self._respawn_x = self._tp.x[0] - rewind_distance
+        self._tp.message(0, death_message)
 
     @micropython.native
     def kill(self, t, monster):
@@ -174,8 +186,8 @@ class _Player:
         # Also carves space out of the ground.
         ###
         tape = self._tp
-        rx = self.rocket_x
-        ry = self.rocket_y
+        scratch = tape.scratch_tape
+        rx, ry = self.rocket_x, self.rocket_y
         # Tag the wall with an explostion mark
         tag = t%4
         tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
@@ -187,14 +199,13 @@ class _Player:
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
         for x in range(rx-10, rx+10):
-            tape.scratch_tape(2, x, pattern, fill)
+            scratch(2, x, pattern, fill)
         # DEATH: Check for death by rocket blast
-        dx = rx-self.x
-        dy = ry-self.y
+        dx, dy = rx-self.x, ry-self.y
         if dx*dx + dy*dy < 64:
             self.die(240, self.name + " kissed a rocket!")
         # Get ready to end rocket
-        self.rocket_active = 2
+        self.rocket_on = 0
 
     @micropython.native
     def tick(self, t):
@@ -206,9 +217,11 @@ class _Player:
         self.moving = 1 if not (bL() and bR()) else 0 # Update moving
         # Normal Play modes
         if self.mode < 199:
-            # Update the state of the A button pressed detector
+            # Update the state of the button pressed detectors
             self._bAOnce = (0 if bA() else
                 1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
+            self._bBOnce = (0 if bB() else
+                1 if (not bB() and self._bBOnce == 0) else self._bBOnce)
             # Normal play modes
             if self.mode == 0: # Crawl mode (Umby)
                 self._tick_play_ground(t)
@@ -228,23 +241,21 @@ class _Player:
         self.x = int(self._x)
         self.y = int(self._y)
         # Handle rocket engine tick
-        if self.mode < 199:
-            self._tick_rocket(t)
+        if self.mode == 0: # Umby's rocket
+            self._tick_rocket_grenade(t)
+        elif self.mode < 199: # Glow's rocket
+            self._tick_rocket_missile(t)
 
     @micropython.native
     def _tick_play_ground(self, t):
         ### Handle one game tick for ground play controls ###
         x, y = self.x, self.y
-        tape = self._tp
-        cd = tape.check_tape(x, y+1)
-        cu = tape.check_tape(x, y-4)
-        cl = tape.check_tape(x-1, y)
-        clu = tape.check_tape(x-1, y-3)
-        cr = tape.check_tape(x+1, y)
-        cru = tape.check_tape(x+1, y-3)
-        grounded = cd or cl or cr
-        lwall = cl or clu
-        rwall = cr or cru
+        ch = self._tp.check_tape
+        cl = ch(x-1, y)
+        cr = ch(x+1, y)
+        grounded = ch(x, y+1) or cl or cr
+        lwall = cl or ch(x-1, y-3)
+        rwall = cr or ch(x+1, y-3)
         # Apply gravity and grund check
         self._y += self._y_vel if not grounded else 0
         # Stop gravity when hit ground but keep some fall speed ready
@@ -262,19 +273,20 @@ class _Player:
                 self._y -= 1
             self._y_vel = -0.8
         # DEATH: Check for head smacking
-        if cu and self._y_vel < -0.4:
+        if ch(x, y-4) and self._y_vel < -0.4:
             self.die(240, self.name + " face-planted the roof!")
 
     @micropython.native
     def _launch_hook(self, angle):
         ### Activate grappling hook in given aim ###
-        tape = self._tp
+        ch = self._tp.check_tape
+        x, y = self.x, self.y
         self._hook_ang = angle
         # Find hook landing position
         xs, ys = -sin(angle)/2, -cos(angle)/2
-        xh, yh = self.x, self.y
-        while (yh > 0 and (self.x-xh)*self.dir < 40
-        and not tape.check_tape(int(xh), int(yh))):
+        xh, yh = x, y
+        d = self.dir
+        while (yh > 0 and (x-xh)*d < 40 and not ch(int(xh), int(yh))):
             xh += xs
             yh += ys
         # Apply grapple hook parameters
@@ -292,15 +304,15 @@ class _Player:
     def _tick_play_roof(self, t):
         ### Handle one game tick for roof climbing play controls ###
         x, y = self.x, self.y
-        tape = self._tp
-        cd = tape.check_tape(x, y-1)
-        crd = tape.check_tape(x+1, y-1)
-        cld = tape.check_tape(x-1, y-1)
-        cl = tape.check_tape(x-1, y)
-        cr = tape.check_tape(x+1, y)
-        cu = tape.check_tape(x, y+3)
-        clu = tape.check_tape(x-1, y+3)
-        cru = tape.check_tape(x+1, y+3)
+        ch = self._tp.check_tape
+        cd = ch(x, y-1)
+        crd = ch(x+1, y-1)
+        cld = ch(x-1, y-1)
+        cl = ch(x-1, y)
+        cr = ch(x+1, y)
+        cu = ch(x, y+3)
+        clu = ch(x-1, y+3)
+        cru = ch(x+1, y+3)
         falling = not (cd or cld or crd or cl or cr)
         head_hit = cu or clu or cru
         # CONTROLS: Activation of grappling hook
@@ -331,10 +343,8 @@ class _Player:
                 self.mode = 12
                 # Convert angular momentum to free falling momentum
                 ang2 = ang + vel/128.0
-                x2 = self.hook_x + sin(ang2)*self._hook_len
-                y2 = self.hook_y + cos(ang2)*self._hook_len
-                self._x_vel = x2 - self._x
-                self._y_vel = y2 - self._y
+                self._x_vel = self.hook_x + sin(ang2)*self._hook_len - self._x
+                self._y_vel = self.hook_y + cos(ang2)*self._hook_len - self._y
             # Update motion and position variables based on swing
             self._hook_ang += self._hook_vel/128.0
             self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
@@ -359,17 +369,141 @@ class _Player:
                 self._y_vel = 0
             # CONTROLS: Apply movement
             if t%2 and y < 64:
-                clld = tape.check_tape(x-2, y-1)
-                crrd = tape.check_tape(x+2, y-1)
-                cll = tape.check_tape(x-2, y)
-                crr = tape.check_tape(x+2, y)
                 climb = not cd and ((not bL() and crd) or (not bR() and cld))
                 descend = not cu and (((cl or clu)
                     and not bL()) or ((cr or cru) and not bR()))
-                lsafe = (cld or cd or clld or cll) and not (cl or clu or bL())
-                rsafe = (crd or cd or crrd or crr) and not (cr or cru or bR())
+                lsafe = (cld or cd or ch(x-2, y-1) or ch(x-2, y)) and not (
+                    cl or clu or bL())
+                rsafe = (crd or cd or ch(x+2, y-1) or ch(x+2, y)) and not (
+                    cr or cru or bR())
                 self._x += -1 if lsafe else 1 if rsafe else 0
                 self._y += -1 if climb else 1 if descend else 0
+
+    @micropython.native
+    def _tick_rocket_grenade(self, t):
+        ### Handle one game tick for Umby's rocket.
+        # Rockets start with aiming a target, then the launch
+        # process begins and charges up. When the button is then
+        # released the rocket launches. When the rocket hits the
+        # ground it clears a blast radius, or kills Umby, if hit.
+        # During flight, further presses of the rocket button
+        # will leave a rocket trail that will act as a platform.
+        ###
+        angle = self._aim_ang
+        power = self._aim_pow
+        tape = self._tp
+        # CONTROLS: Apply rocket
+        if not (bU() and bD() and bB()): # Rocket aiming
+            # CONTROLS: Aiming and power
+            self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
+            if not (bB() or self.rocket_on) and (self._bBO() or power > 1.0):
+                self._aim_pow += 0.03
+            angle = self._aim_ang
+            # Resolve rocket aim to the x by y vector form
+            self.aim_x = int(sin(angle)*power*10.0)
+            self.aim_y = int(cos(angle)*power*10.0)
+        # Actually launch the rocket when button is released
+        if bB() and power > 1.0 and not self.rocket_on:
+            self.rocket_on = 1
+            self._rocket_x = self.x
+            self._rocket_y = self._y - 1
+            self._rocket_x_vel = sin(angle)*power/2.0
+            self._rocket_y_vel = cos(angle)*power/2.0
+            self._aim_pow = 1.0
+            self.aim_x = int(sin(angle)*10.0)
+            self.aim_y = int(cos(angle)*10.0)
+            self.rocket_dir = 1 if self.aim_x > 0 else -1
+        # Apply rocket dynamics if it is active
+        if self.rocket_on == 1:
+            # Create trail platform when activated
+            if not bB():
+                rx = self.rocket_x
+                ry = self.rocket_y
+                rd = -1 if self.aim_x < 0 else 1
+                trail = pattern_bang(rx-rd, ry, 2, 1)
+                for x in range(rx-rd*2, rx, rd):
+                    tape.draw_tape(2, x, trail, None)
+            # Apply rocket motion
+            self._rocket_x += self._rocket_x_vel
+            self._rocket_y += self._rocket_y_vel
+            self.rocket_x = int(self._rocket_x)
+            self.rocket_y = int(self._rocket_y)
+            # Apply gravity
+            self._rocket_y_vel += 2.5 / _FPS
+            rx = self.rocket_x
+            ry = self.rocket_y
+            # Check fallen through ground
+            if ry > 80:
+                # Diffuse rocket
+                self.rocket_on = 0
+            # Check if the rocket hit the ground
+            if tape.check_tape(rx, ry):
+                # Explode rocket
+                self.kill(t, None)
+        # Wait until the rocket button is released before firing another
+        self._bBO()
+
+    @micropython.native
+    def _tick_rocket_missile(self, t):
+        ### Handle one game tick for Glows's rocket.
+        # Rockets start with aiming a target, then the launch
+        # process begins and charges up. When the button is then
+        # released the rocket launches. When the rocket hits the
+        # ground it clears a blast radius, or kills Glow, if hit.
+        # See the class doc strings for more details.
+        ###
+        angle = self._aim_ang
+        power = self._aim_pow
+        grappling = self.mode == 11
+        tape = self._tp
+        # CONTROLS: Apply rocket
+        # Rocket aiming
+        if not bU() or not bD() or not bB() or not bL() or not bR():
+            if not grappling:
+                self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
+            if not bB(): # Power rocket
+                self._aim_pow += 0.03
+            angle = self._aim_ang
+            angle = -2.0 if angle < -2.0 else 0 if angle > 0 else angle
+            self._aim_ang = angle
+            # Resolve rocket aim to the x by y vector form
+            self.aim_x = int(sin(angle)*power*10.0)*self.dir
+            self.aim_y = int(cos(angle)*power*10.0)
+        # Actually launch the rocket when button is released
+        if bB() and power > 1.0:
+            self.rocket_on = 1
+            self._rocket_x = self.x
+            self._rocket_y = self._y + 1
+            self._rocket_x_vel = sin(angle)*power/2.0*self.dir
+            self._rocket_y_vel = cos(angle)*power/2.0
+            self._aim_pow = 1.0
+            self.aim_x = int(sin(angle)*10.0)*self.dir
+            self.aim_y = int(cos(angle)*10.0)
+            self.rocket_dir = self.dir
+        # Apply rocket dynamics if it is active
+        if self.rocket_on:
+            # Apply rocket motion
+            self._rocket_x += self._rocket_x_vel
+            self._rocket_y += self._rocket_y_vel
+            self.rocket_x = int(self._rocket_x)
+            self.rocket_y = int(self._rocket_y)
+            rx = self.rocket_x
+            ry = self.rocket_y
+            # Apply flight boosters
+            self._rocket_x_vel += 2.5 / _FPS * self.rocket_dir
+            if ((self._rocket_x_vel > 0 and self.rocket_dir > 0)
+            or (self._rocket_x_vel < 0 and self.rocket_dir < 0)):
+                self._rocket_y_vel *= 0.9
+            # Check fallen through ground or above ceiling,
+            # or out of range
+            px = self.rocket_x - tape.x[0]
+            if ry > 80 or ry < -1 or px < -30 or px > 102:
+                # Diffuse rocket
+                self.rocket_on = 0
+            # Check if the rocket hit the ground
+            if tape.check_tape(rx, ry):
+                # Explode rocket
+                self.kill(t, None)
 
     @micropython.native
     def _tick_respawn(self):
@@ -432,71 +566,6 @@ class Umby(_Player):
         self._aim_ang = 2.5
         _Player.__init__(self, tape, x, y)
 
-    @micropython.native
-    def _tick_rocket(self, t):
-        ### Handle one game tick for Umby's rocket.
-        # Rockets start with aiming a target, then the launch
-        # process begins and charges up. When the button is then
-        # released the rocket launches. When the rocket hits the
-        # ground it clears a blast radius, or kills Umby, if hit.
-        # During flight, further presses of the rocket button
-        # will leave a rocket trail that will act as a platform.
-        ###
-        angle = self._aim_ang
-        power = self._aim_pow
-        tape = self._tp
-        # CONTROLS: Apply rocket
-        if not (bU() and bD() and bB()): # Rocket aiming
-            # CONTROLS: Aiming
-            self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not (bB() or self.rocket_active): # Power rocket
-                self._aim_pow += 0.03
-            angle = self._aim_ang
-            # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0 and not self.rocket_active:
-            self.rocket_active = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y - 1
-            self._rocket_x_vel = sin(angle)*power/2.0
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = 1 if self.aim_x > 0 else -1
-        # Apply rocket dynamics if it is active
-        if self.rocket_active == 1:
-            # Create trail platform when activated
-            if not bB():
-                rx = self.rocket_x
-                ry = self.rocket_y
-                rd = -1 if self.aim_x < 0 else 1
-                trail = pattern_bang(rx-rd, ry, 2, 1)
-                for x in range(rx-rd*2, rx, rd):
-                    tape.draw_tape(2, x, trail, None)
-            # Apply rocket motion
-            self._rocket_x += self._rocket_x_vel
-            self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
-            # Apply gravity
-            self._rocket_y_vel += 2.5 / _FPS
-            rx = self.rocket_x
-            ry = self.rocket_y
-            # Check fallen through ground
-            if ry > 80:
-                # Diffuse rocket
-                self.rocket_active = 0
-            # Check if the rocket hit the ground
-            if tape.check_tape(rx, ry):
-                # Explode rocket
-                self.kill(t, None)
-        # Wait until the rocket button is released before firing another
-        if self.rocket_active == 2 and bB():
-            self.rocket_active = 0
-
     @micropython.viper
     def draw(self, t: int):
         ### Draw Umby to the draw buffer ###
@@ -525,7 +594,7 @@ class Umby(_Player):
         tape.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
         tape.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
         # Draw Umby's rocket
-        if int(self.rocket_active) == 1:
+        if self.rocket_on:
             rock_x = int(self.rocket_x)
             rock_y = int(self.rocket_y)
             rdir = int(self.rocket_dir)
@@ -570,71 +639,6 @@ class Glow(_Player):
         self.mode = 10
         self._aim_ang = -0.5
         _Player.__init__(self, tape, x, y)
-
-    @micropython.native
-    def _tick_rocket(self, t):
-        ### Handle one game tick for Glows's rocket.
-        # Rockets start with aiming a target, then the launch
-        # process begins and charges up. When the button is then
-        # released the rocket launches. When the rocket hits the
-        # ground it clears a blast radius, or kills Glow, if hit.
-        # See the class doc strings for more details.
-        ###
-        angle = self._aim_ang
-        power = self._aim_pow
-        grappling = self.mode == 11
-        tape = self._tp
-        # CONTROLS: Apply rocket
-        # Rocket aiming
-        if not bU() or not bD() or not bB() or not bL() or not bR():
-            if not grappling:
-                self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not bB(): # Power rocket
-                self._aim_pow += 0.03
-            angle = self._aim_ang
-            angle = -2.0 if angle < -2.0 else 0 if angle > 0 else angle
-            self._aim_ang = angle
-            # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)*self.dir
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0:
-            self.rocket_active = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y + 1
-            self._rocket_x_vel = sin(angle)*power/2.0*self.dir
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)*self.dir
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = self.dir
-        # Apply rocket dynamics if it is active
-        if self.rocket_active == 1:
-            # Apply rocket motion
-            self._rocket_x += self._rocket_x_vel
-            self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
-            rx = self.rocket_x
-            ry = self.rocket_y
-            # Apply flight boosters
-            self._rocket_x_vel += 2.5 / _FPS * self.rocket_dir
-            if ((self._rocket_x_vel > 0 and self.rocket_dir > 0)
-            or (self._rocket_x_vel < 0 and self.rocket_dir < 0)):
-                self._rocket_y_vel *= 0.9
-            # Check fallen through ground or above ceiling,
-            # or out of range
-            px = self.rocket_x - tape.x[0]
-            if ry > 80 or ry < -1 or px < -30 or px > 102:
-                # Diffuse rocket
-                self.rocket_active = 0
-            # Check if the rocket hit the ground
-            if tape.check_tape(rx, ry):
-                # Explode rocket
-                self.kill(t, None)
-        # Immediately reset rickets after an explosion
-        if self.rocket_active == 2:
-            self.rocket_active = 0
 
     @micropython.viper
     def draw(self, t: int):
@@ -685,7 +689,7 @@ class Glow(_Player):
         tape.mask(1, x, y, self._aim_fore_mask, 3, 0)
         tape.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
         # Draw Glows's rocket
-        if self.rocket_active:
+        if self.rocket_on:
             rock_x = int(self.rocket_x)
             rock_y = int(self.rocket_y)
             rdir = int(self.rocket_dir)

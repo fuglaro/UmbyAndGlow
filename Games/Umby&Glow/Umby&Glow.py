@@ -21,6 +21,8 @@
 # TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Make 2 player (remote monsters out of range go to background)
+#          - Run all comms in a thread with thread locking on shared variables
+#          - half frame rate for each two way comms.
 # TODO: Make script/story outline
 # TODO: Write script / story
 # TODO: Add 8 more levels, extended game dynamics, and more monsters!
@@ -217,7 +219,7 @@ def run_game():
         for mon in tape.mons:
             mon.draw(t)
             # Check if a rocket hits this monster
-            if p1.rocket_active:
+            if p1.rocket_on:
                 if tape.check(p1.rocket_x-tape.x[0], p1.rocket_y+1, 224):
                     tape.mons.remove(mon)
                     p1.kill(t, mon)
