@@ -117,7 +117,7 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 
 
 
-# TODO rewind_tape
+# TODO rewind_tape (change extend_tape to scroll tape, and add direction argument)
 
 
 
