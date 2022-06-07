@@ -123,12 +123,12 @@ class Tape:
     
     # Alphabet for writing text - 3x5 text size (4x6 with spacing)
     # BITMAP: width: 105, height: 8
-    abc = bytearray([248,40,248,248,168,112,248,136,216,248,136,112,248,168,
-        136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,
-        248,128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,
-        40,216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,
-        216,184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,
-        32,32,32,80,136,136,80,32,8,168,56])
+    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,
+        136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,
+        216,248,128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,
+        184,248,40,216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,
+        216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,
+        0,80,0,32,32,32,32,80,136,136,80,32,8,168,56])
     # Index lookup for printable characters
     abc_i = dict((v, i) for i, v in enumerate(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?"))
@@ -733,12 +733,12 @@ class Umby:
             # Apply gravity and grund check
             if (not _chd and not _chl and not _chr):
                 # Apply gravity to vertical speed
-                self._y_vel += 0.98 / _FPS
+                self._y_vel += 2.5 / _FPS
                 # Update vertical position with vertical speed
-                self._y_pos += 1 if self._y_vel > 1 else self._y_vel
+                self._y_pos += self._y_vel
             else:
                 # Stop falling when hit ground but keep some fall speed ready
-                self._y_vel = 1.0
+                self._y_vel = 0.5
     
             # Apply movement controls
             if not bU():
@@ -757,6 +757,17 @@ class Umby:
                         self._x_pos += 1
                 elif t%3==0 and not _chu:
                     self._y_pos -= 1
+            # Jump - allow continual jump until falling begins
+            if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
+                if _chd or _chl or _chr: # detatch from ground grip
+                    self._y_pos -= 1
+                self._y_vel = -0.8
+
+            # Check for head smacking
+            if _chu and self._y_vel < -0.4:
+                self.mode = 1#Respawn
+                self._respawn_x = tape.x[0] - 240
+                tape.message(0, "Umby face-planted the roof!")        
 
             # Check for falling into the abyss
             if self._y_pos > 80:
@@ -798,9 +809,7 @@ class Umby:
 
 
         # TODO: allow digging straight down
-        # TODO: climb
-        # TODO: jump
-        # TODO: hit ceiling
+        # TODO: rocket
 
 
         # Update the viper friendly variables.
