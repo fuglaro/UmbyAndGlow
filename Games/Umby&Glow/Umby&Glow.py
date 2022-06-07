@@ -800,8 +800,12 @@ class Umby:
     _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
-    # BITMAP: width: 1, height: 8
-    _aim = bytearray([128])
+    # BITMAP: width: 3, height: 8
+    _aim = bytearray([64,224,64])
+     # BITMAP: width: 3, height: 8
+    _aim_fore_mask = bytearray([224,224,224])
+    # BITMAP: width: 5, height: 8
+    _aim_back_mask = bytearray([112,248,248,248,112])
     # Umby behavior mode such as Play, Testing, and Respawn
     mode = 0#Play (normal)
 
@@ -1061,13 +1065,14 @@ class Umby:
         stage.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
         stage.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
         # Draw Umby's aim
-        stage.draw(t*6//_FPS % 2, x_pos-p+aim_x, y_pos-7+aim_y, self._aim, 1, 0)
-        stage.mask(1, x_pos-p+aim_x, y_pos-7+aim_y, self._aim, 1, 0)
+        stage.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
+        stage.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
+        stage.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
         # Draw Umby's rocket
         if self.rocket_active:
-            stage.draw(1, rock_x-p, rock_y-7, self._aim, 1, 0)
-            stage.draw(0, rock_x-p+(-1 if aim_x>0 else 1), rock_y-7,
-                self._aim, 1, 0) # Rocket tail
+            stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
+            stage.draw(0, rock_x-p+(-3 if aim_x>0 else 1), rock_y-7,
+                self._aim, 3, 0) # Rocket tail
 
 
 class BonesTheMonster:
