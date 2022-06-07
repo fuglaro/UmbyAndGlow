@@ -122,28 +122,16 @@ class _Player:
         m = ptr8(self.mstates)
         m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
 
-
-
-
-
-
-
-
-
-    ### TODO
-
-
-
     ### Getter and setter for the direction the rocket is facing ###
     @property
     @micropython.viper
-    def dir(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 1 else -1
-    @dir.setter
+    def rocket_dir(self) -> int:
+        return 1 if ptr8(self.mstates)[0] & 2 else -1
+    @rocket_dir.setter
     @micropython.viper
-    def dir(self, d: int):
+    def rocket_dir(self, d: int):
         m = ptr8(self.mstates)
-        m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
+        m[0] = ((m[0] | 2) ^ 2) | (0 if d == -1 else 2)
 
     ### Getter and setter for whether the player is trying to move ###
     @property
@@ -221,8 +209,15 @@ class _Player:
             # Update the state of the A button pressed detector
             self._bAOnce = (0 if bA() else
                 1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
-            # Handle play tick
-            self._tick_play(t)
+            # Normal play modes
+            if self.mode == 0: # Crawl mode (Umby)
+                self._tick_play_ground(t)
+            else: # Roof climbing modes (Glow)
+                self._tick_play_roof(t)
+            # Check for common death conditions:
+            # DEATH: Check for falling into the abyss
+            if self._y > 80:
+                self.die(240, self.name + " fell into the abyss!")
         # Respawn mode
         elif 201 <= self.mode <= 202:
             self._tick_respawn()
@@ -235,6 +230,146 @@ class _Player:
         # Handle rocket engine tick
         if self.mode < 199:
             self._tick_rocket(t)
+
+    @micropython.native
+    def _tick_play_ground(self, t):
+        ### Handle one game tick for ground play controls ###
+        x, y = self.x, self.y
+        tape = self._tp
+        cd = tape.check_tape(x, y+1)
+        cu = tape.check_tape(x, y-4)
+        cl = tape.check_tape(x-1, y)
+        clu = tape.check_tape(x-1, y-3)
+        cr = tape.check_tape(x+1, y)
+        cru = tape.check_tape(x+1, y-3)
+        grounded = cd or cl or cr
+        lwall = cl or clu
+        rwall = cr or cru
+        # Apply gravity and grund check
+        self._y += self._y_vel if not grounded else 0
+        # Stop gravity when hit ground but keep some fall speed ready
+        self._y_vel = 0.5 if grounded else self._y_vel + 2.5 / _FPS
+        # CONTROLS: Apply movement
+        if t%3: # Movement
+            self._x += (-1 if not (bL() or lwall) else
+                1 if not (bR() or rwall) else 0)
+        if t%3==0: # Climbing
+            self._y += (-1 if (not bL() and lwall) or
+                (not bR() and rwall) else 0)
+        # CONTROLS: Apply jump - allow continual jump until falling begins
+        if not bA() and (self._y_vel < 0 or grounded):
+            if grounded: # detatch from ground grip
+                self._y -= 1
+            self._y_vel = -0.8
+        # DEATH: Check for head smacking
+        if cu and self._y_vel < -0.4:
+            self.die(240, self.name + " face-planted the roof!")
+
+    @micropython.native
+    def _launch_hook(self, angle):
+        ### Activate grappling hook in given aim ###
+        tape = self._tp
+        self._hook_ang = angle
+        # Find hook landing position
+        xs, ys = -sin(angle)/2, -cos(angle)/2
+        xh, yh = self.x, self.y
+        while (yh > 0 and (self.x-xh)*self.dir < 40
+        and not tape.check_tape(int(xh), int(yh))):
+            xh += xs
+            yh += ys
+        # Apply grapple hook parameters
+        self.hook_x, self.hook_y = int(xh), int(yh)
+        x1 = self.x - self.hook_x
+        y1 = self.y - self.hook_y
+        self._hook_len = sqrt(x1*x1+y1*y1)
+        # Now get the velocity in the grapple angle
+        xv, yv = self._x_vel, self._y_vel
+        self._hook_vel = -sqrt(xv*xv+yv*yv)*(1-xv*y1+yv*x1)*4/(self._hook_len+1)
+        # Start normal grappling hook mode
+        self.mode = 11
+
+    @micropython.native
+    def _tick_play_roof(self, t):
+        ### Handle one game tick for roof climbing play controls ###
+        x, y = self.x, self.y
+        tape = self._tp
+        cd = tape.check_tape(x, y-1)
+        crd = tape.check_tape(x+1, y-1)
+        cld = tape.check_tape(x-1, y-1)
+        cl = tape.check_tape(x-1, y)
+        cr = tape.check_tape(x+1, y)
+        cu = tape.check_tape(x, y+3)
+        clu = tape.check_tape(x-1, y+3)
+        cru = tape.check_tape(x+1, y+3)
+        falling = not (cd or cld or crd or cl or cr)
+        head_hit = cu or clu or cru
+        # CONTROLS: Activation of grappling hook
+        if self.mode == 10:
+            # Shoot hook straight up
+            self._x_vel = self._y_vel = 0.0
+            self._launch_hook(0)
+        # CONTROLS: Grappling hook swing
+        if self.mode == 11:
+            ang = self._hook_ang
+            # Apply gravity
+            g = ang*ang/2.0
+            self._hook_vel += -g if ang > 0 else g if ang < 0 else 0.0
+            # Air friction
+            vel = self._hook_vel
+            self._hook_vel -= vel*vel*vel/64000
+            # CONTROLS: swing
+            self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
+            # CONTROLS: climb/extend rope
+            self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
+            # Check land interaction conditions
+            if not falling and bA(): # Stick to ceiling if touched
+                self.mode = 12
+            elif head_hit or (not falling and vel*ang > 0):
+                # Rebound off ceiling
+                self._hook_vel = -self._hook_vel
+            if falling and self._bAO(): # Release grappling hook
+                self.mode = 12
+                # Convert angular momentum to free falling momentum
+                ang2 = ang + vel/128.0
+                x2 = self.hook_x + sin(ang2)*self._hook_len
+                y2 = self.hook_y + cos(ang2)*self._hook_len
+                self._x_vel = x2 - self._x
+                self._y_vel = y2 - self._y
+            # Update motion and position variables based on swing
+            self._hook_ang += self._hook_vel/128.0
+            self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
+            self._y = self.hook_y + cos(self._hook_ang)*self._hook_len
+        elif self.mode == 12: # Clinging movement (without grappling hook)
+            # CONTROLS: Activate hook
+            if falling and self._bAO() and self.y < 64:
+                # Activate grappling hook in aim direction
+                self._launch_hook(self._aim_ang*self.dir)
+            # CONTROLS: Fall (force when jumping)
+            elif falling or not bA():
+                if not falling:
+                    self._bAO() # Claim 'A' so we don't immediately grapple
+                    self._x_vel = -0.5 if not bL() else 0.5 if not bR() else 0.0
+                # Apply gravity to vertical speed
+                self._y_vel += 1.5 / _FPS
+                # Update positions with momentum
+                self._y += self._y_vel
+                self._x += self._x_vel
+            else:
+                # Stop falling when attached to roof
+                self._y_vel = 0
+            # CONTROLS: Apply movement
+            if t%2 and y < 64:
+                clld = tape.check_tape(x-2, y-1)
+                crrd = tape.check_tape(x+2, y-1)
+                cll = tape.check_tape(x-2, y)
+                crr = tape.check_tape(x+2, y)
+                climb = not cd and ((not bL() and crd) or (not bR() and cld))
+                descend = not cu and (((cl or clu)
+                    and not bL()) or ((cr or cru) and not bR()))
+                lsafe = (cld or cd or clld or cll) and not (cl or clu or bL())
+                rsafe = (crd or cd or crrd or crr) and not (cr or cru or bR())
+                self._x += -1 if lsafe else 1 if rsafe else 0
+                self._y += -1 if climb else 1 if descend else 0
 
     @micropython.native
     def _tick_respawn(self):
@@ -298,46 +433,6 @@ class Umby(_Player):
         _Player.__init__(self, tape, x, y)
 
     @micropython.native
-    def _tick_play(self, t):
-        ### Handle one game tick for normal play controls ###
-        x = self.x
-        y = self.y
-        tape = self._tp
-        _chd = tape.check_tape(x, y+1)
-        _chu = tape.check_tape(x, y-4)
-        _chl = tape.check_tape(x-1, y)
-        _chlu = tape.check_tape(x-1, y-3)
-        _chr = tape.check_tape(x+1, y)
-        _chru = tape.check_tape(x+1, y-3)
-        # Apply gravity and grund check
-        if not (_chd or _chl or _chr):
-            # Apply gravity to vertical speed
-            self._y_vel += 2.5 / _FPS
-            # Update vertical position with vertical speed
-            self._y += self._y_vel
-        else:
-            # Stop falling when hit ground but keep some fall speed ready
-            self._y_vel = 0.5
-        # CONTROLS: Apply movement
-        if t%3: # Movement
-            self._x += (-1 if not (bL() or _chl or _chlu) else
-                1 if not (bR() or _chr or _chru) else 0)
-        if t%3==0: # Climbing
-            self._y += (-1 if (not bL() and (_chl or _chlu)) or
-                (not bR() and (_chr or _chru)) else 0)
-        # CONTROLS: Apply jump - allow continual jump until falling begins
-        if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
-            if _chd or _chl or _chr: # detatch from ground grip
-                self._y -= 1
-            self._y_vel = -0.8
-        # DEATH: Check for head smacking
-        if _chu and self._y_vel < -0.4:
-            self.die(240, self.name + " face-planted the roof!")
-        # DEATH: Check for falling into the abyss
-        if self._y > 80:
-            self.die(240, self.name + " fell into the abyss!")
-
-    @micropython.native
     def _tick_rocket(self, t):
         ### Handle one game tick for Umby's rocket.
         # Rockets start with aiming a target, then the launch
@@ -370,6 +465,7 @@ class Umby(_Player):
             self._aim_pow = 1.0
             self.aim_x = int(sin(angle)*10.0)
             self.aim_y = int(cos(angle)*10.0)
+            self.rocket_dir = 1 if self.aim_x > 0 else -1
         # Apply rocket dynamics if it is active
         if self.rocket_active == 1:
             # Create trail platform when activated
@@ -410,8 +506,6 @@ class Umby(_Player):
         y_pos = int(self.y)
         aim_x = int(self.aim_x)
         aim_y = int(self.aim_y)
-        rock_x = int(self.rocket_x)
-        rock_y = int(self.rocket_y)
         m = int(self.moving)
         d = int(self.dir)
         # Get animation frame
@@ -432,8 +526,11 @@ class Umby(_Player):
         tape.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
         # Draw Umby's rocket
         if int(self.rocket_active) == 1:
+            rock_x = int(self.rocket_x)
+            rock_y = int(self.rocket_y)
+            rdir = int(self.rocket_dir)
             tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if aim_x>0 else 1), rock_y-7,
+            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
 
 
@@ -473,137 +570,6 @@ class Glow(_Player):
         self.mode = 10
         self._aim_ang = -0.5
         _Player.__init__(self, tape, x, y)
-        # Rocket variables
-        self.rocket_dir = 1
-
-    @micropython.native
-    def _tick_play(self, t):
-        ### Handle one game tick for normal play controls ###
-        x = self.x
-        y = self.y
-        tape = self._tp
-        _chd = tape.check_tape(x, y-1)
-        _chrd = tape.check_tape(x+1, y-1)
-        _chlld = tape.check_tape(x-2, y-1)
-        _chrrd = tape.check_tape(x+2, y-1)
-        _chld = tape.check_tape(x-1, y-1)
-        _chl = tape.check_tape(x-1, y)
-        _chr = tape.check_tape(x+1, y)
-        _chll = tape.check_tape(x-2, y)
-        _chrr = tape.check_tape(x+2, y)
-        _chu = tape.check_tape(x, y+3)
-        _chlu = tape.check_tape(x-1, y+3)
-        _chru = tape.check_tape(x+1, y+3)
-        free_falling = not (_chd or _chld or _chrd or _chl or _chr)
-        head_hit = _chu or _chlu or _chru
-        # CONTROLS: Activation of grappling hook
-        if self.mode == 10:
-            # Shoot hook straight up
-            i = y-1
-            while i > 0 and not tape.check_tape(x, i):
-                i -= 1
-            self.hook_x = x
-            self.hook_y = i
-            self._hook_ang = 0.0
-            self._hook_vel = 0.0
-            self._hook_len = y - i
-            # Start normal grappling hook mode
-            self.mode = 11
-        # CONTROLS: Grappling hook swing
-        if self.mode == 11:
-            ang = self._hook_ang
-            # Apply gravity
-            g = ang*ang/2.0
-            self._hook_vel += -g if ang > 0 else g if ang < 0 else 0.0
-            # Air friction
-            vel = self._hook_vel
-            self._hook_vel -= vel*vel*vel/64000
-            # CONTROLS: swing
-            self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
-            # CONTROLS: climb/extend rope
-            self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
-            # Check land interaction conditions
-            if not free_falling and bA(): # Stick to ceiling if touched
-                self.mode = 12
-            elif head_hit or (not free_falling and vel*ang > 0):
-                # Rebound off ceiling
-                self._hook_vel = -self._hook_vel
-            if free_falling and self._bAO(): # Release grappling hook
-                self.mode = 12
-                # Convert angular momentum to free falling momentum
-                ang2 = ang + vel/128.0
-                x2 = self.hook_x + sin(ang2)*self._hook_len
-                y2 = self.hook_y + cos(ang2)*self._hook_len
-                self._x_vel = x2 - self._x
-                self._y_vel = y2 - self._y
-            # Update motion and position variables based on swing
-            self._hook_ang += self._hook_vel/128.0
-            self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
-            self._y = self.hook_y + cos(self._hook_ang)*self._hook_len
-        elif self.mode == 12: # Clinging movement (without grappling hook)
-            # CONTROLS: Activate hook
-            if free_falling and self._bAO() and self.y < 64:
-                # Activate grappling hook in aim direction
-                self._hook_ang = self._aim_ang * self.dir
-                # Find hook landing position
-                x2 = -sin(self._hook_ang)/2
-                y2 = -cos(self._hook_ang)/2
-                xh = x
-                yh = y
-                while (yh > 0 and (x-xh)*self.dir < 40
-                and not tape.check_tape(int(xh), int(yh))):
-                    xh += x2
-                    yh += y2
-                # Apply grapple hook parameters
-                self.hook_x = int(xh)
-                self.hook_y = int(yh)
-                x1 = x - self.hook_x
-                y1 = y - self.hook_y
-                self._hook_len = sqrt(x1*x1+y1*y1)
-                # Now get the velocity in the grapple angle
-                v1 = (1-self._x_vel*y1+self._y_vel*x1)/(self._hook_len+1)
-                xv = self._x_vel
-                yv = self._y_vel
-                self._hook_vel = -sqrt(xv*xv+yv*yv)*v1*4
-                # Start normal grappling hook mode
-                self.mode = 11
-            # CONTROLS: Fall (force when jumping)
-            elif free_falling or not bA():
-                if not free_falling:
-                    self._bAO() # Claim 'A' so we don't immediately grapple
-                    self._x_vel = -0.5 if not bL() else 0.5 if not bR() else 0.0
-                # Apply gravity to vertical speed
-                self._y_vel += 1.5 / _FPS
-                # Update positions with momentum
-                self._y += self._y_vel
-                self._x += self._x_vel
-            else:
-                # Stop falling when attached to roof
-                self._y_vel = 0
-            # CONTROLS: Apply movement
-            if not bL() and t%2:
-                # Check if moving left possible and safe
-                if not (_chl or _chlu) and (_chld or _chd or _chlld or _chll):
-                    self._x -= 1
-                # Check if climbing is needed and safe
-                elif not _chd and _chrd:
-                    self._y -= 1
-                # Check is we should decend
-                elif (_chl or _chlu) and not _chu:
-                    self._y += 1
-            elif not bR() and t%2:
-                # Check if moving right possible and safe
-                if not (_chr or _chru) and (_chrd or _chd or _chrrd or _chrr):
-                    self._x += 1
-                # Check if climbing is needed and safe
-                elif not _chd and _chld:
-                    self._y -= 1
-                # Check is we should decend
-                elif (_chr or _chru) and not _chu:
-                    self._y += 1
-        # DEATH: Check for falling into the abyss
-        if self._y > 80:
-            self.die(240, self.name + " fell into the abyss!")
 
     @micropython.native
     def _tick_rocket(self, t):
@@ -722,9 +688,9 @@ class Glow(_Player):
         if self.rocket_active:
             rock_x = int(self.rocket_x)
             rock_y = int(self.rocket_y)
-            dire = int(self.rocket_dir)
+            rdir = int(self.rocket_dir)
             tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
+            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
 
 
@@ -762,8 +728,7 @@ class BonesTheMonster:
         ### Update Bones for one game tick ###
         # Find the potential new coordinates
         tape = self._tp
-        x = self.x
-        y = self.y
+        x, y = self.x, self.y
         if self.mode == 0: # Flying
             nx = self._x + self._dx
             ny = self._y + self._dy
