@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Instead of replacing sections of the tape by scrolling, allow for replacing columns of the tape.
 # TODO: extend tape cache to be 3 screens wide (288pixels) for all layers
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
@@ -746,7 +745,7 @@ class Umby:
                     tape.redraw_tape(2, i, pattern_room, pattern_fill)
                 # Return to normal play mode
                 self.mode = 0#Play
-                tape.write(1, "DONT GIVE UP!", tape.midx[0]+5, 26)
+                tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
 
         # Testing mode
         else:
