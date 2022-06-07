@@ -321,7 +321,7 @@ class Player:
         if t%3: # Movement
             self._x += (-1 if not (bL() or lwall) else
                 1 if not (bR() or rwall) else 0)
-        if t%3==0: # Climbing
+        if t%3==0 and not ch(x, y-3): # Climbing
             self._y += (-1 if (not bL() and lwall) or
                 (not bR() and rwall) else 0)
         # CONTROLS: Apply jump - allow continual jump until falling begins
@@ -644,6 +644,25 @@ class Player:
             tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
             tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
 
+# Monster types
+Bones = 1
+
+class _MonsterPainter:
+    # BITMAP: width: 7, height: 8, frames: 3
+    _bones = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,
+        242,139,222,139,242,28])
+    # BITMAP: width: 9, height: 8
+    _bones_m = bytearray([28,62,247,243,239,243,247,62,28])
+
+    @micropython.viper
+    def draw(self, tape, tid: int, mode: int, x: int, y: int, t: int):
+        ### Draw Monster to the draw buffers ###
+        # Select animation frame
+        f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
+        # Draw Bones' layers and masks
+        tape.draw(1, x-3, y-4, self._bones, 7, f) # Bones
+        tape.mask(1, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
+        tape.mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
 
 class BonesTheMonster:
     ### Bones is a monster that flyes about then charges the player.
@@ -657,11 +676,7 @@ class BonesTheMonster:
     # When the player is within a short range, Bones will charge the player
     # and will not stop.
     ###
-    # BITMAP: width: 7, height: 8, frames: 3
-    _art = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,242,
-        139,222,139,242,28])
-    # BITMAP: width: 9, height: 8
-    _mask = bytearray([28,62,247,243,239,243,247,62,28])
+    _painter = _MonsterPainter()
 
     def __init__(self, tape, x, y):
         self._tp = tape
@@ -712,15 +727,7 @@ class BonesTheMonster:
 
     @micropython.viper
     def draw(self, t: int):
-        ### Draw Bones to the draw buffer ###
-        tape = self._tp
-        p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        mode = int(self.mode)
-        # Select animation frame
-        f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
-        # Draw Bones' layers and masks
-        tape.draw(1, x_pos-3-p, y_pos-4, self._art, 7, f) # Bones
-        tape.mask(1, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
-        tape.mask(0, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
+        tid = Bones
+        self._painter.draw(self._tp, tid, int(self.mode),
+            self.x-self._tp.x[0], self.y, t)
+
