@@ -1102,6 +1102,10 @@ class Glow(Player): # TODO
     only occur if Glow is covered in mud from 1 pixel above head to toe,
     otherwise Glow will slowly sink. This means glow can fall through
     thin platforms like Umby's platforms.
+    Umby also has some specific modes:
+        * 0: auto attach grapple hook to ceiling.
+        * 1: grapple hook activated.
+        * 2: normal movement
     """
     # BITMAP: width: 3, height: 8, frames: 6
     _art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
@@ -1163,13 +1167,20 @@ class Glow(Player): # TODO
         _chlu = tape.check(x-1, y+3)
         _chru = tape.check(x+1, y+3)
         free_falling = not (_chd or _chld or _chrd or _chl or _chr)
-
         # CONTROLS: Activation of grappling hook
-        
-        # CONTROLS: Grappling hook swing
-        if self.mode == 4:
-            pass
+        if self.mode == 0:
 
+
+
+            self.mode == 1
+        # CONTROLS: Grappling hook swing
+        if self.mode == 1:
+            
+
+
+
+            if not free_falling:
+                self.mode == 2
         else: # Normal movement (without grappling hook)
             # CONTROLS: Fall (force when jumping)
             if free_falling or not bA():
