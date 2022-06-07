@@ -546,15 +546,18 @@ class Umby:
     Hitting their head on a platform or a roof, while jumping, will
     also kill them.
     """
-    # Bottom middle position
-    x_pos = 82
-    y_pos = 38
     # BITMAP: width: 3, height: 8, frames: 3
-    art = bytearray([96,224,0,0,224,0,0,224,96])
+    _art = bytearray([96,224,0,0,224,0,0,224,96])
     # BITMAP: width: 3, height: 8
-    fore_mask = bytearray([224,224,224])
+    _fore_mask = bytearray([224,224,224])
     # BITMAP: width: 9, height: 8
-    back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+
+    def __init__(self, x, y):
+        self._x_pos = x
+        self._y_pos = y
+        self.x_pos = int(x)
+        self.y_pos = int(y)
 
     @micropython.native
     def tick(self):
@@ -583,9 +586,9 @@ class Umby:
         f = 0 if not bL() else 2 if not bR() else t*2 // _FPS % 4
         f = 1 if f == 3 else f
         # Draw the layers and masks
-        stage.draw(1, x_pos-1-x, y_pos-8, self.art, 3, f)
-        stage.mask(0, x_pos-4-x, y_pos-8, self.back_mask, 9)
-        stage.mask(1, x_pos-1-x, y_pos-8, self.fore_mask, 3)
+        stage.draw(1, x_pos-1-x, y_pos-8, self._art, 3, f)
+        stage.mask(0, x_pos-4-x, y_pos-8, self._back_mask, 9)
+        stage.mask(1, x_pos-1-x, y_pos-8, self._fore_mask, 3)
 
 
 ## Game Engine ##
@@ -600,6 +603,7 @@ def set_level(tape):
     tape.feed[:] = [pattern_wall,
         pattern_fence, pattern_fill,
         pattern_room, pattern_fill]
+    tape.scroll_tape(-72, -72, -72)
     for i in range(72):
         tape.scroll_tape(1, 1, 1)
     # Ready tape for main area
@@ -614,7 +618,7 @@ def run_game():
     tape = Tape()
     stage = Stage()
     set_level(tape)
-    umby = Umby()
+    umby = Umby(10, 38)
 
     # Main gameplay loop
     v = 0
