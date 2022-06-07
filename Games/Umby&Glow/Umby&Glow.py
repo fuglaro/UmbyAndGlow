@@ -47,10 +47,8 @@ Cave -> forest -> air -> rocket -> space -> spaceship -> spaceship computer main
 '''
 
 ##
-# Script of the two worms.
-# Umby, Glow
+# Script - the story through the dialog of the characters.
 script = [
-(,)    
 ]
 
 import time
@@ -196,6 +194,15 @@ def pattern_wall(x: int, y: int) -> int:
     return int(x%16 == 0) & int(y%3 == 0)
 
 
+
+##
+# PATTERN [dev]: TODO
+@micropython.viper
+def pattern_dev(x: int, y: int) -> int:
+    return int(y > (((((x*214013+2531011)*214013+2531011)*214013+2531011)*214013+2531011)>>16 & 0xFF))
+
+
+
 ##
 # Prepare everything for a level of gameplay including
 # the starting tape, and the feed patterns for each layer.
@@ -205,12 +212,12 @@ def start_level():
         scroll_tape(pattern_fence, 1, 1)
         scroll_tape(pattern_room, 3, 1)
     # Set the feed patterns for each layer.
-    feed[:] = [pattern_none, pattern_none, None, pattern_test, None]
+    feed[:] = [pattern_none, pattern_none, None, pattern_dev, None]
 start_level()
 
 
 # FPS
-thumby.display.setFPS(2400) # TESTING: for speed profiling
+thumby.display.setFPS(80) # TESTING: for speed profiling
 #thumby.display.setFPS(120) # Intended game speed
 
 # Main gameplay loop
@@ -229,7 +236,7 @@ while(1):
 
 
     # TESTING: infinitely scroll the tape
-    offset_vertically((c // 10)%24)
+    offset_vertically((c // 10) % 24)
     scroll_tape(feed[3], 3, 1)
     if (c % 2 == 0):
         scroll_tape(feed[1], 1, 1)
