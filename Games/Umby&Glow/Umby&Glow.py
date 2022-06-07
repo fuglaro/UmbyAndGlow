@@ -758,13 +758,14 @@ class Umby:
                 self._x_pos -= 1
                 self._y_pos += 0 if int(self._y_pos) == 32 else \
                     1 if self._y_pos < 32 else -1
-                    # Hide any death message
                 if self._x_pos == self._respawn_x + 120:
+                    # Hide any death message
                     tape.clear_overlay()
+                if self._x_pos < self._respawn_x + 30:
+                    # Draw the starting platform
+                    tape.redraw_tape(2, self._x_pos-5,
+                        pattern_room, pattern_fill)
             else:
-                # Draw the starting platform
-                for i in range(tape.x[0], tape.x[0] + 30):
-                    tape.redraw_tape(2, i, pattern_room, pattern_fill)
                 # Return to normal play mode
                 self.mode = 0#Play
                 tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
@@ -783,7 +784,6 @@ class Umby:
 
 
 
-        # TODO: fall off tape: fix death message display
         # TODO: allow digging straight down
         # TODO: climb
         # TODO: jump
