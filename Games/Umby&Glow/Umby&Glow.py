@@ -859,12 +859,12 @@ class Player:
             self._x -= 1
             self._y += 0 if int(self._y) == 20 else \
                 1 if self._y < 20 else -1
-            if self.x == self._respawn_x + 120:
+            if int(self._x) == self._respawn_x + 120:
                 # Hide any death message
                 tape.clear_overlay()
             if self._x < self._respawn_x + 30:
                 # Draw the starting platform
-                tape.redraw_tape(2, self.x-5, pattern_room, pattern_fill)
+                tape.redraw_tape(2, int(self._x)-5, pattern_room, pattern_fill)
         else:
             # Return to normal play mode
             self.mode = 0#Play
@@ -969,15 +969,15 @@ class Umby(Player):
             if _chd or _chl or _chr: # detatch from ground grip
                 self._y -= 1
             self._y_vel = -0.8
+        # Update the viper friendly variables.
+        self.x = int(self._x)
+        self.y = int(self._y)
         # DEATH: Check for head smacking
         if _chu and self._y_vel < -0.4:
             self.die(240, "Umby face-planted the roof!")
         # DEATH: Check for falling into the abyss
         if self._y > 80:
             self.die(240, "Umby fell into the abyss!")
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
 
     @micropython.native
     def _tick_rocket(self, t):
@@ -1206,14 +1206,11 @@ class Glow(Player): # TODO
             self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
             # CONTROLS: climb/extend rope
             self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
-
-
             # Update position variables based on swing
             self._x = self._hook_x + math.sin(self._hook_ang)*self._hook_len
             self._y = self._hook_y + math.cos(self._hook_ang)*self._hook_len
-
             if not free_falling:
-                if bA(): # Attach to ceiling
+                if bA(): # Stick to ceiling if touched
                     self.mode = 2
                 elif vel*ang > 0: # Rebound off ceiling
                     self._hook_vel = -self._hook_vel
@@ -1231,19 +1228,24 @@ class Glow(Player): # TODO
         elif self.mode == 2: # Normal movement (without grappling hook)
             # CONTROLS: Activate hook
             if free_falling and self._bAO():
-    
-    
-    
-                # TODO activate grappling hook in aim direction
-                # Shoot hook straight up
-                i = y-1
-                while i > 0 and not tape.check(x, i):
-                    i -= 1
-                self._hook_x = x
-                self._hook_y = i
-                self._hook_ang = 0.0
-                self._hook_vel = 0.0
-                self._hook_len = y - i
+                # Activate grappling hook in aim direction
+                self._hook_ang = self._aim_angle * self.dir
+                # Find hook landing position
+                x2 = -math.sin(self._hook_ang)/2
+                y2 = -math.cos(self._hook_ang)/2
+                xh = x
+                yh = y
+                while (yh > 0 and (x-xh)*self.dir < 40
+                and not tape.check(int(xh), int(yh))):
+                    xh += x2
+                    yh += y2
+                # Apply grapple hook parameters
+                self._hook_x = int(xh)
+                self._hook_y = int(yh)
+                self._hook_vel = 0.0 # TODO
+                x1 = x - self._hook_x
+                y1 = y - self._hook_y
+                self._hook_len = math.sqrt(x1*x1+y1*y1)
 
             # TODO: Trig the release and attach velocities.
 
@@ -1299,7 +1301,9 @@ class Glow(Player): # TODO
             self._bAOnce = 0
 
 
-
+        # Update the viper friendly variables.
+        self.x = int(self._x)
+        self.y = int(self._y)
 
         # DEATH: Check for head smacking
         if _chu and self._y_vel < -0.4:
@@ -1307,9 +1311,7 @@ class Glow(Player): # TODO
         # DEATH: Check for falling into the abyss
         if self._y > 80:
             self.die(240, "Umby fell into the abyss!")
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
+
 
     @micropython.native
     def _tick_rocket(self, t):
