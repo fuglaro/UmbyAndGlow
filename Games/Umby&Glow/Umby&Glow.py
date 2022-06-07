@@ -94,108 +94,146 @@ def shash(x: int, step: int, size: int) -> int:
 
 ## Tape Management ##
 
-##
-# Scrolling tape with each render layer being a section one after the other.
-# Each section is a buffer that cycles (via the tapeScroll positions) as the
-# world scrolls horizontally. Each section can scroll independently so
-# background layers can move slower than foreground layers.
-# Layers each have 1 bit per pixel from top left, descending then wrapping to
-# the right.
-# The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
-# Each layer is a layer in the composited render stack.
-# Layers from left to right:
-# - 0: far background
-# - 144: close background
-# - 288: close background fill (opaque off pixels)
-# - 432: landscape including ground, platforms, and roof
-# - 576: landscape fill (opaque off pixels)
-tape = array('I', (0 for i in range(72*2*5)))
-# The scroll distance of each layer in the tape,
-# and then the frame number counter and vertical offset appended on the end.
-# The vertical offset (yPos), cannot be different per layer (horizontal
-# parallax only).
-# [backPos, midPos, frameCounter, forePos, yPos]
-tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
-# The patterns to feed into each tape section
-feed = [None, None, None, None, None]
-# Simple cache used across the writing of a single column of the tape.
-# Since the tape patterns must be stateless across columns for rewinding, this
-# should not store data across columns.
-buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-
-@micropython.viper
-def comp():
-    """ Composite all the render layers together and render directly to the display
-    buffer, taking into account the scroll position of each render layer, and
-    dimming the background layers.
+class Tape:
     """
-    tape_ = ptr32(tape)
-    scroll = ptr32(tapeScroll)
-    frame = ptr8(thumby.display.display.buffer)
-    # Obtain and increase the frame counter
-    scroll[2] += 1 # Counter
-    yPos = scroll[4]
-    # Loop through each column of pixels
-    for x in range(72):
-        # Create a modifier for dimming background layer pixels.
-        # The magic number here is repeating on and off bits, which is
-        # alternated horizontally and in time. Someone say "time crystal".
-        dim = int(1431655765) << (scroll[2]+x)%2
-        # Compose the first 32 bits vertically.
-        p0 = (x+scroll[0])%72*2
-        p1 = (x+scroll[1])%72*2
-        p3 = (x+scroll[3])%72*2
-        a = uint(((tape_[p0] | tape_[p1+144]) & tape_[p1+288] & dim
-            | tape_[p3+432]) & tape_[p3+576])
-        # Compose the second 32 bits vertically.
-        b = uint(((tape_[p0+1] | tape_[p1+145]) & tape_[p1+289] & dim
-            | tape_[p3+433]) & tape_[p3+577])
-        # Apply the relevant pixels to next vertical column of the display
-        # buffer, while also accounting for the vertical offset.
-        frame[x] = a >> yPos
-        frame[72+x] = (a >> 8 >> yPos) | (b << (32 - yPos) >> 8)
-        frame[144+x] = (a >> 16 >> yPos) | (b << (32 - yPos) >> 16)
-        frame[216+x] = (a >> 24 >> yPos) | (b << (32 - yPos) >> 24)
-        frame[288+x] = (b >> yPos)
-
-@micropython.viper
-def scroll_tape(pattern, layer: int, direction: int, fill_pattern):
-    """ Scroll the tape one pixel forwards, or backwards for a specified layer.
-    Updates the tape scroll position of that layer.
-    Fills in the new column with pattern data from a specified
-    pattern function. Since this is a rotating buffer, this writes
-    over the column that has been scrolled offscreen.
-    @param pattern: a function, returning fill data, given x and y paramaters.
-    @param layer: the layer to scroll and write to.
-    @param direction: -1 -> rewind backwards, 1 -> extend forwrds.
-    @param fill_pattern: if defined will also draw the fill layer.
+    Scrolling tape with a fore, mid, and background layer.
+    This represents the level of the ground but doesn't include actors.
+    The foreground is the parts of the level that are interactive with
+    actors such as the ground, roof, and platforms.
+    Mid and background layers are purely decorative.
+    Each layer can be scrolled intependently and then composited onto
+    display buffer.
+    Each layer is created by providing deterministic functions that
+    draw the pixels from x and y coordinates. Its really just an elaborate
+    graph plotter - a scientific calculator turned console!
+    The tape size is 64 pixels high, with an infinite length, but only
+    72 pixels wide buffered.
+    This is intended for the 72x40 pixel view. The view can be moved
+    up and down but when it moves forewards and backwards, the buffer
+    is cycled backwards and forewards. This means that the tape
+    can be modified (such as for explosion damage) for the 64 pixels high,
+    and 72 pixels wide, but when the tape is rolled forewards, and backwards,
+    the columns that go offscreen are reset.
     """
-    tape_ = ptr32(tape)
-    scroll = ptr32(tapeScroll)
-    # Advance the tapeScroll position for the layer
-    tapePos = scroll[layer] + direction
-    scroll[layer] = tapePos
-    # Find the tape position for the column that needs to be filled
-    x = tapePos + 72 - (1 if direction == 1 else 0)
-    offX = layer*144 + x%72*2
-    # Update 2 words of vertical pattern for the tape
-    # (the top 32 bits, then the bottom 32 bits)
-    tape_[offX] = int(pattern(x, 0))
-    tape_[offX+1] = int(pattern(x, 32))
-    if (fill_pattern):
-        tape_[offX+144] = int(fill_pattern(x, 0))
-        tape_[offX+145] = int(fill_pattern(x, 32))
-
-@micropython.viper
-def offset_vertically(offset: int):
-    """ Shift the view on the tape to a new vertical position, by
-    specifying the offset from the top position. This cannot
-    exceed the total vertical size of the tape (minus the tape height).
-    """
-    ptr32(tapeScroll)[4] = (offset if offset>=0 else 0) if offset<=24 else 24
+    # Scrolling tape with each render layer being a section one after the other.
+    # Each section is a buffer that cycles (via the tapeScroll positions) as the
+    # world scrolls horizontally. Each section can scroll independently so
+    # background layers can move slower than foreground layers.
+    # Layers each have 1 bit per pixel from top left, descending then wrapping
+    # to the right.
+    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
+    # Each layer is a layer in the composited render stack.
+    # Layers from left to right:
+    # - 0: far background
+    # - 144: close background
+    # - 288: close background fill (opaque off pixels)
+    # - 432: landscape including ground, platforms, and roof
+    # - 576: landscape fill (opaque off pixels)
+    tape = array('I', (0 for i in range(72*2*5)))
+    # The scroll distance of each layer in the tape,
+    # and then the frame number counter and vertical offset appended on the end.
+    # The vertical offset (yPos), cannot be different per layer (horizontal
+    # parallax only).
+    # [backPos, midPos, frameCounter, forePos, yPos]
+    tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    # The patterns to feed into each tape section
+    feed = [None, None, None, None, None]
+    
+    @micropython.viper
+    def comp(self):
+        """ Composite all the render layers together and render directly to
+        the display buffer, taking into account the scroll position of each
+        render layer, and dimming the background layers.
+        """
+        tape = ptr32(self.tape)
+        scroll = ptr32(self.tapeScroll)
+        frame = ptr8(thumby.display.display.buffer)
+        # Obtain and increase the frame counter
+        scroll[2] += 1 # Counter
+        yPos = scroll[4]
+        # Loop through each column of pixels
+        for x in range(72):
+            # Create a modifier for dimming background layer pixels.
+            # The magic number here is repeating on and off bits, which is
+            # alternated horizontally and in time. Someone say "time crystal".
+            dim = int(1431655765) << (scroll[2]+x)%2
+            # Compose the first 32 bits vertically.
+            p0 = (x+scroll[0])%72*2
+            p1 = (x+scroll[1])%72*2
+            p3 = (x+scroll[3])%72*2
+            a = uint(((tape[p0] | tape[p1+144]) & tape[p1+288] & dim
+                | tape[p3+432]) & tape[p3+576])
+            # Compose the second 32 bits vertically.
+            b = uint(((tape[p0+1] | tape[p1+145]) & tape[p1+289] & dim
+                | tape[p3+433]) & tape[p3+577])
+            # Apply the relevant pixels to next vertical column of the display
+            # buffer, while also accounting for the vertical offset.
+            frame[x] = a >> yPos
+            frame[72+x] = (a >> 8 >> yPos) | (b << (32 - yPos) >> 8)
+            frame[144+x] = (a >> 16 >> yPos) | (b << (32 - yPos) >> 16)
+            frame[216+x] = (a >> 24 >> yPos) | (b << (32 - yPos) >> 24)
+            frame[288+x] = (b >> yPos)
+    
+    @micropython.viper
+    def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
+        """ Scroll the tape one pixel forwards, or backwards for each layer.
+        Updates the tape scroll position of that layer.
+        Fills in the new column with pattern data from the relevant
+        pattern functions. Since this is a rotating buffer, this writes
+        over the column that has been scrolled offscreen.
+        Each layer can be moved in the following directions:
+            -1 -> rewind layer backwards,
+            0 -> leave layer unmoved,
+            1 -> roll layer forwards
+        @param back_move: Movement of the background layer
+        @param mid_move: Movement of the midground layer (with fill)
+        @param fore_move: Movement of the foreground layer (with fill)
+        """
+        tape = ptr32(self.tape)
+        scroll = ptr32(self.tapeScroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            move = fore_move if i == 2 else mid_move if i == 1 else back_move
+            if not move:
+                continue
+            # Advance the tapeScroll position for the layer
+            tapePos = scroll[layer] + move
+            scroll[layer] = tapePos
+            # Find the tape position for the column that needs to be filled
+            x = tapePos + 72 - (1 if move == 1 else 0)
+            offX = layer*144 + x%72*2
+            # Update 2 words of vertical pattern for the tape
+            # (the top 32 bits, then the bottom 32 bits)
+            pattern = self.feed[layer]
+            tape[offX] = int(pattern(x, 0))
+            tape[offX+1] = int(pattern(x, 32))
+            if layer != 0:
+                fill_pattern = self.feed[layer + 1]
+                tape[offX+144] = int(fill_pattern(x, 0))
+                tape[offX+145] = int(fill_pattern(x, 32))
+        
+    @micropython.viper
+    def offset_vertically(self, offset: int):
+        """ Shift the view on the tape to a new vertical position, by
+        specifying the offset from the top position. This cannot
+        exceed the total vertical size of the tape (minus the tape height).
+        """
+        ptr32(self.tapeScroll)[4] = (
+            offset if offset >= 0 else 0) if offset <= 24 else 24
 
 
 ## Patterns ##
+
+# Patterns are a collection of mathematical, and logical functions
+# that deterministically draw columns of the tape as it rolls in
+# either direction. This enables the procedural creation of levels,
+# but is really just a good way to get richness cheaply on this
+# beautiful little piece of hardware.
+
+# Simple cache used across the writing of a single column of the tape.
+# Since the tape patterns must be stateless across columns (for rewinding), this
+# should not store data across columns.
+buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
 
 @micropython.viper
 def pattern_template(x: int, oY: int) -> int:
@@ -374,29 +412,36 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 
 
+## Actors ##
 
+class Umby:
+    pass
 
 
 
 ## Game Engine ##
 
-def start_level():
+def set_level(tape):
     """ Prepare everything for a level of gameplay including
     the starting tape, and the feed patterns for each layer.
     """
-    # Fill the tape with the starting area
-    for i in range(72):
-        scroll_tape(pattern_wall, 0, 1, None)
-        scroll_tape(pattern_fence, 1, 1, pattern_fill)
-        scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_toplit_wall, pattern_stalagmites, pattern_stalagmites_fill,
+    # Fill the tape with the starting area
+    tape.feed[:] = [pattern_wall,
+        pattern_fence, pattern_fill,
+        pattern_room, pattern_fill]
+    for i in range(72):
+        tape.scroll_tape(1, 1, 1)
+    # Ready tape for main area
+    tape.feed[:] = [pattern_toplit_wall,
+        pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
     """ Initialise the game and run the game loop"""
-    start_level()
+    tape = Tape()
+    set_level(tape)
 
     # FPS (intended to be between 60 and 120 variable fps)
     thumby.display.setFPS(2400000) # TESTING: for speed profiling
@@ -411,19 +456,14 @@ def run_game():
             profiler = time.ticks_ms()
     
         # Update the display buffer new frame data
-        comp()
+        tape.comp()
         # Flush to the display, waiting on the next frame interval
         thumby.display.update()
     
     
         # TESTING: infinitely scroll the tape
-        offset_vertically((c // 10) % 24)
-        if (c % 1 == 0):
-            scroll_tape(feed[3], 3, 1, feed[4])
-            if (c % 2 == 0):
-                scroll_tape(feed[1], 1, 1, feed[2])
-                if (c % 4 == 0):
-                    scroll_tape(feed[0], 0, 1, None)
+        tape.offset_vertically((c // 10) % 24)
+        tape.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
         c += 1
 run_game()
 
