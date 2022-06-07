@@ -256,9 +256,10 @@ def pattern_cave(x: int, oY: int) -> int:
     """
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
-    buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
-    buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
-    buff[2] = int(x % (buff[0]//8) == 0)
+    if oY == 0:
+        buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
+        buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
+        buff[2] = int(x % (buff[0]//8) == 0)
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -342,7 +343,7 @@ def start_level():
         scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
-    feed[:] = [pattern_wall, pattern_dev2, pattern_fill,
+    feed[:] = [pattern_wall, pattern_fence, pattern_fill,
         pattern_cave, pattern_cave_fill]
 
 def run_game():
