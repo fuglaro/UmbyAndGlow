@@ -139,31 +139,32 @@ class Tape:
             p0 = (x+scroll[0])%72*2
             p1 = (x+scroll[1])%72*2
             p3 = (x+scroll[3])%72*2
+            x2 = x*2
             a = uint((
                     # Back/mid layer (with monster mask and fill)
-                    ((tape[p0] | tape[p1+144]) & actors[x+288] & actors[x+432]
+                    ((tape[p0] | tape[p1+144]) & actors[x2+288] & actors[x2+432]
                         & tape[p1+288] & tape[p3+576])
                     # Background (non-interactive) monsters
-                    | actors[x])
+                    | actors[x2])
                 # Dim all mid and background layers
                 & dim
                 # Foreground monsters (and players)
-                | actors[x+144]
+                | actors[x2+144]
                 # Foreground (with monster mask and fill)
-                | (tape[p3+432] & actors[x+432] & tape[p3+576]))
+                | (tape[p3+432] & actors[x2+432] & tape[p3+576]))
             # Now compose the second 32 bits vertically.
             b = uint((
                     # Back/mid layer (with monster mask and fill)
-                    ((tape[p0+1] | tape[p1+145]) & actors[x+289] & actors[x+433]
+                    ((tape[p0+1] | tape[p1+145]) & actors[x2+289] & actors[x2+433]
                         & tape[p1+289] & tape[p3+577])
                     # Background (non-interactive) monsters
-                    | actors[x+1])
+                    | actors[x2+1])
                 # Dim all mid and background layers
                 & dim
                 # Foreground monsters (and players)
-                | actors[x+145]
+                | actors[x2+145]
                 # Foreground (with monster mask and fill)
-                | (tape[p3+433] & actors[x+433] & tape[p3+577]))
+                | (tape[p3+433] & actors[x2+433] & tape[p3+577]))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> yPos
@@ -489,10 +490,10 @@ class Umby:
             draw[i] = 0
         for i in range(288, 576):
             draw[i] = mask
-        draw[0+8] = 0xFFFF
-        draw[288+8] = 0xFF
-        draw[144+7] = 0xFFFF
-        draw[432+4] = 0xFFFF
+        draw[0+8] = 0xFF
+        draw[288+8] = mask ^ 0xFFFF
+        draw[144+6] = 0xFF
+        draw[432+6] = mask ^ 0xFFFF
 
         # TODO
         """
