@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: vertical movement of tape (within 64 bit height)
 # TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
@@ -50,9 +49,10 @@ def abs(v: int) -> int:
 # - 720: landscape fill (opaque off pixels)
 tape = array('I', (0 for i in range(0, 72*2*5)))
 # The scroll distance of each layer in the tape,
-# and then the frame number counter appended on the end.
-# [L1, L2, L3, L4, L5, frameCounter]
-tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
+# and then the frame number counter and vertical offset appended on the end.
+# The vertical offset (yPos), cannot be different per layer (horizontal parallax only).
+# [L1, L2, L3, L4, L5, frameCounter, yPos]
+tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
 # The patterns to feed into each tape section
 feed = [None, None, None, None, None]
 
@@ -73,6 +73,7 @@ def comp():
     # Obtain and increase the frame counter
     scroll[5] += 1
     ctr = scroll[5]
+    yPos = scroll[6]
     # Loop through each column of pixels
     for x in range(0, 72):
         # Create a modifier for dimming background layer pixels.
@@ -80,19 +81,20 @@ def comp():
         # horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
         # Compose the first 32 bits vertically.
-        a = ((tape_[(x+tp0)%72*2] & dim)
+        a = uint((tape_[(x+tp0)%72*2] & dim)
             | (tape_[(x+tp1)%72*2+144] & dim)
             | tape_[(x+tp3)%72*2+432])
         # Compose the second 32 bits vertically.
-        b = ((tape_[(x+tp0)%72*2+1] & dim)
+        b = uint((tape_[(x+tp0)%72*2+1] & dim)
             | (tape_[(x+tp1)%72*2+144+1] & dim)
             | tape_[(x+tp3)%72*2+432+1])
-        # Apply the relevant pixels to next vertical column of the display buffer
-        frame[x] = a
-        frame[72+x] = a >> 8
-        frame[144+x] = a >> 16
-        frame[216+x] = a >> 24
-        frame[288+x] = b
+        # Apply the relevant pixels to next vertical column of the display buffer,
+        # while also accounting for the vertical offset.
+        frame[x] = a >> yPos
+        frame[72+x] = (a >> 8 >> yPos) | (b << (32 - yPos) >> 8)
+        frame[144+x] = (a >> 16 >> yPos) | (b << (32 - yPos) >> 16)
+        frame[216+x] = (a >> 24 >> yPos) | (b << (32 - yPos) >> 24)
+        frame[288+x] = (b >> yPos)
 
 ##
 # scroll_tape
@@ -127,6 +129,14 @@ def scroll_tape(pattern, layer: int, direction: int):
         # write the current 32 bits to tape
         tape_[layer*144 + x%72*2+w] = v
 
+##
+# offset_vertically
+# Shift the view on the tape to a new vertical position, by
+# specifying the offset from the top position. This cannot
+# exceed the total vertical size of the tape (minus the tape height).
+@micropython.viper
+def offset_vertically(offset: int):
+    ptr32(tapeScroll)[6] = (offset if offset >= 0 else 0) if offset <= 24 else 24
 
 ##
 # PATTERN [none]: empty
@@ -147,7 +157,7 @@ def pattern_room(x: int, y: int) -> int:
 # PATTERN [test]: long slope plus walls
 @micropython.viper
 def pattern_test(x: int, y: int) -> int:
-    return int(x%120 == y*3) | (int(x%12 == 0) & int(y%3 == 0))
+    return int(x%120 == y*3) | (int(x%12 == 0) & int(y%2 == 0))
 ##
 # PATTERN [wall]: dotted vertical lines repeating
 @micropython.viper
@@ -188,6 +198,7 @@ while(1):
 
 
     # TESTING: infinitely scroll the tape
+    offset_vertically((c // 10)%24)
     scroll_tape(feed[3], 3, 1)
     if (c % 2 == 0):
         scroll_tape(feed[1], 1, 1)
