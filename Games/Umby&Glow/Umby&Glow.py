@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(151000000) # FPS (intended to be near 120 fps)
+_FPS = const(60) # FPS (intended to be near 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -426,14 +426,38 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 ## Actors ##
 
+# Frames for drawing and checking collisions of all actors.
+# Non-interactive monsters between background layers
+back_mons = array('I', (0 for i in range(72*2)))
+# interactive monsters behind foreground
+mid_mons = array('I', (0 for i in range(72*2)))
+ # interactive in front of foreground
+fore_mons = array('I', (0 for i in range(72*2)))
+
 class Umby:
     # Bottom middle position
     x_pos = 10
     y_pos = 27 # TODO set to 32
-    
+    art = bytearray([8, 1, 2,254,66,66,66,66,127,64]) # wid, frms, frame_data, ...
+
+    @micropython.native
+    def tick(self):
+        """ Updated Umby for one game tick """
+        if not bU():
+            self.y_pos -= 1
+        elif not bD():
+            self.y_pos += 1
+        if not bL():
+            self.x_pos -= 1
+        elif not bR():
+            self.x_pos += 1
+
     @micropython.viper
     def draw(self, t: int):
         """ Draw unby to the frame buffer """
+
+
+
         frame = ptr8(display.display.buffer)
         x = int(self.x_pos)
         y = int(self.y_pos)
@@ -506,7 +530,7 @@ def run_game():
             profiler = ticks_ms()
 
 
-
+        umby.tick()
 
 
         # Update the display buffer new frame data
@@ -525,15 +549,15 @@ def run_game():
     
 
         # TESTING: infinitely scroll the tape
-        if not bU():
-            v = v - 1 if v > 0 else v
-        if not bD():
-            v = v + 1 if v < 24 else v
-        tape.offset_vertically(v)
-        if not bL():
-            tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
-        if not bR():
-            tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
+        #if not bU():
+        #    v = v - 1 if v > 0 else v
+        #elif not bD():
+        #    v = v + 1 if v < 24 else v
+        #tape.offset_vertically(v)
+        #if not bL():
+        #    tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
+        #elif not bR():
+        #    tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
         t += 1
 run_game()
 
