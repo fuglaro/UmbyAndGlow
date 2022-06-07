@@ -513,14 +513,8 @@ class _Player:
         # Test mode allows you to explore the level by flying,
         # free of interactions.
         ###
-        if not bU():
-            self._y -= 1
-        elif not bD():
-            self._y += 1
-        if not bL():
-            self._x -= 1
-        elif not bR():
-            self._x += 1
+        self._y += -1 if not bU() else 1 if not bD() else 0
+        self._x += -1 if not bL() else 1 if not bR() else 0
 
 
 class Umby(_Player):
@@ -613,7 +607,7 @@ class Glow(_Player):
     name = "Glow"
 
     def __init__(self, tape, x, y):
-        self.mode = 10
+        self.mode = 10 # Start with Glow's behaviors
         self._aim_ang = -0.5
         _Player.__init__(self, tape, x, y)
 
