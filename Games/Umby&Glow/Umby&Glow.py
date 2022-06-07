@@ -111,14 +111,19 @@ land[35*5+4] = 3
 thumby.display.setFPS(240)
 
 
-
-def extend_tape(tape, tapePos): # TODO optimise for single column fill
+@micropython.viper
+def extend_tape(tape: ptr32, tapePos: int): # TODO optimise for single column fill
     x = tapePos + 72
-    for y in range(0, 2):
+    for w in range(0, 2):
+        y = w*32
         v = 0
         for b in range(0, 32):
-            v |= wall_pattern(x, y*32+b) << b
-        tape[x%72*2+y] = v
+            #p = 1 if bool(x/3%40 == y or not ((x % 16) or (y % 3)) else 0
+            # PATTERN: test
+            p = int(x%120 == y*3) | (int(x % 16 == 0) & int(y % 3 ==0))
+            v |= p << b
+            y+=1
+        tape[x%72*2+w] = v
 
 tapePos = 0;
 timer = time.ticks_ms()
