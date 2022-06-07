@@ -26,29 +26,27 @@ tape = array('I', (0 for i in range(0, 72*2)))
 
 
 frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
+
 @micropython.viper
-def comp_bytes(frame: ptr8, tape: ptr8, offsetX: int): # TODO del
-    for y in range(0, 5):
-        for x in range(0, 72):
-            frame[y*72+x] = tape[(x+offsetX)%72*5+y]
+def comp(frame: ptr8, tape: ptr32, offsetX: int): # TODO del
+    for x in range(0, 72):
+        a = tape[(x+offsetX)%72*2]
+        b = tape[(x+offsetX)%72*2+1]
+        frame[x] = a
+        frame[72+x] = a >> 8
+        frame[144+x] = a >> 16
+        frame[216+x] = a >> 24
+        frame[288+x] = b
+
+        
+        
+        # TODO 5th row and beyond
+
  #   0  #  back[(x+backOffsetX)%VIEW_W*VIEW_H+y]
        # | cave[(x+caveOffsetX)%VIEW_W*VIEW_H+y]
     #    | land[(x+landOffsetX)%VIEW_W*VIEW_H+y]
   #      for y in range(0, VIEW_H) for x in range(0, VIEW_W)
    #     )
-@micropython.viper
-def comp(frame: ptr8, tape: ptr32, offsetX: int): # TODO del
-    for x in range(0, 72):
-        w = tape[(x+offsetX)%72*2]
-        frame[x] = w
-        frame[72+x] = w >> 8
-        frame[144+x] = w >> 16
-        frame[216+x] = w >> 24
-        
-        
-        
-        # TODO 5th row and beyond
-
 
 @micropython.viper
 def foo() -> int:
@@ -139,7 +137,6 @@ while(1):
     # TODO optimise
     if (t % 1 == 0):
         backOffsetX += 1
-        fill_bytes(wall_pattern, memoryview(back), backOffsetX+VIEW_W-1, 1) # TODO del
         fill(wall_pattern, memoryview(tape), backOffsetX+VIEW_W-1, 1)
     caveOffsetX += 1 if t % 2 == 0 else 0
     landOffsetX += 1
@@ -147,7 +144,6 @@ while(1):
     offsetX = t
 
     # Composite a view with new frame data, drawing to screen
-    #comp_bytes(frame, back, offsetX) # TODO remove
     comp(frame, tape, offsetX)
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
