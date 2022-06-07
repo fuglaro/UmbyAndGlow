@@ -1095,11 +1095,31 @@ class BonesTheMonster:
         self.y = y # Middle of Bones
         # Mode: 0 - flying, 1 - charging
         self.mode = 0
+ #       self._x = x # floating point precision
+ #       self._y = y # floating point precision
+ #       self._dx = 0
+ #       self._dy = 0
 
     @micropython.native
     def tick(self, t):
         """ Update Bones for one game tick """
-        # TODO
+        return
+  #      tape = self._tape
+        # Find the potential new coordinates
+  #      nx = self._x + self._dx
+  #      ny = self._y + self._dy
+  #      # Change direction if needed
+  #      if ((self._dx == 0 and self._dy == 0)
+  #      or ny < -10 or ny > 74):
+  #          self._dx = math.sin(t+nx)
+  #          self._dy = math.cos(t+nx)
+  #      else:
+  #          self._x = nx
+  #          self._y = ny
+  #          self.x = int(nx)
+  #          self.y = int(ny)
+        # TODOnot tape.check(self.x, self.y)
+
 
     @micropython.viper
     def draw(self, t: int):
@@ -1263,11 +1283,13 @@ def run_game():
 
         # Draw the players
         p1.draw(t)
+
         # Composite everything together to the render buffer
         tape.comp(stage.stage)
 
         # Flush to the display, waiting on the next frame interval
         display.update()
+
         t += 1
 run_game()
 
