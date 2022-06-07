@@ -371,7 +371,7 @@ class Tape:
                 x = 5
             # Draw bottom (if applicable)
             if position == 2:
-                x = 40 - 6*len(lines)
+                x = 46 - 6*len(lines)
             while (lines):
                 self.write(2, lines.pop(0), 0, x)
                 x += 6
@@ -844,9 +844,7 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
-    umby.mode = 99 # Testing mode
-
-    tape.message(2, "Umby fell into the abyss!")
+    #umby.mode = 99 # Testing mode
 
     # Main gameplay loop
     v = 0
