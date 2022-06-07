@@ -159,7 +159,7 @@ while(1):
 
 
     # Composite a view with new frame data, drawing to screen
-    comp(frame, tape, tapePos)
+    comp(frame, tape, tapeScroll)
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
