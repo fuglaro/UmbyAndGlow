@@ -722,28 +722,41 @@ class Umby:
         """ Updated Umby for one game tick.
         @param t: the current game tick count
         """
-
+        _chd = tape.check(self.x_pos, self.y_pos + 1)
+        _chu = tape.check(self.x_pos, self.y_pos - 4)
+        _chl = tape.check(self.x_pos - 1, self.y_pos)
+        _chlu = tape.check(self.x_pos - 1, self.y_pos - 3)
+        _chr = tape.check(self.x_pos + 1, self.y_pos)
+        _chru = tape.check(self.x_pos + 1, self.y_pos - 3)
         # Normal Play mode
         if self.mode == 0:
             # Apply gravity and grund check
-            if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
+            if (not _chd and not _chl and not _chr):
                 # Apply gravity to vertical speed
                 self._y_vel += 0.98 / _FPS
                 # Update vertical position with vertical speed
                 self._y_pos += 1 if self._y_vel > 1 else self._y_vel
             else:
-                # Stop falling when hit ground
-                self._y_vel = 0
+                # Stop falling when hit ground but keep some fall speed ready
+                self._y_vel = 1.0
     
             # Apply movement controls
             if not bU():
-                self._y_pos -= 1
+                pass#self._y_pos -= 1
             elif not bD():
-                self._y_pos += 1
+                pass#self._y_pos += 1
             if not bL():
-                self._x_pos -= 1
+                if not _chl and not _chlu:
+                    if t%3:
+                        self._x_pos -= 1
+                elif t%3==0 and not _chu:
+                    self._y_pos -= 1
             elif not bR():
-                self._x_pos += 1
+                if not _chr and not _chru:
+                    if t%3:
+                        self._x_pos += 1
+                elif t%3==0 and not _chu:
+                    self._y_pos -= 1
 
             # Check for falling into the abyss
             if self._y_pos > 80:
@@ -828,7 +841,7 @@ def set_level(tape, start):
     tape.reset_tape()
     # Fill the tape with the starting area
     tape.scroll_tape(0, 0, start)
-    for i in range(start, 72):
+    for i in range(start, start+72):
         tape.redraw_tape(2, i, pattern_room, pattern_fill)
     # Draw starting instructions
     tape.write(1, "THAT WAY!", start+19, 26)
