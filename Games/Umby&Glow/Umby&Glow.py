@@ -472,6 +472,24 @@ class Stage:
     # - 288: Mid and background clear.
     # - 432: Foreground clear.
     stage = array('I', (0 for i in range(72*2*4)))
+    
+    @micropython.viper
+    def clear(self): # TODO
+        draw = ptr32(self.stage)
+        for i in range(288):
+            draw[i] = 0
+        mask = uint(0xFFFFFFFF)
+        for i in range(288, 576):
+            draw[i] = mask
+
+    @micropython.viper
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int): # TODO
+        p = layer*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-x])
+            draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
 
 class Umby:
     # Bottom middle position
@@ -495,25 +513,18 @@ class Umby:
             self.x_pos += 1
 
     @micropython.viper
-    def draw(self, t: int, draw: ptr32):
-        """ Draw unby to the frame buffer """
+    def draw(self, t: int, stage):
+        """ Draw umby to the draw buffer """
 
 
-        mask = uint(0xFFFFFFFF)
-        for i in range(288):
-            draw[i] = 0
-        for i in range(288, 576):
-            draw[i] = mask
 
-        img = ptr8(self.art)
-        s = 0
-        w = 8
-        x = int(self.x_pos)
-        y = int(self.y_pos)
-        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-            b = uint(img[i-x])
-            draw[144+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
-            draw[144+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
+
+
+        stage.draw(1, self.x_pos, self.y_pos, self.art, 8)
+        #for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+        #    b = uint(img[i-x])
+        #    draw[144+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+        #    draw[144+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
             
             
         #draw[0+8] = 0xFF
@@ -601,11 +612,11 @@ def run_game():
 
 
         # Update the display buffer new frame data
+        stage.clear()
+        umby.draw(t, stage)
         tape.comp(stage.stage)
 
 
-
-        umby.draw(t, stage.stage)
 
 
         # Flush to the display, waiting on the next frame interval
