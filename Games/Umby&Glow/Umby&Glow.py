@@ -27,6 +27,13 @@ import thumby
 from array import array
 
 ##
+# Fast bitwise abs
+@micropython.viper
+def abs(v: int) -> int:
+    m = v >> 31
+    return (v + m) ^ m
+
+##
 # Scrolling tape with each render layer being a section one after the other.
 # Each section is a buffer that cycles (via the tapeScroll positions) as the world
 # scrolls horizontally. Each section can scroll independently so background layers can
@@ -121,38 +128,30 @@ def scroll_tape(pattern, layer: int, direction: int):
 
 
 ##
-# Fast bitwise abs
-@micropython.viper
-def abs(v: int) -> int:
-    m = v >> 31
-    return (v + m) ^ m
-
-##
 # PATTERN [none]: empty
 @micropython.viper
 def pattern_none(x: int, y: int) -> int:
     return 0
-
-##
-# PATTERN [wall]: dotted vertical lines repeating
-@micropython.viper
-def pattern_wall(x: int, y: int) -> int:
-    return int(x%16 == 0) & int(y%3 == 0)
-##
-# PATTERN [room]:- basic flat roof and high floor
-@micropython.viper
-def pattern_room(x: int, y: int) -> int:
-    return int(int(abs(y-19)) > 19 - 3)
 ##
 # PATTERN [fence]: - basic dotted fences at roof and high floor
 @micropython.viper
 def pattern_fence(x: int, y: int) -> int:
     return int(int(abs(y-19)) > 19 - 12) & int(x%10 == 0) & int(y%2 == 0)
 ##
+# PATTERN [room]:- basic flat roof and high floor
+@micropython.viper
+def pattern_room(x: int, y: int) -> int:
+    return int(int(abs(y-19)) > 19 - 3)
+##
 # PATTERN [test]: long slope plus walls
 @micropython.viper
 def pattern_test(x: int, y: int) -> int:
     return int(x%120 == y*3) | (int(x%12 == 0) & int(y%3 == 0))
+##
+# PATTERN [wall]: dotted vertical lines repeating
+@micropython.viper
+def pattern_wall(x: int, y: int) -> int:
+    return int(x%16 == 0) & int(y%3 == 0)
 
 
 ##
