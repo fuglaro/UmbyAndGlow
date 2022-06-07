@@ -835,14 +835,14 @@ class Player:
         # Normal Play modes
         if self.mode >= 0:
             self._tick_play(t)
+            # Now handle rocket engine
+            self._tick_rocket(t)
         # Respawn mode
         elif self.mode == -1:
             self._tick_respawn()
         # Testing mode
         elif self.mode == -99:
             self._tick_testing()
-        # Now handle rocket engine
-        self._tick_rocket(t)
 
     @micropython.native
     def _tick_respawn(self):
@@ -992,10 +992,10 @@ class Umby(Player):
         angle = self._aim_angle
         power = self._aim_pow
         # CONTROLS: Apply rocket
-        if not bU() or not bD() or not bB(): # Rocket aiming
+        if not (bU() and bD() and bB()): # Rocket aiming
             # CONTROLS: Aiming
             self._aim_angle += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not self.rocket_active: # Power rocket
+            if not (bB() or self.rocket_active): # Power rocket
                 self._aim_pow += 0.03
             angle = self._aim_angle
             # Resolve rocket aim to the x by y vector form
@@ -1654,15 +1654,14 @@ def run_game():
     t = 0;
     start = 3
     set_level(tape, spawn, start)
-    #p1 = Umby(tape, stage, start+10, 20)
-    p1 = Glow(tape, stage, start+10, 20)
+    if glow:
+        p1 = Glow(tape, stage, start+10, 20)
+    else:
+        p1 = Umby(tape, stage, start+10, 20)
     spawn.players.append(p1)
-
-
-
-    p1.mode = -99 # XXX Testing mode
-
-
+    # (Secret) Testing mode
+    if not (bR() or bA() or bB()):
+        p1.mode = -99
 
     # Main gameplay loop
     profiler = ticks_ms()
