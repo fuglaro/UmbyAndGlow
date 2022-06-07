@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: optimise calls to pattern. Once for each 32 bit word.
 # TODO: remove unused values from tapeScroll (fill layers)
 
 # TODO: Make level 1 patterns
@@ -163,7 +162,7 @@ def comp():
         frame[288+x] = (b >> yPos)
 
 @micropython.viper
-def scroll_tape(pattern, layer: int, direction: int):
+def scroll_tape(pattern, layer: int, direction: int, fill_pattern):
     """ Scroll the tape one pixel forwards, or backwards for a specified layer.
     Updates the tape scroll position of that layer.
     Fills in the new column with pattern data from a specified
@@ -172,6 +171,7 @@ def scroll_tape(pattern, layer: int, direction: int):
     @param pattern: a function, returning fill data, given x and y paramaters.
     @param layer: the layer to scroll and write to.
     @param direction: -1 -> rewind backwards, 1 -> extend forwrds.
+    @param fill_pattern: if defined will also draw the fill layer.
     """
     tape_ = ptr32(tape)
     scroll = ptr32(tapeScroll)
@@ -185,27 +185,9 @@ def scroll_tape(pattern, layer: int, direction: int):
     # (the top 32 bits, then the bottom 32 bits)
     tape_[offX] = int(pattern(x, 0))
     tape_[offX+1] = int(pattern(x, 32))
-
-@micropython.viper
-def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
-    """ Similar to scroll_tape but also fills out the fill
-    layer with a fill pattern.
-    """
-    tape_ = ptr32(tape)
-    scroll = ptr32(tapeScroll)
-    # Advance the tapeScroll position for the layer
-    tapePos = scroll[layer] + direction
-    scroll[layer] = tapePos
-    # Find the tape position for the column that needs to be filled
-    x = tapePos + 72 - (1 if direction == 1 else 0)
-    offX = layer*144 + x%72*2
-    # Update 2 words of vertical pattern for the tape
-    # (the top 32 bits, then the bottom 32 bits)
-    tape_[offX] = int(pattern(x, 0))
-    tape_[offX+1] = int(pattern(x, 32))
-    # Do the same for the fill pattern
-    tape_[offX+144] = int(fill_pattern(x, 0))
-    tape_[offX+145] = int(fill_pattern(x, 32))
+    if (fill_pattern):
+        tape_[offX+144] = int(fill_pattern(x, 0))
+        tape_[offX+145] = int(fill_pattern(x, 32))
 
 @micropython.viper
 def offset_vertically(offset: int):
@@ -344,8 +326,8 @@ def start_level():
     """
     # Fill the tape with the starting area
     for i in range(72):
-        scroll_tape_with_fill(pattern_fence, pattern_fill, 1, 1)
-        scroll_tape_with_fill(pattern_room, pattern_fill, 3, 1)
+        scroll_tape(pattern_fence, 1, 1, pattern_fill)
+        scroll_tape(pattern_room, 3, 1, pattern_fill)
     # Set the feed patterns for each layer.
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
     feed[:] = [pattern_wall, pattern_fence, pattern_fill,
@@ -376,11 +358,11 @@ def run_game():
         # TESTING: infinitely scroll the tape
         offset_vertically((c // 10) % 24)
         if (c % 1 == 0):
-            scroll_tape_with_fill(feed[3], feed[4], 3, 1)
+            scroll_tape(feed[3], 3, 1, feed[4])
             if (c % 2 == 0):
-                scroll_tape_with_fill(feed[1], feed[2], 1, 1)
+                scroll_tape(feed[1], 1, 1, feed[2])
                 if (c % 4 == 0):
-                    scroll_tape(feed[0], 0, 1)
+                    scroll_tape(feed[0], 0, 1, None)
         c += 1
 run_game()
 
