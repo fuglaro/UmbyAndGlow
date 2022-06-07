@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(600000000) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(60) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -483,13 +483,11 @@ class Stage:
         """ Draw a sprite to a render layer.
         Sprites must be 8 pixels high but can be any width.
         It is recommended to pass in different frames of an animated
-        sprite via a memoryview. There are 4 layers that can be
+        sprite via a memoryview. There are 2 layers that can be
         rendered to:
             0: Non-interactive background monster layer.
             1: Foreground monsters, traps and player.
-            2: Mid and background environment mask (0 bit to clear).
-            3: Foreground environment mask (0 bit to clear).
-        @param layer: (int) the layer or mask layer to render to.
+        @param layer: (int) the layer to render to.
         @param x: screen x draw position.
         @param y: screen y draw position (from top).
         @param img: (ptr8) sprite to draw (single row VLSB).
@@ -502,14 +500,29 @@ class Stage:
             draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
             draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
 
-class Umby:
+    @micropython.viper
+    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int):
+        """ Draw a sprite to a mask (clear) layer.
+        This is similar to the "draw" method but applies a mask
+        sprite to a mask later. There are 2 layers that can be rendered to:
+            0: Mid and background environment mask (1 bit to clear).
+            1: Foreground environment mask (1 bit to clear).
+        """
+        p = (layer+2)*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-x])
+            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
+
+class Umby: # TODO
     # Bottom middle position
     x_pos = 10
     y_pos = 27 # TODO set to 32
     # BITMAP: width: 8, height: 8
     art = bytearray([2,254,66,66,66,66,115,64])
     # BITMAP: width: 8, height: 8
-    mask = bytearray([255,193,217,209,1,1,7,255])
+    mask = bytearray([247,247,247,247,247,247,247,247])
 
     @micropython.native
     def tick(self):
@@ -532,6 +545,7 @@ class Umby:
 
 
         stage.draw(1, self.x_pos, self.y_pos, self.art, 8)
+        stage.mask(0, self.x_pos, self.y_pos, self.mask, 8)
         #for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
         #    b = uint(img[i-x])
         #    draw[144+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
