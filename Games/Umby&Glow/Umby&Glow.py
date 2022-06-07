@@ -13,10 +13,15 @@
 '''
 
 # TODO: Make basic game dynamics (Umby)
+# TODO: Make Monsters (level 1)
+# TODO: Make AI Glow
+# TODO: Make script/story outline
 # TODO: Extend game dynamics (Glow)
+# TODOL Make AI Umby
 # TODO: Make 2 player
 # TODO: Write script / story
 # TODO: Extend game dynamics and add 8 more levels
+# TODO: More monsters!
 # TODO: Remove unused functions
 # TODO: Full game description and overview (for arcade_description.txt file)
 # TODO: Make demo video
@@ -55,6 +60,7 @@ _FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 
 from array import array
 from time import ticks_ms
+import math
 from thumby import display
 import thumby
 
@@ -699,11 +705,15 @@ class Umby:
     """
     # BITMAP: width: 3, height: 8, frames: 6
     _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+    # Umby's shadow
     _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
     # BITMAP: width: 3, height: 8, frames: 3
     _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
     # BITMAP: width: 9, height: 8
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+    # BITMAP: width: 1, height: 8
+    _aim = bytearray([128])
+    # Umby behavior mode
     mode = 0#Play (normal)
 
     def __init__(self, x, y):
@@ -711,11 +721,23 @@ class Umby:
         # Motion variables
         self._x_pos = x
         self._y_pos = y
-        self._x_vel = 0.0
         self._y_vel = 0.0
         # Viper friendly variables (ints)
         self.x_pos = int(x)
         self.y_pos = int(y)
+        # Rocket variables
+        self._aim_angle = 2.5
+        self._aim_pow = 1.0
+        self.rocket_active = 0
+        self._rocket_x = 0.0
+        self._rocket_y = 0.0
+        self._rocket_x_vel = 0.0
+        self._rocket_y_vel = 0.0
+        # Viper friendly variables (ints)
+        self.aim_x = int(math.sin(self._aim_angle)*10)
+        self.aim_y = int(math.cos(self._aim_angle)*10)
+        self.rocket_x = 0
+        self.rocket_y = 0
 
     @micropython.native
     def tick(self, t, tape):
@@ -740,36 +762,48 @@ class Umby:
                 # Stop falling when hit ground but keep some fall speed ready
                 self._y_vel = 0.5
     
-            # Apply movement controls
-            if not bU():
-                pass#self._y_pos -= 1
-            elif not bD():
-                pass#self._y_pos += 1
+            # CONTROLS: Apply movement
             if not bL():
-                if not _chl and not _chlu:
+                if not _chl and not _chlu: # Movement
                     if t%3:
                         self._x_pos -= 1
-                elif t%3==0 and not _chu:
+                elif t%3==0 and not _chu: # Climbing
                     self._y_pos -= 1
             elif not bR():
-                if not _chr and not _chru:
+                if not _chr and not _chru: # Movement
                     if t%3:
                         self._x_pos += 1
-                elif t%3==0 and not _chu:
+                elif t%3==0 and not _chu: # Climbing
                     self._y_pos -= 1
-            # Jump - allow continual jump until falling begins
+            # CONTROLS: Apply jump - allow continual jump until falling begins
             if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
                 if _chd or _chl or _chr: # detatch from ground grip
                     self._y_pos -= 1
                 self._y_vel = -0.8
+            # CONTROLS: Apply rocket
+            if not bU() or not bD() or not bB(): # Rocket aiming
+                if not bU(): # Aim up
+                    self._aim_angle += 0.02
+                elif not bD(): # Aim down
+                    self._aim_angle -= 0.02
+                elif not self.rocket_active: # Power rocket
+                    self._aim_pow += 0.03
+                # Resolve rocket aim to the x by y vector form
+                self.aim_x = int(math.sin(self._aim_angle)*(self._aim_pow)*10)
+                self.aim_y = int(math.cos(self._aim_angle)*(self._aim_pow)*10)
+            # Actually launch the rocket when button is released
+            if bB() and not self.rocket_active:
+                self.rocket_active
+                self.rocket_x = 
+                self._aim_pow = 1.0
 
-            # Check for head smacking
+            # DEATH: Check for head smacking
             if _chu and self._y_vel < -0.4:
                 self.mode = 1#Respawn
                 self._respawn_x = tape.x[0] - 240
                 tape.message(0, "Umby face-planted the roof!")        
 
-            # Check for falling into the abyss
+            # DEATH: Check for falling into the abyss
             if self._y_pos > 80:
                 self.mode = 1#Respawn
                 self._respawn_x = tape.x[0] - 240
@@ -820,6 +854,8 @@ class Umby:
         """ Draw umby to the draw buffer """
         x_pos = int(self.x_pos)
         y_pos = int(self.y_pos)
+        aim_x = int(self.aim_x)
+        aim_y = int(self.aim_y)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
@@ -827,11 +863,14 @@ class Umby:
         f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
         # 0 when still, 1 when left moving, 2 when right
         fm = 1 if not bL() else 2 if not bR() else 0
-        # Draw the layers and masks
-        stage.draw(0, x_pos-1-x, y_pos-6, self._sdw, 3, f)
-        stage.draw(1, x_pos-1-x, y_pos-6, self._art, 3, f)
+        # Draw Umby's layers and masks
+        stage.draw(0, x_pos-1-x, y_pos-6, self._sdw, 3, f) # Shadow
+        stage.draw(1, x_pos-1-x, y_pos-6, self._art, 3, f) # Umby
         stage.mask(0, x_pos-4-x, y_pos-6, self._back_mask, 9, 0)
         stage.mask(1, x_pos-1-x, y_pos-6, self._fore_mask, 3, fm)
+        # Draw Umby's aim
+        stage.draw(t*6//_FPS % 2, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
+        stage.mask(1, x_pos-x+aim_x, y_pos-6+aim_y, self._aim, 1, 0)
 
 
 ## Game Engine ##
