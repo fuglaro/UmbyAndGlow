@@ -916,12 +916,21 @@ class Umby:
                 for x in range(rx-10, rx+10):
                     tape.scratch_tape(2, x,
                         bang(rx, ry, 8, 0), bang(rx, ry, 10, 1))
+
+                # DEATH: Check for death by rocket blast
+                dx = rx-self.x_pos
+                dy = ry-self.y_pos
+                if dx*dx + dy*dy < 64:
+                    self.mode = 1#Respawn
+                    self._respawn_x = tape.x[0] - 240
+                    tape.message(0, "Umby kissed a rocket!")  
+
                 # End rocket
                 self.rocket_active = 0
 
 
 
-        # TODO: rocket bang, trail, death by rocket
+        # TODO: trail
 
 
 
