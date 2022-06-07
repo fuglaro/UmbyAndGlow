@@ -10,7 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Auto camera in direction of looking
 # TODO: Make Glows hook break lose if off top of screen (after 0-1 sec).
 # TODO: Refactor explosions across Players and explode on monsters.
 # TODO: Make testing mode draw be a cross-hair.
@@ -145,7 +144,7 @@ def run_menu():
         # Make the camera follow the monster
         m.tick(t)
         m.draw(t)
-        tape.auto_camera_parallax(m.x, m.y, t)
+        tape.auto_camera_parallax(m.x, m.y, 1, t)
         # Composite everything together to the render buffer
         tape.comp()
         # Flush to the display, waiting on the next frame interval
@@ -205,7 +204,7 @@ def run_game():
             mon.tick(t)
 
         # Make the camera follow the action
-        tape.auto_camera_parallax(p1.x, p1.y, t)
+        tape.auto_camera_parallax(p1.x, p1.y, p1.dir, t)
 
         # Update the display buffer new frame data
         # Add all the monsters, and check for collisions along the way

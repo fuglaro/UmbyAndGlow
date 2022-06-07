@@ -10,759 +10,543 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+## Tape Management, Stage, and display ##
 
-## Actors (Players and Monsters), and input ##
+from array import array
+from machine import Pin, SPI
+from time import sleep_ms, ticks_ms
 
-_FPS = const(60)
+_FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 
-from machine import Pin
-from math import sin, cos, sqrt
-from patterns import *
-
-# Button functions. Note they return the inverse pressed state
-bU = Pin(4, Pin.IN, Pin.PULL_UP).value
-bD = Pin(6, Pin.IN, Pin.PULL_UP).value
-bL = Pin(3, Pin.IN, Pin.PULL_UP).value
-bR = Pin(5, Pin.IN, Pin.PULL_UP).value
-bB = Pin(24, Pin.IN, Pin.PULL_UP).value
-bA = Pin(27, Pin.IN, Pin.PULL_UP).value
-
-
-
-# TODO: Some monster things
-
-# Skittle (bug horizontal move (no vert on ground, waving in air)
-bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
-# BITMAP: width: 9, height: 8
-bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
-
-# Scout (slow wanderer on the ground, slow mover)
-bitmap6 = bytearray([2,62,228,124,228,62,2])
-# BITMAP: width: 7, height: 8
-bitmap7 = bytearray([63,255,255,254,255,255,63])
-
-# Stomper (swings up and down vertically)
-# BITMAP: width: 7, height: 8
-bitmap8 = bytearray([36,110,247,124,247,110,36])
-# BITMAP: width: 7, height: 8
-bitmap9 = bytearray([239,255,255,254,255,255,239])
-
-# TODO: One the crawls along the ground and digs in to then pounce
-# TODO: make a monster that spawns other monsters! (HARD)
-# TODO: Do a monster that flys into the background
-# TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
-
-
-
-class _Player:
-    ### Umby and Glow ###
-    # Player behavior mode such as Play, Testing, and Respawn
-    # BITMAP: width: 9, height: 8
-    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
-    # BITMAP: width: 3, height: 8
-    _aim = bytearray([64,224,64])
-     # BITMAP: width: 3, height: 8
-    _aim_fore_mask = bytearray([224,224,224])
-    # BITMAP: width: 5, height: 8
-    _aim_back_mask = bytearray([112,248,248,248,112])
-    # Modes:
-    # TODO:
-    #     199: Testing
-    #     200: Frozen (immune)
-    #     201: Respawning to Umby
-    #     202: Respawning to Glow
-    # ----0-9: Umby modes----
-    #       0: Crawling (along ground)
-    # --10-19: Glow modes----
-    #      10: Auto latching grapple
-    #      11: Swinging from grapple
-    #      12: Clinging (from ceiling)
-    mode = 0 # (int)
-    _bAOnce = -1 # Had a press down of A button (-1 held, 1 pressed, 0 none)
-    # Movement variables
-    _x_vel = 0.0
-    _y_vel = 0.0
-    # Rocket variables
-    rocket_x = 0 # (int)
-    rocket_y = 0 # (int)
-    rocket_active = 0 # (int)
-    _aim_ang = 0.0
-    _aim_pow = 1.0
-    # Grappling hook variables
-    hook_x = 0 # (int) Position where hook attaches ceiling
-    hook_y = 0 # (int)
-    # Internal calulation of hook parameters (resolved to player x, y in tick)
-    _hook_ang = 0.0
-    _hook_vel = 0.0
-    _hook_len = 0.0
-    # Packed (byte) variables.
-    #   Direction and movement states.
-    mstates = bytearray([1]) # 0: dir(left:0, right:1), 1: rocket_dir, 2: moving
-    # TODO: consider adding rocket_active states
-
-    def __init__(self, tape, x, y):
-        self._tp = tape
-        # Motion variables
-        self._x = x # Middle of Umby
-        self._y = y # Bottom of Umby
-        # Viper friendly variants (ints)
-        self.x = int(x)
-        self.y = int(y)
-        self.aim_x = int(sin(self._aim_ang)*10.0)
-        self.aim_y = int(cos(self._aim_ang)*10.0)
-
-    ### Getter and setter for the direction the player is facing ###
-    @property
-    @micropython.viper
-    def dir(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 1 else -1
-    @dir.setter
-    @micropython.viper
-    def dir(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
-
-    ### Getter and setter for the direction the rocket is facing ###
-    @property
-    @micropython.viper
-    def rocket_dir(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 2 else -1
-    @rocket_dir.setter
-    @micropython.viper
-    def rocket_dir(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 2) ^ 2) | (0 if d == -1 else 2)
-
-    ### Getter and setter for whether the player is trying to move ###
-    @property
-    @micropython.viper
-    def moving(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 4 else 0
-    @moving.setter
-    @micropython.viper
-    def moving(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 4) ^ 4) | (0 if d == 0 else 4)
-
+# Setup basic display access
+from ssd1306 import SSD1306_SPI
+display = SSD1306_SPI(72, 40,
+    SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
+if "rate" not in dir(display): # Load the emulator display if using the IDE API
+    from thumby import display as emu_dpy
+    emu_dpy.setFPS(60)
+    display_update = emu_dpy.update
+    _display_buffer = emu_dpy.display.buffer
+else: # Otherwise use the raw one if on the thumby device
+    # Load the nice memory-light display drivers
+    _display_buffer = display.buffer
+    timer = ticks_ms()
     @micropython.native
-    def _bAO(self):
-        ### Returns true if the A button was hit
-        # since the last time thie was called
+    def display_update():
+        global timer
+        display.show()
+        sleep_ms(1000//_FPS + timer - ticks_ms())
+        timer = ticks_ms()
+
+
+@micropython.viper
+def ihash(x: uint) -> int:
+    ### 32 bit deterministic semi-random hash fuction
+    # Credit: Thomas Wang
+    ###
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
+
+
+class Tape:
+    ###
+    # Scrolling tape with a fore, mid, and background layer.
+    # This represents the level of the ground but doesn't include actors.
+    # The foreground is the parts of the level that are interactive with
+    # actors such as the ground, roof, and platforms.
+    # Mid and background layers are purely decorative.
+    # Each layer can be scrolled intependently and then composited onto the
+    # display buffer.
+    # Each layer is created by providing deterministic functions that
+    # draw the pixels from x and y coordinates. Its really just an elaborate
+    # graph plotter - a scientific calculator turned games console!
+    # The tape size is 64 pixels high, with an infinite length, and 216 pixels
+    # wide are buffered (72 pixels before tape position, 72 pixels of visible,
+    # screen, and 72 pixels beyond the visible screen).
+    # This is intended for the 72x40 pixel view. The view can be moved
+    # up and down but when it moves forewards and backwards, the buffer
+    # is cycled backwards and forewards. This means that the tape
+    # can be modified (such as for explosion damage) for the 64 pixels high,
+    # and 216 pixels wide, but when the tape is rolled forewards, and backwards,
+    # the columns that go out of buffer are reset.
+    # There is also an overlay layer and associated mask, which is not
+    # subject to any tape scrolling or vertical offsets.
+    # There are also actor stage layers for managing rendering
+    # and collision detection of players and monsters.
+    ###
+    # Scrolling tape with each render layer being a section one after the other.
+    # Each section is a buffer that cycles (via the tape_scroll positions) as the
+    # world scrolls horizontally. Each section can scroll independently so
+    # background layers can move slower than foreground layers.
+    # Layers each have 1 bit per pixel from top left, descending then wrapping
+    # to the right.
+    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
+    # Each layer is a layer in the composited render stack.
+    # Layers from left to right:
+    # - 0: far background
+    # - 432: close background
+    # - 864: close background fill (opaque: off pixels)
+    # - 1296: landscape including ground, platforms, and roof
+    # - 1728: landscape fill (opaque: off pixels)
+    # - 2160: overlay mask (opaque: off pixels)
+    # - 2304: overlay
+    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
+    # The scroll distance of each layer in the tape,
+    # and then the frame number counter and vertical offset appended on the end.
+    # The vertical offset (yPos), cannot be different per layer (horizontal
+    # parallax only).
+    # [backPos, midPos, frameCounter, forePos, yPos]
+    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    # Public accessible x position of the tape foreground relative to the level.
+    # This acts as the camera position across the level.
+    # Care must be taken to NOT modify this externally.
+    x = memoryview(_tape_scroll)[3:4]
+    midx = memoryview(_tape_scroll)[1:2]
+    
+    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
+    # BITMAP: width: 117, height: 8
+    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
+        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
+        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
+        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
+        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
+        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,16,248,0,144,
+        200,176])
+    abc_i = dict((v, i) for i, v in enumerate(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]12"))
+
+    # The patterns to feed into each tape section
+    feed = [None, None, None, None, None]
+
+    # Actor and player management variables
+    ### Render and collision detection buffer
+    # for all the maps and monsters, and also the players.
+    # Monsters and players can be drawn to the buffer one
+    # after the other. Collision detection capabilities are
+    # very primitive and only allow checking for pixel collisions
+    # between what is on the buffer and another provided sprite.
+    # The Render buffer is two words (64 pixels) high, and
+    # 72 pixels wide for the background and mask layers, and
+    # 132 pixels wide (30 pixels extra to the right and left for collision
+    # checks) for the primary interactive actor layer.
+    # Sprites passed in must be a byte tall,
+    # but any width.
+    # There are 4 layers on the render buffer, 2 for rendering
+    # background and foreground monsters, and 2 for clearing
+    # background and foreground environment for monster
+    # visibility.
+    # Frames for the drawing and checking collisions of all actors.
+    # This includes layers for turning on pixels and clearing lower layers.
+    # Clear layers have 0 bits for clearing and 1 for passing through.
+    # This includes the following layers:
+    # - 0: Mid and background clear.
+    # - 144: Foreground clear.
+    # - 288: Non-interactive background monsters.
+    # - 432: Foreground monsters.
+    _stage = array('I', (0 for i in range(72*2*3+132*2)))
+    # Monster classes to spawn
+    types = []
+    # Likelihood of each monster class spawning (out of 255) for every 5 steps
+    rates = bytearray([])
+    # How far along the tape spawning has completed
+    _x = array('I', [0])
+    mons = [] # Active monsters
+    players = [] # Player register for monsters to interact with
+
+    def __init__(self):
+        self.clear_overlay()
+
+    @micropython.viper
+    def reset(self, p: int):
+        ### Remove all monsters and set a new spawn starting position,
+        # and reset the tape.
         ###
-        if self._bAOnce == 1:
-            self._bAOnce = -1
-            return 1
-        return 0
+        mons = []
+        self._x[0] = p
+        # Reset the tape buffers for all layers to the
+        # given position and fill with the current feed.
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            tapePos = scroll[layer] = (p if layer == 3 else 0)
+            for x in range(tapePos-72, tapePos+144):
+                self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
 
-    @property
-    def immune(self):
-        ### Returns if Umby is in a mode that can't be killed ###
-        return 199 <= self.mode <= 202
+    def add(self, mon_type, x, y):
+        ### Add a monster of the given type ###
+        if len(self.mons) < 10: # Limit to maximum 10 monsters at once
+            self.mons.append(mon_type(self, x, y))
 
-    def die(self, rewind_distance, death_message):
-        ### Put Player into a respawning state ###
-        self._x_vel = 0.0 # Reset speed
-        self._y_vel = 0.0 # Reset fall speed
-        self.mode = 201 if 0 <= self.mode <= 9 else 202
-        self._respawn_x = self._tp.x[0] - rewind_distance
-        self._tp.message(0, death_message)
-
-    @micropython.native
-    def kill(self, t, monster):
-        ### Explode the rocket, killing the monster or nothing.
-        # Also carves space out of the ground.
+    @micropython.viper
+    def check(self, x: int, y: int, b: int) -> bool:
+        ### Returns true if the byte going up from the x, y position is solid
+        # foreground where it collides with a given byte.
+        # @param b: Collision byte (as an int). All pixels in this vertical
+        #     byte will be checked. To check just a single pixel, pass in the
+        #     value 128. Additional active bits will be checked going upwards
+        #     from themost significant bit/pixel to least significant.
         ###
-        tape = self._tp
-        scratch = tape.scratch_tape
-        rx, ry = self.rocket_x, self.rocket_y
-        # Tag the wall with an explostion mark
-        tag = t%4
-        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
-        # Tag the wall with a death message
-        if monster:
-            tape.tag("[RIP]", monster.x, monster.y)
-        # Carve blast hole out of ground
-        pattern = pattern_bang(rx, ry, 8, 0)
-        fill = pattern_bang(rx, ry, 10, 1)
-        for x in range(rx-10, rx+10):
-            scratch(2, x, pattern, fill)
-        # DEATH: Check for death by rocket blast
-        dx, dy = rx-self.x, ry-self.y
-        if dx*dx + dy*dy < 64:
-            self.die(240, self.name + " kissed a rocket!")
-        # Get ready to end rocket
-        self.rocket_active = 2
+        if x < -30 or x >= 102:
+            return False # Out of buffer range is always False
+        stage = ptr32(self._stage)
+        p = (x+30)%132*2+432
+        h = y - 8 # y position is from bottom of text
+        img1 = b >> 0-h if h < 0 else b << h
+        img2 = b >> 32-h if h-32 < 0 else b << h-32
+        return bool((stage[p] & img1) | stage[p+1] & img2)
 
-    @micropython.native
-    def tick(self, t):
-        ### Updated Player for one game tick.
-        # @param t: the current game tick count
+    @micropython.viper
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a render layer.
+        # Sprites must be 8 pixels high but can be any width.
+        # Sprites can have multiple frames stacked horizontally.
+        # There are 2 layers that can be rendered to:
+        #     0: Non-interactive background monster layer.
+        #     1: Foreground monsters, traps and player.
+        # @param layer: (int) the layer to render to.
+        # @param x: screen x draw position.
+        # @param y: screen y draw position (from top).
+        # @param img: (ptr8) sprite to draw (single row VLSB).
+        # @param w: width of the sprite to draw.
+        # @param f: the frame of the sprite to draw.
         ###
-        if not (bL() and bR()): # Update direction
-            self.dir = -1 if not bL() else 1
-        self.moving = 1 if not (bL() and bR()) else 0 # Update moving
-        # Normal Play modes
-        if self.mode < 199:
-            # Update the state of the A button pressed detector
-            self._bAOnce = (0 if bA() else
-                1 if (not bA() and self._bAOnce == 0) else self._bAOnce)
-            # Normal play modes
-            if self.mode == 0: # Crawl mode (Umby)
-                self._tick_play_ground(t)
-            else: # Roof climbing modes (Glow)
-                self._tick_play_roof(t)
-            # Check for common death conditions:
-            # DEATH: Check for falling into the abyss
-            if self._y > 80:
-                self.die(240, self.name + " fell into the abyss!")
-        # Respawn mode
-        elif 201 <= self.mode <= 202:
-            self._tick_respawn()
-        # Testing mode
-        elif self.mode == 199:
-            self._tick_testing()
-        # Update the viper friendly variables.
-        self.x = int(self._x)
-        self.y = int(self._y)
-        # Handle rocket engine tick
-        if self.mode == 0: # Umby's rocket
-            self._tick_rocket_grenade(t)
-        elif self.mode < 199: # Glow's rocket
-            self._tick_rocket_missile(t)
+        o = x-f*w
+        p = (layer+2)*144 + (60 if layer == 1 else 0)
+        r1 = -30 if layer == 1 else 0
+        r2 = 101 if layer == 1 else 71
+        draw = ptr32(self._stage)
+        for i in range(x if x >= r1 else r1, x+w if x+w <= r2 else r2):
+            b = uint(img[i-o])
+            draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
 
-    @micropython.native
-    def _tick_play_ground(self, t):
-        ### Handle one game tick for ground play controls ###
-        x, y = self.x, self.y
-        ch = self._tp.check_tape
-        cl = ch(x-1, y)
-        cr = ch(x+1, y)
-        grounded = ch(x, y+1) or cl or cr
-        lwall = cl or ch(x-1, y-3)
-        rwall = cr or ch(x+1, y-3)
-        # Apply gravity and grund check
-        self._y += self._y_vel if not grounded else 0
-        # Stop gravity when hit ground but keep some fall speed ready
-        self._y_vel = 0.5 if grounded else self._y_vel + 2.5 / _FPS
-        # CONTROLS: Apply movement
-        if t%3: # Movement
-            self._x += (-1 if not (bL() or lwall) else
-                1 if not (bR() or rwall) else 0)
-        if t%3==0: # Climbing
-            self._y += (-1 if (not bL() and lwall) or
-                (not bR() and rwall) else 0)
-        # CONTROLS: Apply jump - allow continual jump until falling begins
-        if not bA() and (self._y_vel < 0 or grounded):
-            if grounded: # detatch from ground grip
-                self._y -= 1
-            self._y_vel = -0.8
-        # DEATH: Check for head smacking
-        if ch(x, y-4) and self._y_vel < -0.4:
-            self.die(240, self.name + " face-planted the roof!")
-
-    @micropython.native
-    def _launch_hook(self, angle):
-        ### Activate grappling hook in given aim ###
-        ch = self._tp.check_tape
-        x, y = self.x, self.y
-        self._hook_ang = angle
-        # Find hook landing position
-        xs, ys = -sin(angle)/2, -cos(angle)/2
-        xh, yh = x, y
-        d = self.dir
-        while (yh > 0 and (x-xh)*d < 40 and not ch(int(xh), int(yh))):
-            xh += xs
-            yh += ys
-        # Apply grapple hook parameters
-        self.hook_x, self.hook_y = int(xh), int(yh)
-        x1 = self.x - self.hook_x
-        y1 = self.y - self.hook_y
-        self._hook_len = sqrt(x1*x1+y1*y1)
-        # Now get the velocity in the grapple angle
-        xv, yv = self._x_vel, self._y_vel
-        self._hook_vel = -sqrt(xv*xv+yv*yv)*(1-xv*y1+yv*x1)*4/(self._hook_len+1)
-        # Start normal grappling hook mode
-        self.mode = 11
-
-    @micropython.native
-    def _tick_play_roof(self, t):
-        ### Handle one game tick for roof climbing play controls ###
-        x, y = self.x, self.y
-        ch = self._tp.check_tape
-        cd = ch(x, y-1)
-        crd = ch(x+1, y-1)
-        cld = ch(x-1, y-1)
-        cl = ch(x-1, y)
-        cr = ch(x+1, y)
-        cu = ch(x, y+3)
-        clu = ch(x-1, y+3)
-        cru = ch(x+1, y+3)
-        falling = not (cd or cld or crd or cl or cr)
-        head_hit = cu or clu or cru
-        # CONTROLS: Activation of grappling hook
-        if self.mode == 10:
-            # Shoot hook straight up
-            self._x_vel = self._y_vel = 0.0
-            self._launch_hook(0)
-        # CONTROLS: Grappling hook swing
-        if self.mode == 11:
-            ang = self._hook_ang
-            # Apply gravity
-            g = ang*ang/2.0
-            self._hook_vel += -g if ang > 0 else g if ang < 0 else 0.0
-            # Air friction
-            vel = self._hook_vel
-            self._hook_vel -= vel*vel*vel/64000
-            # CONTROLS: swing
-            self._hook_vel += -0.08 if not bL() else 0.08 if not bR() else 0
-            # CONTROLS: climb/extend rope
-            self._hook_len += -0.5 if not bU() else 0.5 if not bD() else 0
-            # Check land interaction conditions
-            if not falling and bA(): # Stick to ceiling if touched
-                self.mode = 12
-            elif head_hit or (not falling and vel*ang > 0):
-                # Rebound off ceiling
-                self._hook_vel = -self._hook_vel
-            if falling and self._bAO(): # Release grappling hook
-                self.mode = 12
-                # Convert angular momentum to free falling momentum
-                ang2 = ang + vel/128.0
-                self._x_vel = self.hook_x + sin(ang2)*self._hook_len - self._x
-                self._y_vel = self.hook_y + cos(ang2)*self._hook_len - self._y
-            # Update motion and position variables based on swing
-            self._hook_ang += self._hook_vel/128.0
-            self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
-            self._y = self.hook_y + cos(self._hook_ang)*self._hook_len
-        elif self.mode == 12: # Clinging movement (without grappling hook)
-            # CONTROLS: Activate hook
-            if falling and self._bAO() and self.y < 64:
-                # Activate grappling hook in aim direction
-                self._launch_hook(self._aim_ang*self.dir)
-            # CONTROLS: Fall (force when jumping)
-            elif falling or not bA():
-                if not falling:
-                    self._bAO() # Claim 'A' so we don't immediately grapple
-                    self._x_vel = -0.5 if not bL() else 0.5 if not bR() else 0.0
-                # Apply gravity to vertical speed
-                self._y_vel += 1.5 / _FPS
-                # Update positions with momentum
-                self._y += self._y_vel
-                self._x += self._x_vel
-            else:
-                # Stop falling when attached to roof
-                self._y_vel = 0
-            # CONTROLS: Apply movement
-            if t%2 and y < 64:
-                climb = not cd and ((not bL() and crd) or (not bR() and cld))
-                descend = not cu and (((cl or clu)
-                    and not bL()) or ((cr or cru) and not bR()))
-                lsafe = (cld or cd or ch(x-2, y-1) or ch(x-2, y)) and not (
-                    cl or clu or bL())
-                rsafe = (crd or cd or ch(x+2, y-1) or ch(x+2, y)) and not (
-                    cr or cru or bR())
-                self._x += -1 if lsafe else 1 if rsafe else 0
-                self._y += -1 if climb else 1 if descend else 0
-
-    @micropython.native
-    def _tick_respawn(self):
-        ### After the player dies, a respawn process begins,
-        # showing a death message, while taking Umby back
-        # to a respawn point on a new starting platform.
-        # This handles a game tick when a respawn process is
-        # active.
+    @micropython.viper
+    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a mask (clear) layer.
+        # This is similar to the "draw" method but applies a mask
+        # sprite to a mask later.
+        # There are 2 layers that can be rendered to:
+        #     0: Mid and background environment mask (1 bit to clear).
+        #     1: Foreground environment mask (1 bit to clear).
         ###
-        tape = self._tp
-        # Move Umby towards the respawn location
-        if self._x > self._respawn_x:
-            self._x -= 1
-            self._y += 0 if int(self._y) == 20 else \
-                1 if self._y < 20 else -1
-            if int(self._x) == self._respawn_x + 120:
-                # Hide any death message
-                tape.clear_overlay()
-            if self._x < self._respawn_x + 30:
-                # Draw the starting platform
-                tape.redraw_tape(2, int(self._x)-5, pattern_room, pattern_fill)
+        o = x-f*w
+        p = layer*144
+        draw = ptr32(self._stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-o])
+            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
+
+    @micropython.viper
+    def comp(self):
+        ### Composite all the render layers together and render directly to
+        # the display buffer, taking into account the scroll position of each
+        # render layer, and dimming the background layers.
+        ###
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tape_scroll)
+        stg = ptr32(self._stage)
+        frame = ptr8(_display_buffer)
+        # Obtain and increase the frame counter
+        scroll[2] += 1 # Counter
+        y_pos = scroll[4]
+        # Loop through each column of pixels
+        for x in range(72):
+            # Create a modifier for dimming background layer pixels.
+            # The magic number here is repeating on and off bits, which is
+            # alternated horizontally and in time. Someone say "time crystal".
+            dim = int(1431655765) << (scroll[2]+x)%2
+            # Compose the first 32 bits vertically.
+            p0 = (x+scroll[0])%216*2
+            p1 = (x+scroll[1])%216*2
+            p3 = (x+scroll[3])%216*2
+            x2 = x*2
+            a = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0] | tape[p1+432]) & stg[x2]
+                            & stg[x2+144] & tape[p1+864] & tape[p3+1728])
+                        # Background (non-interactive) monsters
+                        | stg[x2+288])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stg[x2+492]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+1296] & stg[x2+144] & tape[p3+1728]))
+                # Now apply the overlay mask and draw layers.
+                & (tape[x2+2160] << y_pos)
+                | (tape[x2+2304] << y_pos))
+            # Now compose the second 32 bits vertically.
+            b = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0+1] | tape[p1+433]) & stg[x2+1]
+                        & stg[x2+145] & tape[p1+865] & tape[p3+1729])
+                        # Background (non-interactive) monsters
+                        | stg[x2+289])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stg[x2+493]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+1297] & stg[x2+145] & tape[p3+1729]))
+                # Now apply the overlay mask and draw layers.
+                & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
+                | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
+            # Apply the relevant pixels to next vertical column of the display
+            # buffer, while also accounting for the vertical offset.
+            frame[x] = a >> y_pos
+            frame[72+x] = (a >> 8 >> y_pos) | (b << (32 - y_pos) >> 8)
+            frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
+            frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
+            frame[288+x] = b >> y_pos
+        # Clear the stage buffers now that we have pulled the render
+        # Reset the render and mask laters to their default blank state
+        for i in range(288, 696):
+            stg[i] = 0
+        mask = uint(0xFFFFFFFF)
+        for i in range(288):
+            stg[i] = mask
+
+    @micropython.viper
+    def check_tape(self, x: int, y: int) -> bool:
+        ### Returns true if the x, y position is solid foreground ###
+        tape = ptr32(self._tape)
+        p = x%216*2+1296
+        return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
+    
+    @micropython.viper
+    def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
+        ### Scroll the tape one pixel forwards, or backwards for each layer.
+        # Updates the tape scroll position of that layer.
+        # Fills in the new column with pattern data from the relevant
+        # pattern functions. Since this is a rotating buffer, this writes
+        # over the column that has been scrolled offscreen.
+        # Each layer can be moved in the following directions:
+        #     -1 -> rewind layer backwards,
+        #     0 -> leave layer unmoved,
+        #     1 -> roll layer forwards
+        # @param back_move: Movement of the background layer
+        # @param mid_move: Movement of the midground layer (with fill)
+        # @param fore_move: Movement of the foreground layer (with fill)
+        ###
+        tape = ptr32(self._tape)
+        scroll = ptr32(self._tape_scroll)
+        for i in range(3):
+            layer = 3 if i == 2 else i
+            move = fore_move if i == 2 else mid_move if i == 1 else back_move
+            if not move:
+                continue
+            # Advance the tape_scroll position for the layer
+            tapePos = scroll[layer] + move
+            scroll[layer] = tapePos
+            # Find the tape position for the column that needs to be filled
+            x = tapePos + 143 if move == 1 else tapePos - 72
+            offX = layer*432 + x%216*2
+            # Update 2 words of vertical pattern for the tape
+            # (the top 32 bits, then the bottom 32 bits)
+            pattern = self.feed[layer]
+            tape[offX] = int(pattern(x, 0))
+            tape[offX+1] = int(pattern(x, 32))
+            if layer != 0:
+                fill_pattern = self.feed[layer + 1]
+                tape[offX+432] = int(fill_pattern(x, 0))
+                tape[offX+433] = int(fill_pattern(x, 32))
+        # Spawn new monsters as needed
+        xp = ptr32(self._x)
+        p = scroll[3]
+        # Only spawn when scrolling into unseen land
+        if xp[0] >= p:
+            return
+        rates = ptr8(self.rates)
+        r = int(uint(ihash(p)))
+        # Loop through each monster type randomly spawning
+        # at the configured rate.
+        for i in range(0, int(len(self.types))):
+            if rates[i] and r%(256-rates[i]) == 0:
+                self.add(self.types[i], p+72+36, r%64)
+            r = r >> 1 # Fast reuse of random number
+        xp[0] = p 
+
+    @micropython.viper
+    def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Updates a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This can be used to draw to a layer without scrolling.
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] = int(pattern(x, 0))
+        tape[offX+1] = int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] = int(fill_pattern(x, 0))
+            tape[offX+433] = int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def scratch_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Carves a hole out of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] &= int(pattern(x, 0))
+        tape[offX+1] &= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] |= int(fill_pattern(x, 0))
+            tape[offX+433] |= int(fill_pattern(x, 32))
+
+    @micropython.viper
+    def draw_tape(self, layer: int, x: int, pattern, fill_pattern):
+        ### Draws over the top of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This combines the existing layer with the provided pattern.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
+        tape = ptr32(self._tape)
+        l = 3 if layer == 2 else layer
+        offX = l*432 + x%216*2
+        tape[offX] |= int(pattern(x, 0))
+        tape[offX+1] |= int(pattern(x, 32))
+        if l != 0 and fill_pattern:
+            tape[offX+432] &= int(fill_pattern(x, 0))
+            tape[offX+433] &= int(fill_pattern(x, 32))
+        
+    @micropython.viper
+    def offset_vertically(self, offset: int):
+        ### Shift the view on the tape to a new vertical position, by
+        # specifying the offset from the top position. This cannot
+        # exceed the total vertical size of the tape (minus the tape height).
+        ###
+        ptr32(self._tape_scroll)[4] = (
+            offset if offset >= 0 else 0) if offset <= 24 else 24
+
+    @micropython.viper
+    def auto_camera_parallax(self, x: int, y: int, d: int, t: int):
+        ### Move the camera so that an x, y tape position is in the spotlight.
+        # This will scroll each tape layer to immitate a camera move and
+        # will scroll with standard parallax.
+        # This will also respect a direction (d) to (slowly) extend the view
+        # of the camera backwards if the player is looking backwards.
+        # Time is measured by passing in a tick counter (t).
+        ###
+        # Get the current camera position
+        c = ptr32(self._tape_scroll)[3]
+        # Scroll the tapes as needed
+        n = (-1 if x < c+10 or (d == -1 and x < c+25 and t%8==0) else
+            1 if x > c+40 or (d == 1 and x > c+20 and t%4==0) else 0)
+        if n != 0:
+            self.scroll_tape(n if c % 4 == 0 else 0, n*(c % 2), n)
+        # Reset the vertical offset as needed
+        y -= 20
+        ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
+
+    @micropython.viper
+    def write(self, layer: int, text, x: int, y: int):
+        ### Write text to the mid background layer at an x, y tape position.
+        # This also clears a space around the text for readability using
+        # the background clear mask layer.
+        # Text is drawn with the given position being at the botton left
+        # of the written text (excluding the mask border).
+        # There are 2 layers that can be rendered to:
+        #     1: Mid background layer.
+        #     3: Overlay layer.
+        # When writing to the overlay layer, the positional coordinates
+        # should be given relative to the screen, rather than the tape.
+        ###
+        text = text.upper() # only uppercase is supported
+        tape = ptr32(self._tape)
+        abc_b = ptr8(self.abc)
+        abc_i = self.abc_i
+        h = y - 8 # y position is from bottom of text
+        # Select the relevant layers
+        mask = 864 if layer == 1 else 2160
+        draw = 432 if layer == 1 else 2304
+        # Clear space on background mask layer
+        b = 0xFE
+        for i in range(int(len(text))*4+1):
+            p = (x-1+i)%216*2+mask
+            tape[p] ^= tape[p] & (b >> -1-h if h+1 < 0 else b << h+1)
+            tape[p+1] ^= tape[p+1] & (b >> 31-h if h-31 < 0 else b << h-31)
+        # Draw to the mid background layer
+        for i in range(int(len(text))):
+            for o in range(3):
+                p = (x+o+i*4)%216*2
+                b = abc_b[int(abc_i[text[i]])*3+o]
+                img1 = b >> 0-h if h < 0 else b << h
+                img2 = b >> 32-h if h-32 < 0 else b << h-32
+                # Draw to the draw layer
+                tape[p+draw] |= img1
+                tape[p+draw+1] |= img2
+                # Stencil text out of the clear background mask layer
+                tape[p+mask] |= img1
+                tape[p+mask+1] |= img2
+
+    def message(self, position, text):
+        ### Write a message to the top (left), center (middle), or
+        # bottom (right) of the screen in the overlay layer.
+        # @param position: (int) 0 - center, 1 - top, 2 - bottom.
+        ###
+        # Split the text into lines that fit on screen.
+        lines = [""]
+        for word in text.split(' '):
+            if (len(lines[-1]) + len(word) + 1)*4 > 72:
+                lines.append("")
+            lines[-1] += (" " if lines[-1] else "") + word
+        # Draw centered (if applicable)
+        if position == 0:
+            x = 25-len(lines)*3
+            while (lines):
+                line = lines.pop(0)
+                self.write(3, line, 36-(len(line)*2), x)
+                x += 6
         else:
-            # Return to normal play modes
-            self.mode = 0 if self.mode == 201 else 10
-            tape.write(1, "DONT GIVE UP!", tape.midx[0]+8, 26)
-
-    @micropython.native
-    def _tick_testing(self):
-        ### Handle one game tick for when in test mode.
-        # Test mode allows you to explore the level by flying,
-        # free of interactions.
-        ###
-        if not bU():
-            self._y -= 1
-        elif not bD():
-            self._y += 1
-        if not bL():
-            self._x -= 1
-        elif not bR():
-            self._x += 1
-
-
-class Umby(_Player):
-    ### One of the players you can play with.
-    # Umby is an earth worm. They can jump, aim, and fire rockets.
-    # Umby can also make platforms by releasing rocket trails.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Hitting their head on a platform or a roof, while jumping, will
-    # also kill them.
-    ###
-    # BITMAP: width: 3, height: 8, frames: 6
-    _art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
-    # Umby's shadow
-    _sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
-    name = "Umby"
-
-    def __init__(self, tape, x, y):
-        self._aim_ang = 2.5
-        _Player.__init__(self, tape, x, y)
-
-    @micropython.native
-    def _tick_rocket_grenade(self, t):
-        ### Handle one game tick for Umby's rocket.
-        # Rockets start with aiming a target, then the launch
-        # process begins and charges up. When the button is then
-        # released the rocket launches. When the rocket hits the
-        # ground it clears a blast radius, or kills Umby, if hit.
-        # During flight, further presses of the rocket button
-        # will leave a rocket trail that will act as a platform.
-        ###
-        angle = self._aim_ang
-        power = self._aim_pow
-        tape = self._tp
-        # CONTROLS: Apply rocket
-        if not (bU() and bD() and bB()): # Rocket aiming
-            # CONTROLS: Aiming
-            self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not (bB() or self.rocket_active): # Power rocket
-                self._aim_pow += 0.03
-            angle = self._aim_ang
-            # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0 and not self.rocket_active:
-            self.rocket_active = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y - 1
-            self._rocket_x_vel = sin(angle)*power/2.0
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = 1 if self.aim_x > 0 else -1
-        # Apply rocket dynamics if it is active
-        if self.rocket_active == 1:
-            # Create trail platform when activated
-            if not bB():
-                rx = self.rocket_x
-                ry = self.rocket_y
-                rd = -1 if self.aim_x < 0 else 1
-                trail = pattern_bang(rx-rd, ry, 2, 1)
-                for x in range(rx-rd*2, rx, rd):
-                    tape.draw_tape(2, x, trail, None)
-            # Apply rocket motion
-            self._rocket_x += self._rocket_x_vel
-            self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
-            # Apply gravity
-            self._rocket_y_vel += 2.5 / _FPS
-            rx = self.rocket_x
-            ry = self.rocket_y
-            # Check fallen through ground
-            if ry > 80:
-                # Diffuse rocket
-                self.rocket_active = 0
-            # Check if the rocket hit the ground
-            if tape.check_tape(rx, ry):
-                # Explode rocket
-                self.kill(t, None)
-        # Wait until the rocket button is released before firing another
-        if self.rocket_active == 2 and bB():
-            self.rocket_active = 0
+            # Draw top (if applicable)
+            if position == 1:
+                x = 5
+            # Draw bottom (if applicable)
+            if position == 2:
+                x = 46 - 6*len(lines)
+            while (lines):
+                self.write(2, lines.pop(0), 0, x)
+                x += 6
 
     @micropython.viper
-    def draw(self, t: int):
-        ### Draw Umby to the draw buffer ###
-        tape = self._tp
-        p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        aim_x = int(self.aim_x)
-        aim_y = int(self.aim_y)
-        m = int(self.moving)
-        d = int(self.dir)
-        # Get animation frame
-        # Steps through 0,1,2,3 every half second for animation
-        # of looking left and right, and changes to movement art of
-        # 4 when moving left and 5 when moving right.
-        f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
-        # 0 when still, 1 when left moving, 2 when right
-        fm = 0 if not m else 1 if d < 0 else 2
-        # Draw Umby's layers and masks
-        tape.draw(0, x_pos-1-p, y_pos-6, self._sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1-p, y_pos-6, self._art, 3, f) # Umby
-        tape.mask(0, x_pos-4-p, y_pos-6, self._back_mask, 9, 0)
-        tape.mask(1, x_pos-1-p, y_pos-6, self._fore_mask, 3, fm)
-        # Draw Umby's aim
-        tape.draw(t*6//_FPS%2, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim, 3, 0)
-        tape.mask(1, x_pos-p+aim_x-1, y_pos-6+aim_y, self._aim_fore_mask, 3, 0)
-        tape.mask(0, x_pos-p+aim_x-2, y_pos-5+aim_y, self._aim_back_mask, 5, 0)
-        # Draw Umby's rocket
-        if int(self.rocket_active) == 1:
-            rock_x = int(self.rocket_x)
-            rock_y = int(self.rocket_y)
-            rdir = int(self.rocket_dir)
-            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
-                self._aim, 3, 0) # Rocket tail
-
-
-class Glow(_Player):
-    ### One of the players you can play with.
-    # Glow is a cave dwelling glow worm. They can crawl along the roof,
-    # fall at will, swing with a grappling hook, and fire rockets.
-    # Unlike Umby, Rockets are self propelled and accelerate into a horizontal
-    # flight, They are launched backwards and downwards in the oppostite
-    # direction of the grappling hook aim, but accelerate horizontally
-    # into the opposite direction of the rocket aim at launch.
-    # Unlike Umby, Glow has two aims pointing in opposite directions,
-    # one for the grappling hook, and one for the rocket aim. Aim can only
-    # be moved up or down, and will switch to the horizontal direction for
-    # the last direction Glow pressed.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Glow is not good with mud, and if hits the ground, including at a bad angle
-    # when on the grappling hook, will get stuck. This will cause it to be
-    # difficult to throw the grappling hook, and may leave Glow with the only
-    # option of sinking throug the abyse into the mud.
-    # This means glow can sometimes fall through thin platforms like Umby's
-    # platforms and then crawl underneath.
-    # Umby also has some specific modes:
-    #     * 0: auto attach grapple hook to ceiling.
-    #     * 1: grapple hook activated.
-    #     * 2: normal movement
-    ###
-    # BITMAP: width: 3, height: 8, frames: 6
-    _art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
-    # Umby's shadow
-    _sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
-    name = "Glow"
-
-    def __init__(self, tape, x, y):
-        self.mode = 10
-        self._aim_ang = -0.5
-        _Player.__init__(self, tape, x, y)
-
-    @micropython.native
-    def _tick_rocket_missile(self, t):
-        ### Handle one game tick for Glows's rocket.
-        # Rockets start with aiming a target, then the launch
-        # process begins and charges up. When the button is then
-        # released the rocket launches. When the rocket hits the
-        # ground it clears a blast radius, or kills Glow, if hit.
-        # See the class doc strings for more details.
+    def tag(self, text, x: int, y: int):
+        ### Write text to the mid background layer centered
+        # on the given tape foreground scoll position.
         ###
-        angle = self._aim_ang
-        power = self._aim_pow
-        grappling = self.mode == 11
-        tape = self._tp
-        # CONTROLS: Apply rocket
-        # Rocket aiming
-        if not bU() or not bD() or not bB() or not bL() or not bR():
-            if not grappling:
-                self._aim_ang += 0.02 if not bU() else -0.02 if not bD() else 0
-            if not bB(): # Power rocket
-                self._aim_pow += 0.03
-            angle = self._aim_ang
-            angle = -2.0 if angle < -2.0 else 0 if angle > 0 else angle
-            self._aim_ang = angle
-            # Resolve rocket aim to the x by y vector form
-            self.aim_x = int(sin(angle)*power*10.0)*self.dir
-            self.aim_y = int(cos(angle)*power*10.0)
-        # Actually launch the rocket when button is released
-        if bB() and power > 1.0:
-            self.rocket_active = 1
-            self._rocket_x = self.x
-            self._rocket_y = self._y + 1
-            self._rocket_x_vel = sin(angle)*power/2.0*self.dir
-            self._rocket_y_vel = cos(angle)*power/2.0
-            self._aim_pow = 1.0
-            self.aim_x = int(sin(angle)*10.0)*self.dir
-            self.aim_y = int(cos(angle)*10.0)
-            self.rocket_dir = self.dir
-        # Apply rocket dynamics if it is active
-        if self.rocket_active == 1:
-            # Apply rocket motion
-            self._rocket_x += self._rocket_x_vel
-            self._rocket_y += self._rocket_y_vel
-            self.rocket_x = int(self._rocket_x)
-            self.rocket_y = int(self._rocket_y)
-            rx = self.rocket_x
-            ry = self.rocket_y
-            # Apply flight boosters
-            self._rocket_x_vel += 2.5 / _FPS * self.rocket_dir
-            if ((self._rocket_x_vel > 0 and self.rocket_dir > 0)
-            or (self._rocket_x_vel < 0 and self.rocket_dir < 0)):
-                self._rocket_y_vel *= 0.9
-            # Check fallen through ground or above ceiling,
-            # or out of range
-            px = self.rocket_x - tape.x[0]
-            if ry > 80 or ry < -1 or px < -30 or px > 102:
-                # Diffuse rocket
-                self.rocket_active = 0
-            # Check if the rocket hit the ground
-            if tape.check_tape(rx, ry):
-                # Explode rocket
-                self.kill(t, None)
-        # Immediately reset rickets after an explosion
-        if self.rocket_active == 2:
-            self.rocket_active = 0
+        scroll = ptr32(self._tape_scroll)
+        p = x-scroll[3]+scroll[1] # Translate position to mid background
+        self.write(1, text, p-int(len(text))*2, y+3)
 
     @micropython.viper
-    def draw(self, t: int):
-        ### Draw Glow to the draw buffer ###
-        tape = self._tp
-        p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        aim_x = int(self.aim_x)
-        aim_y = int(self.aim_y)
-        m = int(self.moving)
-        d = int(self.dir)
-        # Get animation frame
-        # Steps through 0,1,2,3 every half second for animation
-        # of looking left and right, and changes to movement art of
-        # 4 when moving left and 5 when moving right.
-        f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
-        # 0 when still, 1 when left moving, 2 when right
-        fm = 0 if not m else 1 if d < 0 else 2
-        # Draw Glows's layers and masks
-        tape.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
-        tape.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
-        tape.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
-        # Draw Glows's aim
-        l = t*6//_FPS%2
-        # Rope aim
-        if int(self.mode) == 11: # Activated hook
-            hook_x = int(self.hook_x)
-            hook_y = int(self.hook_y)
-            # Draw Glow's grappling hook rope
-            for i in range(0, 8):
-                sx = x_pos-p + (hook_x-x_pos)*i//8
-                sy = y_pos + (hook_y-y_pos)*i//8
-                tape.draw(1, sx-1, sy-6, self._aim, 3, 0)
-            hx = hook_x-p-1
-            hy = hook_y-6
-        else:
-            hx = x_pos-p-aim_x//2-1
-            hy = y_pos-6-aim_y//2
-        tape.draw(l, hx, hy, self._aim, 3, 0)
-        tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
-        tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
-        # Rocket aim
-        x = x_pos-p+aim_x-1
-        y = y_pos-6+aim_y
-        tape.draw(l, x, y, self._aim, 3, 0)
-        tape.mask(1, x, y, self._aim_fore_mask, 3, 0)
-        tape.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
-        # Draw Glows's rocket
-        if self.rocket_active:
-            rock_x = int(self.rocket_x)
-            rock_y = int(self.rocket_y)
-            rdir = int(self.rocket_dir)
-            tape.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
-            tape.draw(0, rock_x-p+(-3 if rdir>0 else 1), rock_y-7,
-                self._aim, 3, 0) # Rocket tail
-
-
-class BonesTheMonster:
-    ### Bones is a monster that flyes about then charges the player.
-    # Bones looks a bit like a skull.
-    # It will fly in a random direction until it hits a wall in which case
-    # it will change direction again. There is a very small chance that
-    # Bones will fly over walls and ground and Bones will continue until
-    # surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
-    # offscreen to the top or bottom plus 10, it will change direction.
-    # It will also change direction on occasion.
-    # When the player is within a short range, Bones will charge the player
-    # and will not stop.
-    ###
-    # BITMAP: width: 7, height: 8, frames: 3
-    _art = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,242,
-        139,222,139,242,28])
-    # BITMAP: width: 9, height: 8
-    _mask = bytearray([28,62,247,243,239,243,247,62,28])
-
-    def __init__(self, tape, x, y):
-        self._tp = tape
-        self.x = int(x) # Middle of Bones
-        self.y = int(y) # Middle of Bones
-        # Mode: 0 - flying, 1 - charging
-        self.mode = 0
-        self._x = x # floating point precision
-        self._y = y # floating point precision
-        self._dx = 0
-        self._dy = 0
-
-    @micropython.native
-    def tick(self, t):
-        ### Update Bones for one game tick ###
-        # Find the potential new coordinates
-        tape = self._tp
-        x, y = self.x, self.y
-        if self.mode == 0: # Flying
-            nx = self._x + self._dx
-            ny = self._y + self._dy
-            # Change direction if needed
-            if ((self._dx == 0 and self._dy == 0)
-            or ny < -10 or ny > 74 or t%128==0
-            or (tape.check_tape(int(nx), int(ny)) and t%12 and not (
-                tape.check_tape(x, y) or y < 0 or y >= 64))):
-                self._dx = sin(t+nx)/4.0
-                self._dy = cos(t+nx)/4.0
-            else:
-                self._x = nx
-                self._y = ny
-                self.x = int(nx)
-                self.y = int(ny)
-            # Check for charging condition
-            for plyr in tape.players:
-                px = plyr.x - x
-                py = plyr.y - y
-                if px*px + py*py < 300:
-                    self._target = plyr
-                    self.mode = 1
-            # Check for own death conditions
-            if x < tape.x[0]:
-                tape.mons.remove(self)
-        elif t%4==0: # Charging
-            t = self._target
-            self.x += 1 if x < t.x else -1 if x > t.x else 0
-            self.y += 1 if y < t.y else -1 if y > t.y else 0
-
-    @micropython.viper
-    def draw(self, t: int):
-        ### Draw Bones to the draw buffer ###
-        tape = self._tp
-        p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        mode = int(self.mode)
-        # Select animation frame
-        f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
-        # Draw Bones' layers and masks
-        tape.draw(1, x_pos-3-p, y_pos-4, self._art, 7, f) # Bones
-        tape.mask(1, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
-        tape.mask(0, x_pos-4-p, y_pos-4, self._mask, 9, 0) # Mask
+    def clear_overlay(self):
+        ### Reset and clear the overlay layer and it's mask layer. ###
+        tape = ptr32(self._tape)
+        # Reset the overlay mask layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(2160, 2304):
+            tape[i] = mask
+        # Reset and clear the overlay layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(2304, 2448):
+            tape[i] = 0
