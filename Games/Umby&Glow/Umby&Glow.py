@@ -50,19 +50,22 @@ tapeScroll = array('i', [0, 0, 0, 0, 0, 0])
 feed = [None, None, None, None, None]
 
 ##
+# comp
 # Composite all the render layers together and render directly to the display buffer,
 # taking into account the scroll position of each render layer, and dimming the
 # background layers.
 @micropython.viper
-def comp(tape: ptr32, tapeScroll: ptr32):
+def comp():
+    tape_ = ptr32(tape)
+    scroll = ptr32(tapeScroll)
     frame = ptr8(thumby.display.display.buffer)
     # Get the scoll position of each tape section (render layer)
-    tp0 = tapeScroll[0]
-    tp1 = tapeScroll[1]
-    tp3 = tapeScroll[3]
+    tp0 = scroll[0]
+    tp1 = scroll[1]
+    tp3 = scroll[3]
     # Obtain and increase the frame counter
-    tapeScroll[5] += 1
-    ctr = tapeScroll[5]
+    scroll[5] += 1
+    ctr = scroll[5]
     # Loop through each column of pixels
     for x in range(0, 72):
         # Create a modifier for dimming background layer pixels.
@@ -70,13 +73,13 @@ def comp(tape: ptr32, tapeScroll: ptr32):
         # horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
         # Compose the first 32 bits vertically.
-        a = ((tape[(x+tp0)%72*2] & dim)
-            | (tape[(x+tp1)%72*2+144] & dim)
-            | tape[(x+tp3)%72*2+432])
+        a = ((tape_[(x+tp0)%72*2] & dim)
+            | (tape_[(x+tp1)%72*2+144] & dim)
+            | tape_[(x+tp3)%72*2+432])
         # Compose the second 32 bits vertically.
-        b = ((tape[(x+tp0)%72*2+1] & dim)
-            | (tape[(x+tp1)%72*2+144+1] & dim)
-            | tape[(x+tp3)%72*2+432+1])
+        b = ((tape_[(x+tp0)%72*2+1] & dim)
+            | (tape_[(x+tp1)%72*2+144+1] & dim)
+            | tape_[(x+tp3)%72*2+432+1])
         # Apply the relevant pixels to next vertical column of the display buffer
         frame[x] = a
         frame[72+x] = a >> 8
@@ -85,20 +88,24 @@ def comp(tape: ptr32, tapeScroll: ptr32):
         frame[288+x] = b
 
 ##
-# Scroll the tape one pixel to the right for a specified layer.
+# scroll_tape
+# Scroll the tape one pixel forwards, or backwards for a specified layer.
 # Updates the tape scroll position of that layer.
 # Fills in the new column with pattern data from a specified
 # pattern function. Since this is a rotating buffer, this writes
 # over the column that has been scrolled offscreen.
 # @param pattern: a function, returning fill data, given x and y paramaters.
 # @param layer: the layer to scroll and write to.
+# @param direction: -1 -> rewind backwards, 1 -> extend forwrds.
 @micropython.viper
-def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
+def scroll_tape(pattern, layer: int, direction: int):
+    tape_ = ptr32(tape)
+    scroll = ptr32(tapeScroll)
     # Advance the tapeScroll position for the layer
-    tapePos = tapeScroll[layer] + 1
-    tapeScroll[layer] = tapePos
+    tapePos = scroll[layer] + direction
+    scroll[layer] = tapePos
     # Find the tape position for the column that needs to be filled
-    x = tapePos + 72 - 1
+    x = tapePos + 72 - (1 if direction == 1 else 0)
     # Do the top 32 bits, then the bottom 32 bits
     for w in range(0, 2):
         # y will iterate through the vertical tape position, for the 32 bits
@@ -111,16 +118,7 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
             v |= int(pattern(x, y)) << b
             y+=1
         # write the current 32 bits to tape
-        tape[layer*144 + x%72*2+w] = v
-
-
-
-
-
-# TODO rewind_tape (change extend_tape to scroll tape, and add direction argument)
-
-
-
+        tape_[layer*144 + x%72*2+w] = v
 
 
 ##
@@ -129,6 +127,12 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
 def abs(v: int) -> int:
     m = v >> 31
     return (v + m) ^ m
+
+##
+# PATTERN [none]: empty
+@micropython.viper
+def pattern_none(x: int, y: int) -> int:
+    return 0
 
 ##
 # PATTERN [wall]: dotted vertical lines repeating
@@ -158,10 +162,10 @@ def pattern_test(x: int, y: int) -> int:
 def start_level():
     # Fill the tape with the starting area
     for i in range(0, 72):
-        extend_tape(pattern_fence, memoryview(tape), tapeScroll, 1)
-        extend_tape(pattern_room, memoryview(tape), tapeScroll, 3)
+        scroll_tape(pattern_fence, 1, 1)
+        scroll_tape(pattern_room, 3, 1)
     # Set the feed patterns for each layer.
-    feed[:] = [pattern_wall, pattern_fence, None, pattern_room, None]
+    feed[:] = [pattern_none, pattern_none, None, pattern_test, None]
 start_level()
 
 
@@ -179,17 +183,17 @@ while(1):
         profiler = time.ticks_ms()
 
     # Update the display buffer new frame data
-    comp(tape, tapeScroll)
+    comp()
     # Flush to the display, waiting on the next frame interval
     thumby.display.update()
 
 
     # TESTING: infinitely scroll the tape
-    extend_tape(feed[3], memoryview(tape), tapeScroll, 3)
+    scroll_tape(feed[3], 3, 1)
     if (c % 2 == 0):
-        extend_tape(feed[1], memoryview(tape), tapeScroll, 1)
+        scroll_tape(feed[1], 1, 1)
         if (c % 4 == 0):
-            extend_tape(feed[0], memoryview(tape), tapeScroll, 0)
+            scroll_tape(feed[0], 0, 1)
     c += 1
 
 
