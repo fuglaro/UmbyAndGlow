@@ -796,7 +796,7 @@ class Player:
     def die(self, rewind_distance, death_message):
         """ Put Player into a respawning state """
         tape = self._tape
-        self.mode = 1#Respawn
+        self.mode = -1#Respawn
         self._respawn_x = tape.x[0] - rewind_distance
         tape.message(0, death_message)
 
@@ -833,14 +833,14 @@ class Player:
         """ Updated Player for one game tick.
         @param t: the current game tick count
         """
-        # Normal Play mode
-        if self.mode == 0:
+        # Normal Play modes
+        if self.mode >= 0:
             self._tick_play(t)
         # Respawn mode
-        elif self.mode == 1:
+        elif self.mode == -1:
             self._tick_respawn()
         # Testing mode
-        else:
+        elif self.mode == -99:
             self._tick_testing()
         # Now handle rocket engine
         self._tick_rocket(t)
@@ -868,7 +868,7 @@ class Player:
         else:
             # Return to normal play mode
             self.mode = 0#Play
-            tape.write(1, "DONT GIVE UP!", tape.midx[0]+3, 26)
+            tape.write(1, "DONT GIVE UP!", tape.midx[0]+8, 26)
         # Update the viper friendly variables.
         self.x = int(self._x)
         self.y = int(self._y)
@@ -945,7 +945,7 @@ class Umby(Player):
         _chr = tape.check(x+1, y)
         _chru = tape.check(x+1, y-3)
         # Apply gravity and grund check
-        if (not _chd and not _chl and not _chr):
+        if not (_chd or _chl or _chr):
             # Apply gravity to vertical speed
             self._y_vel += 2.5 / _FPS
             # Update vertical position with vertical speed
@@ -955,12 +955,12 @@ class Umby(Player):
             self._y_vel = 0.5
         # CONTROLS: Apply movement
         if not bL():
-            if not _chl and not _chlu and t%3: # Movement
+            if not (_chl or _chlu) and t%3: # Movement
                 self._x -= 1
             elif t%3==0 and not _chu: # Climbing
                 self._y -= 1
         elif not bR():
-            if not _chr and not _chru and t%3: # Movement
+            if not (_chr or _chru) and t%3: # Movement
                 self._x += 1
             elif t%3==0 and not _chu: # Climbing
                 self._y -= 1
@@ -1091,8 +1091,7 @@ class Glow(Player): # TODO
     Unlike Umby, Rockets are self propelled and accelerate into a horizontal
     flight, They are launched backwards and downwards in the oppostite
     direction of the grappling hook aim, but accelerate horizontally
-    into the opposite direction of the rocket aim. This allows minimal
-    rocket control affer launch.
+    into the opposite direction of the rocket aim at launch.
     Unlike Umby, Glow has two aims pointing in opposite directions,
     one for the grappling hook, and one for the rocket aim. Aim can only
     be moved up or down, and will switch to the horizontal direction for
@@ -1134,6 +1133,7 @@ class Glow(Player): # TODO
         self._aim_angle = -0.5
         self._aim_pow = 1.0
         self.dir = 1
+        self._r_dir = 1
         self.aim_x = int(math.sin(self._aim_angle)*10.0)
         self.aim_y = int(math.cos(self._aim_angle)*10.0)
 
@@ -1162,41 +1162,56 @@ class Glow(Player): # TODO
         _chu = tape.check(x, y+3)
         _chlu = tape.check(x-1, y+3)
         _chru = tape.check(x+1, y+3)
-        # Apply gravity and ground check
-        if (not _chd and not _chld and not _chrd and not _chl and not _chr):
-            # Apply gravity to vertical speed
-            self._y_vel += 2.5 / _FPS
-            # Update vertical position with vertical speed
-            self._y += self._y_vel
-        else:
-            # Stop falling when hit ground but keep some fall speed ready
-            self._y_vel = 0.5
-        # CONTROLS: Apply movement
-        if not bL() and t%2:
-            # Check if moving left possible and safe
-            if not (_chl or _chlu) and (_chld or _chd or _chlld or _chll):
-                self._x -= 1
-            # Check if climbing is needed and safe
-            elif not _chd and _chrd:
-                self._y -= 1
-            # Check is we should decend
-            elif (_chl or _chlu) and not _chu:
-                self._y += 1
-        elif not bR() and t%2:
-            # Check if moving right possible and safe
-            if not (_chr or _chru) and (_chrd or _chd or _chrrd or _chrr):
-                self._x += 1
-            # Check if climbing is needed and safe
-            elif not _chd and _chld:
-                self._y -= 1
-            # Check is we should decend
-            elif (_chr or _chru) and not _chu:
-                self._y += 1
-        # CONTROLS: Apply jump - allow continual jump until falling begins
-        if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
-            if _chd or _chl or _chr: # detatch from ground grip
-                self._y -= 1
-            self._y_vel = -0.8
+        free_falling = not (_chd or _chld or _chrd or _chl or _chr)
+
+        # CONTROLS: Activation of grappling hook
+        
+        # CONTROLS: Grappling hook swing
+        if self.mode == 4:
+            pass
+
+        else: # Normal movement (without grappling hook)
+            # CONTROLS: Fall (force when jumping)
+            if free_falling or not bA():
+                # Apply gravity to vertical speed
+                self._y_vel += 2.5 / _FPS
+                # Update vertical position with vertical speed
+                self._y += self._y_vel
+            else:
+                # Stop falling when attached to roof
+                self._y_vel = 0
+            # CONTROLS: Apply movement
+            if not bL() and t%2:
+                # Check if moving left possible and safe
+                if not (_chl or _chlu) and (_chld or _chd or _chlld or _chll):
+                    self._x -= 1
+                # Check if climbing is needed and safe
+                elif not _chd and _chrd:
+                    self._y -= 1
+                # Check is we should decend
+                elif (_chl or _chlu) and not _chu:
+                    self._y += 1
+            elif not bR() and t%2:
+                # Check if moving right possible and safe
+                if not (_chr or _chru) and (_chrd or _chd or _chrrd or _chrr):
+                    self._x += 1
+                # Check if climbing is needed and safe
+                elif not _chd and _chld:
+                    self._y -= 1
+                # Check is we should decend
+                elif (_chr or _chru) and not _chu:
+                    self._y += 1
+
+
+
+
+
+
+
+
+
+
+
         # DEATH: Check for head smacking
         if _chu and self._y_vel < -0.4:
             self.die(240, "Umby face-planted the roof!")
@@ -1248,6 +1263,7 @@ class Glow(Player): # TODO
             self._aim_pow = 1.0
             self.aim_x = int(math.sin(angle)*10.0)*self.dir
             self.aim_y = int(math.cos(angle)*10.0)
+            self._r_dir - self.dir
         # Apply rocket dynamics if it is active
         if self.rocket_active == 1:
             # Apply rocket motion
@@ -1258,9 +1274,9 @@ class Glow(Player): # TODO
             rx = self.rocket_x
             ry = self.rocket_y
             # Apply flight boosters
-            self._rocket_x_vel += 2.5 / _FPS * self.dir
-            if ((self._rocket_x_vel > 0 and self.dir > 0)
-            or (self._rocket_x_vel < 0 and self.dir < 0)):
+            self._rocket_x_vel += 2.5 / _FPS * self._r_dir
+            if ((self._rocket_x_vel > 0 and self._r_dir > 0)
+            or (self._rocket_x_vel < 0 and self._r_dir < 0)):
                 self._rocket_y_vel *= 0.9
             # Check fallen through ground or above ceiling,
             # or out of range
@@ -1287,7 +1303,7 @@ class Glow(Player): # TODO
         aim_y = int(self.aim_y)
         rock_x = int(self.rocket_x)
         rock_y = int(self.rocket_y)
-        dire = int(self.dir)
+        dire = int(self._r_dir)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
@@ -1515,7 +1531,7 @@ def run_game():
 
 
 
-    #p1.mode = 99 # Testing mode
+    #p1.mode = -99 # Testing mode
 
 
 
@@ -1552,7 +1568,7 @@ def run_game():
                     spawn.mons.remove(mon)
                     p1.kill(t, mon)
         # If player is in play mode, check for monster collisions
-        if p1.mode == 0 and stage.check(p1.x-tape.x[0], p1.y, 224):
+        if p1.mode >= 0 and stage.check(p1.x-tape.x[0], p1.y, 224):
             p1.die(240, "Umby became monster food!")
 
         # Draw the players
