@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(6000000) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(600000000) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -463,7 +463,8 @@ class Umby:
     # Bottom middle position
     x_pos = 10
     y_pos = 27 # TODO set to 32
-    art = bytearray([8, 1, 2,254,66,66,66,66,127,64]) # wid, frms, frame_data, ...
+    # BITMAP: width: 8, height: 8
+    art = bytearray([2,254,66,66,66,66,115,64])
 
     @micropython.native
     def tick(self):
@@ -490,10 +491,22 @@ class Umby:
             draw[i] = 0
         for i in range(288, 576):
             draw[i] = mask
-        draw[0+8] = 0xFF
-        draw[288+8] = mask ^ 0xFFFF
-        draw[144+6] = 0xFF
-        draw[432+6] = mask ^ 0xFFFF
+
+        img = ptr8(self.art)
+        s = 0
+        w = 8
+        x = int(self.x_pos)
+        y = int(self.y_pos)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-x])
+            draw[144+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+            draw[144+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
+            
+            
+        #draw[0+8] = 0xFF
+        #draw[288+8] = mask ^ 0xFFFF
+        #draw[144+6] = 0xFF
+        #draw[432+6] = mask ^ 0xFFFF
 
         # TODO
         """
@@ -589,15 +602,15 @@ def run_game():
     
 
         # TESTING: infinitely scroll the tape
-        if not bU():
-            v = v - 1 if v > 0 else v
-        elif not bD():
-            v = v + 1 if v < 24 else v
-        tape.offset_vertically(v)
-        if not bL():
-            tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
-        elif not bR():
-            tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
+        #if not bU():
+        #    v = v - 1 if v > 0 else v
+        #elif not bD():
+        #    v = v + 1 if v < 24 else v
+        #tape.offset_vertically(v)
+        #if not bL():
+        #    tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
+        #elif not bR():
+        #    tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
         t += 1
 run_game()
 
