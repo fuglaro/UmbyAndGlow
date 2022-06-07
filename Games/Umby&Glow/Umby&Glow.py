@@ -737,18 +737,14 @@ class Umby:
                 self._x_pos -= 1
                 self._y_pos += 0 if int(self._y_pos) == 32 else \
                     1 if self._y_pos < 32 else -1
-                if self._x_pos == self._respawn_x + 30:
-                    # Generate the respawn platform (level section)
-                    self._feed_cache = tape.feed
-                    tape.feed = [pattern_wall,
-                        pattern_fence, pattern_fill,
-                        pattern_room, pattern_fill]
                     # Hide any death message
                 if self._x_pos == self._respawn_x + 120:
                     tape.clear_overlay()
             else:
+                # Draw the starting platform
+                for i in range(tape.x[0], tape.x[0] + 30):
+                    tape.redraw_tape(2, i, pattern_room, pattern_fill)
                 # Return to normal play mode
-                tape.feed = self._feed_cache
                 self.mode = 0#Play
                 tape.write(1, "DONT GIVE UP!", tape.midx[0]+5, 26)
 
