@@ -1177,13 +1177,21 @@ class Glow(Player): # TODO
         free_falling = not (_chd or _chld or _chrd or _chl or _chr)
         # CONTROLS: Activation of grappling hook
         if self.mode == 0:
-
-
-
+            # Shoot hook straight up
+            i = y-1
+            while i > 0 and not tape.check(x, i):
+                i -= 1
+            self._hook_x = x
+            self._hook_y = i
+            self._hook_angle = 0.0
+            self._hook_vel = 0.0
+            self._hook_length = y - i
+            # Start normal grappling hook mode
             self.mode = 1
         # CONTROLS: Grappling hook swing
         if self.mode == 1:
-            
+            print(self._hook_angle, self._hook_vel, self._hook_length, self._hook_x, self._hook_y)
+
 
 
 
@@ -1192,6 +1200,12 @@ class Glow(Player): # TODO
         elif self.mode == 2: # Normal movement (without grappling hook)
             # CONTROLS: Activate hook
             if free_falling and not bA() and not self._fall_held:
+    
+    
+    
+                # TODO activate grappling hook in aim direction
+    
+    
                 self.mode = 1
             # CONTROLS: Fall (force when jumping)
             elif free_falling or not bA():
@@ -1262,13 +1276,14 @@ class Glow(Player): # TODO
         tape = self._tape
         angle = self._aim_angle
         power = self._aim_pow
+        grappling = self.mode == 1
         # CONTROLS: Apply rocket
         # Rocket aiming
         if not bU() or not bD() or not bB() or not bL() or not bR():
             angle = self._aim_angle
-            if not bU(): # Aim up
+            if not bU() and not grappling: # Aim up
                 angle += 0.02
-            elif not bD(): # Aim down
+            elif not bD() and not grappling: # Aim down
                 angle -= 0.02
             if not bL(): # Aim left
                 self.dir = -1
@@ -1291,7 +1306,7 @@ class Glow(Player): # TODO
             self._aim_pow = 1.0
             self.aim_x = int(math.sin(angle)*10.0)*self.dir
             self.aim_y = int(math.cos(angle)*10.0)
-            self._r_dir - self.dir
+            self._r_dir = self.dir
         # Apply rocket dynamics if it is active
         if self.rocket_active == 1:
             # Apply rocket motion
@@ -1329,9 +1344,6 @@ class Glow(Player): # TODO
         y_pos = int(self.y)
         aim_x = int(self.aim_x)
         aim_y = int(self.aim_y)
-        rock_x = int(self.rocket_x)
-        rock_y = int(self.rocket_y)
-        dire = int(self._r_dir)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
@@ -1347,11 +1359,15 @@ class Glow(Player): # TODO
         # Draw Glows's aim
         l = t*6//_FPS%2
         # Rope aim
-        x = x_pos-p-aim_x//2-1
-        y = y_pos-6-aim_y//2
-        stage.draw(l, x, y, self._aim, 3, 0)
-        stage.mask(1, x, y, self._aim_fore_mask, 3, 0)
-        stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
+        if int(self.mode) == 1: # Activated hook
+            hx = int(self._hook_x)-p-1
+            hy = int(self._hook_y)-6
+        else:
+            hx = x_pos-p-aim_x//2-1
+            hy = y_pos-6-aim_y//2
+        stage.draw(l, hx, hy, self._aim, 3, 0)
+        stage.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
+        stage.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
         # Rocket aim
         x = x_pos-p+aim_x-1
         y = y_pos-6+aim_y
@@ -1360,6 +1376,9 @@ class Glow(Player): # TODO
         stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
         # Draw Glows's rocket
         if self.rocket_active:
+            rock_x = int(self.rocket_x)
+            rock_y = int(self.rocket_y)
+            dire = int(self._r_dir)
             stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
             stage.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
@@ -1554,7 +1573,7 @@ def run_game():
     start = 3
     set_level(tape, spawn, start)
     #p1 = Umby(tape, stage, start+10, 20)
-    p1 = Glow(tape, stage, start+10, 3)#TODO 20)
+    p1 = Glow(tape, stage, start+10, 20)
     spawn.players.append(p1)
 
 
