@@ -1077,7 +1077,9 @@ class BonesTheMonster:
     it will change direction again. There is a very small chance that
     Bones will fly over walls and ground and Bones will continue until
     surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
-    offscreen ito the top or bottom plus 10, it will change direction.
+    offscreen to the right + 600, it will die;
+    offscreen to the top or bottom plus 10, it will change direction.
+    It will also change direction on occasion.
     When the player is within a short range, Bones will charge the player
     and will not stop.
     """
@@ -1095,29 +1097,28 @@ class BonesTheMonster:
         self.y = y # Middle of Bones
         # Mode: 0 - flying, 1 - charging
         self.mode = 0
- #       self._x = x # floating point precision
- #       self._y = y # floating point precision
- #       self._dx = 0
- #       self._dy = 0
+        self._x = x # floating point precision
+        self._y = y # floating point precision
+        self._dx = 0
+        self._dy = 0
 
     @micropython.native
     def tick(self, t):
         """ Update Bones for one game tick """
-        return
-  #      tape = self._tape
+        tape = self._tape
         # Find the potential new coordinates
-  #      nx = self._x + self._dx
-  #      ny = self._y + self._dy
-  #      # Change direction if needed
-  #      if ((self._dx == 0 and self._dy == 0)
-  #      or ny < -10 or ny > 74):
-  #          self._dx = math.sin(t+nx)
-  #          self._dy = math.cos(t+nx)
-  #      else:
-  #          self._x = nx
-  #          self._y = ny
-  #          self.x = int(nx)
-  #          self.y = int(ny)
+        nx = self._x + self._dx
+        ny = self._y + self._dy
+        # Change direction if needed
+        if ((self._dx == 0 and self._dy == 0)
+        or ny < -10 or ny > 74 or t%128==0):
+            self._dx = math.sin(t+nx)/4.0
+            self._dy = math.cos(t+nx)/4.0
+        else:
+            self._x = nx
+            self._y = ny
+            self.x = int(nx)
+            self.y = int(ny)
         # TODOnot tape.check(self.x, self.y)
 
 
@@ -1245,6 +1246,7 @@ def run_game():
 
 
     p1.mode = 99 # Testing mode
+    spawn.add(BonesTheMonster, 30, 30)
 
 
 
@@ -1260,6 +1262,8 @@ def run_game():
 
         # Update the game engine by a tick
         p1.tick(t)
+        for mon in spawn.mons:
+            mon.tick(t)
 
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, t)
