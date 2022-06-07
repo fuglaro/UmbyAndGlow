@@ -295,7 +295,7 @@ class Tape:
             offset if offset >= 0 else 0) if offset <= 24 else 24
 
     @micropython.viper
-    def auto_camera_parallax(self, x: int, y: int):
+    def auto_camera_parallax(self, x: int, y: int, t: int):
         """ Move the camera so that an x, y tape position is in the spotlight.
         This will scroll each tape layer to immitate a camera move and
         will scroll with standard parallax.
@@ -305,7 +305,7 @@ class Tape:
         # Scroll the tapes as needed
         if x < c + 10:
             self.scroll_tape(-1 if c % 4 == 0 else 0, 0-(c % 2), -1)
-        elif x > c + 40:
+        elif x > c + 40 or (x > c + 20 and t%4==0):
             self.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
         # Reset the vertical offset as needed
         y -= 20
@@ -775,6 +775,7 @@ class Umby:
                         self._x_pos += 1
                 elif t%3==0 and not _chu: # Climbing
                     self._y_pos -= 1
+
             # CONTROLS: Apply jump - allow continual jump until falling begins
             if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
                 if _chd or _chl or _chr: # detatch from ground grip
@@ -973,7 +974,7 @@ def run_game():
         umby.tick(t, tape)
 
         # Make the camera follow the action
-        tape.auto_camera_parallax(umby.x_pos, umby.y_pos)
+        tape.auto_camera_parallax(umby.x_pos, umby.y_pos, t)
 
         # Update the display buffer new frame data
         stage.clear()
