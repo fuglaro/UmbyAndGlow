@@ -10,10 +10,33 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Tape Management and Stage ##
+## Tape Management, Stage, and display ##
 
 from array import array
 from machine import Pin, SPI
+from time import sleep_ms, ticks_ms
+
+_FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
+
+# Setup basic display access
+from ssd1306 import SSD1306_SPI
+display = SSD1306_SPI(72, 40,
+    SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
+if "rate" not in dir(display): # Load the emulator display if using the IDE API
+    from thumby import display as emu_dpy
+    emu_dpy.setFPS(60)
+    display_update = emu_dpy.update
+    _display_buffer = emu_dpy.display.buffer
+else: # Otherwise use the raw one if on the thumby device
+    _display_buffer = display.buffer
+    timer = ticks_ms()
+    @micropython.native
+    def display_update():
+        global timer
+        display.show()
+        sleep_ms(1000//_FPS + timer - ticks_ms())
+        timer = ticks_ms()
+
 
 @micropython.viper
 def ihash(x: uint) -> int:
@@ -25,119 +48,6 @@ def ihash(x: uint) -> int:
     x ^= (x >> 4)
     x *= 0x27d4eb2d
     return int(x ^ (x >> 15))
-
-class SSD1306():
-    # Yoinked from https://github.com/TinyCircuits/TinyCircuits-Thumby-Code-Editor/blob/master/ThumbyGames/lib/ssd1306.py
-    def __init__(self, width, height, external_vcc):
-        self.width = width
-        self.height = height
-        self.external_vcc = external_vcc
-        self.pages = self.height // 8
-        self.buffer = bytearray(self.pages * self.width)
-        #self.init_display()
-
-    def init_display(self):
-        self.reset()
-        for cmd in (0xAE,0x20,0x00,0x40,0xA1,0xA8,self.height-1,0xC8,0xD3,0x00,0xDA,0x12,0xD5,0x80,0xD9,
-            0x22 if self.external_vcc else 0xF1,0xDB,0x20,0x81,0x7F,0xA4,0xA6,0x8D,
-            0x10 if self.external_vcc else 0x14,0xAD,0x30,0xAE | 0x01
-        ):
-            self.write_cmd(cmd)
-        #self.fill(0)
-        #self.show()
-
-    def poweroff(self):
-        self.write_cmd(0xAE | 0x00)
-
-    def poweron(self):
-        self.write_cmd(0xAE | 0x01)
-
-    def contrast(self, contrast):
-        self.write_cmd(0x81)
-        self.write_cmd(contrast)
-
-    def invert(self, invert):
-        self.write_cmd(0xA6 | (invert & 1))
-
-    @micropython.native
-    def show(self):
-        self.write_window_cmd()
-        self.write_data(self.buffer)
-
-class SSD1306_SPI(SSD1306):
-    # Yoinked from https://github.com/TinyCircuits/TinyCircuits-Thumby-Code-Editor/blob/master/ThumbyGames/lib/ssd1306.py
-    def __init__(self, width, height, spi, dc, res, cs, external_vcc=False):
-        self.rate = 10 * 1024 * 1024
-        dc.init(dc.OUT, value=0)
-        cs.init(cs.OUT, value=1)
-        self.spi = spi
-        self.dc = dc
-        self.res = res
-        self.cs = cs
-        self.cmdWindow = bytearray([0x21, 28, 99, 0x22, 0 ,4])
-        
-        super().__init__(width, height, external_vcc)
-
-    def reset(self):
-        self.res.init(self.res.OUT, value=0)
-        from time import sleep_ms
-        self.res(1)
-        sleep_ms(1)
-        self.res(0)
-        sleep_ms(10)
-        self.res(1)        
-        sleep_ms(10)
-
-    @micropython.native
-    def write_cmd(self, cmd):
-        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
-        self.cs(1)
-        self.dc(0)
-        self.cs(0)
-        self.spi.write(bytearray([cmd]))
-        self.cs(1)
-        
-    @micropython.native
-    def write_window_cmd(self):
-        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
-        self.cs(1)
-        self.dc(0)
-        self.cs(0)
-        self.spi.write(self.cmdWindow)
-        self.cs(1)
-
-
-    @micropython.native
-    def write_data(self, buf):
-        self.spi.init(baudrate=self.rate, polarity=0, phase=0)
-        self.cs(1)
-        self.dc(1)
-        self.cs(0)
-        self.spi.write(buf)
-        self.cs(1)
-
-display = SSD1306_SPI(72, 40, SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
-
-
-print(display)
-
-try: # Load the emulator display if using the IDE API
-    __file__ # Fails on the thumby device
-    from thumby import display as emu_dpy
-    emu_dpy.setFPS(60)
-    display_update = emu_dpy.update
-    _display_buffer = emu_dpy.display.buffer
-except: # Otherwise use a custom one if on the thumby device
-    _display_buffer = display.buffer
-    timer = ticks_ms()
-    @micropython.native
-    def display_update():
-        global timer
-        display.show()
-        #sleep_ms(1000//_FPS + timer - ticks_ms())
-        timer = ticks_ms()
-
-
 
 
 class Tape:

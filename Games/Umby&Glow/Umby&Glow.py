@@ -60,10 +60,10 @@ print(gc.mem_alloc(), gc.mem_free()) # TODO
 script = [
 ]
 
-_FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
+_FPS = const(60)
 
 from array import array
-from time import sleep_ms, ticks_ms
+from time import ticks_ms
 from machine import Pin
 from math import sin, cos, sqrt
 print(gc.mem_alloc(), gc.mem_free()) # TODO
