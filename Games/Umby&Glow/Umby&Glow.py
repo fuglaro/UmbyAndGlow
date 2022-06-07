@@ -13,6 +13,7 @@
 '''
 
 # TODO: Make Monsters (level 1)
+# TODO: Do a monster that flys into the background
 # TODO: Make AI Glow
 # TODO: Make script/story outline
 # TODO: Extend game dynamics (Glow)
@@ -791,21 +792,16 @@ class Umby:
     def __init__(self, x, y):
         # Main behavior modes such as Play, Testing, and Respawn
         # Motion variables
-        self._x_pos = x
+        self.x_pos = x
         self._y_pos = y
         self._y_vel = 0.0
-        # Viper friendly variables (ints)
-        self.x_pos = int(x)
+        # Viper friendly variants (ints)
         self.y_pos = int(y)
         # Rocket variables
         self._aim_angle = 2.5
         self._aim_pow = 1.0
         self.rocket_active = 0
-        self._rocket_x = 0.0
-        self._rocket_y = 0.0
-        self._rocket_x_vel = 0.0
-        self._rocket_y_vel = 0.0
-        # Viper friendly variables (ints)
+        # Viper friendly variants (ints)
         self.aim_x = int(math.sin(self._aim_angle)*10)
         self.aim_y = int(math.cos(self._aim_angle)*10)
         self.rocket_x = 0
@@ -838,13 +834,13 @@ class Umby:
             if not bL():
                 if not _chl and not _chlu: # Movement
                     if t%3:
-                        self._x_pos -= 1
+                        self.x_pos -= 1
                 elif t%3==0 and not _chu: # Climbing
                     self._y_pos -= 1
             elif not bR():
                 if not _chr and not _chru: # Movement
                     if t%3:
-                        self._x_pos += 1
+                        self.x_pos += 1
                 elif t%3==0 and not _chu: # Climbing
                     self._y_pos -= 1
 
@@ -878,7 +874,6 @@ class Umby:
             self._tick_testing()
 
         # Update the viper friendly variables.
-        self.x_pos = int(self._x_pos)
         self.y_pos = int(self._y_pos)
 
     @micropython.native
@@ -908,7 +903,7 @@ class Umby:
         # Actually launch the rocket when button is released
         if bB() and power > 1.0 and not self.rocket_active:
             self.rocket_active = 1
-            self._rocket_x = self._x_pos
+            self._rocket_x = self.x_pos
             self._rocket_y = self._y_pos - 1
             self._rocket_x_vel = math.sin(angle)*power/2.0
             self._rocket_y_vel = math.cos(angle)*power/2.0
@@ -976,16 +971,16 @@ class Umby:
         active
         """
         # Move Umby towards the respawn location
-        if self._x_pos > self._respawn_x:
-            self._x_pos -= 1
+        if self.x_pos > self._respawn_x:
+            self.x_pos -= 1
             self._y_pos += 0 if int(self._y_pos) == 32 else \
                 1 if self._y_pos < 32 else -1
-            if self._x_pos == self._respawn_x + 120:
+            if self.x_pos == self._respawn_x + 120:
                 # Hide any death message
                 tape.clear_overlay()
-            if self._x_pos < self._respawn_x + 30:
+            if self.x_pos < self._respawn_x + 30:
                 # Draw the starting platform
-                tape.redraw_tape(2, self._x_pos-5,
+                tape.redraw_tape(2, self.x_pos-5,
                     pattern_room, pattern_fill)
         else:
             # Return to normal play mode
@@ -1003,13 +998,13 @@ class Umby:
         elif not bD():
             self._y_pos += 1
         if not bL():
-            self._x_pos -= 1
+            self.x_pos -= 1
         elif not bR():
-            self._x_pos += 1
+            self.x_pos += 1
 
     @micropython.viper
     def draw(self, t: int, x: int, stage):
-        """ Draw umby to the draw buffer """
+        """ Draw Umby to the draw buffer """
         x_pos = int(self.x_pos)
         y_pos = int(self.y_pos)
         aim_x = int(self.aim_x)
@@ -1038,7 +1033,57 @@ class Umby:
                 self._aim, 1, 0) # Rocket tail
 
 
-## Game Engine ##
+class BonesTheMonster:
+    """ """ # TODO: Bones (flyer, random direction until hit wall,
+# small random chance of flying through wall)
+    # BITMAP: width: 7, height: 8
+    _art = bytearray([28,54,147,110,147,54,28])
+    # BITMAP: width: 9, height: 8
+    _mask = bytearray([28,62,247,243,239,243,247,62,28])
+
+    def __init__(self, x, y):
+        self.x_pos = x
+        self.y_pos = y
+
+    @micropython.viper
+    def draw(self, t: int, x: int, stage):
+        """ Draw Bones to the draw buffer """
+        x_pos = int(self.x_pos)
+        y_pos = int(self.y_pos)
+        # Draw Bones' layers and masks
+        stage.draw(1, x_pos-3-x, y_pos-8, self._art, 7, 0) # Bones
+        stage.mask(1, x_pos-4-x, y_pos-8, self._mask, 9, 0) # Mask
+        stage.mask(0, x_pos-4-x, y_pos-8, self._mask, 9, 0) # Mask
+
+
+
+# TODO: Some monster things
+
+# Skittle (bug horizontal move (no vert on ground, waving in air)
+bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
+# BITMAP: width: 9, height: 8
+bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
+
+# Scout (slow wanderer on the ground, slow mover)
+bitmap6 = bytearray([2,62,228,124,228,62,2])
+# BITMAP: width: 7, height: 8
+bitmap7 = bytearray([63,255,255,254,255,255,63])
+
+# Stomper (swings up and down vertically)
+# BITMAP: width: 7, height: 8
+bitmap8 = bytearray([36,110,247,124,247,110,36])
+# BITMAP: width: 7, height: 8
+bitmap9 = bytearray([239,255,255,254,255,255,239])
+
+# TODO One the crawls along the ground and digs in to then pounce
+
+
+
+
+
+
+
+## Game Play ##
 
 def set_level(tape, start):
     """ Prepare everything for a level of gameplay including
@@ -1071,6 +1116,11 @@ def run_game():
     umby = Umby(start+10, 20)
     #umby.mode = 99 # Testing mode
 
+
+
+    bones = BonesTheMonster(start+30, 20)
+
+
     # Main gameplay loop
     v = 0
     t = 0;
@@ -1090,6 +1140,11 @@ def run_game():
         # Update the display buffer new frame data
         stage.clear()
         umby.draw(t, tape.x[0], stage)
+
+
+        bones.draw(t, tape.x[0], stage)
+
+
         tape.comp(stage.stage)
 
         # Flush to the display, waiting on the next frame interval
