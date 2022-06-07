@@ -32,14 +32,14 @@ glow = bytearray(VIEW_W*VIEW_H) # the player: glow
 ##
 # Drawable pattern - dotted vertical lines repeating
 def walls_pattern(x, y):
-    return 0 if (x % 16) or (y % 2) else 1
+    return 0 if (x % 16) or (y % 3) else 1
 
 ##
 # Drawable pattern - basic flat roof and floor
 def room_pattern(x, y):
-    return 1 if (y < 1) or (y >= VIEW_H*8 - 1) else 0
+    return 1 if (y < 3) or (y >= VIEW_H*8 - 3) else 0
 
-def fill(pattern, layer, offsetX, offsetY):
+def fill(pattern, offsetX, offsetY, layer):
     for x in range(0, VIEW_W):
         for y in range(0, VIEW_H):
             for b in range(0, 8):
@@ -54,14 +54,15 @@ cave[107] = 5
 cave[159] = 5
 cave[35*5+4] = 3
 
-fill(walls_pattern, memoryview(back), 0, 0)
-fill(room_pattern, memoryview(land), 0, 0)
+fill(walls_pattern, 0, 0, memoryview(back))
+fill(room_pattern, 0, 0, memoryview(land))
 
+while(1):
 
-# Composite a view with new frame data, drawing to screen
-display(memoryview(bytearray(
-    back[b] | land[b]
-    for b in range(0, VIEW_W*VIEW_H))))
+    # Composite a view with new frame data, drawing to screen
+    display(memoryview(bytearray(
+        back[b] | cave[b] | land[b]
+        for b in range(0, VIEW_W*VIEW_H))))
 
 
 
