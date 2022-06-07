@@ -1141,12 +1141,8 @@ class Glow(Player): # TODO
 
 
 
-
-
-
-
-
-
+    # TODO: glow climbing/fall/gravity-flip/grapple-hook/mud-sinking
+    # TODO: fix death conditions
 
 
 
@@ -1287,12 +1283,12 @@ class Glow(Player): # TODO
         f = 4 if not bL() else 5 if not bR() else t*2 // _FPS % 4
         # 0 when still, 1 when left moving, 2 when right
         fm = 1 if not bL() else 2 if not bR() else 0
-        # Draw Umby's layers and masks
+        # Draw Glows's layers and masks
         stage.draw(0, x_pos-1-p, y_pos-1, self._sdw, 3, f) # Shadow
         stage.draw(1, x_pos-1-p, y_pos-1, self._art, 3, f) # Glow
         stage.mask(0, x_pos-4-p, y_pos-1, self._back_mask, 9, 0)
         stage.mask(1, x_pos-1-p, y_pos-1, self._fore_mask, 3, fm)
-        # Draw Umby's aim
+        # Draw Glows's aim
         l = t*6//_FPS%2
         # Rope aim
         x = x_pos-p-aim_x//2-1
@@ -1306,13 +1302,11 @@ class Glow(Player): # TODO
         stage.draw(l, x, y, self._aim, 3, 0)
         stage.mask(1, x, y, self._aim_fore_mask, 3, 0)
         stage.mask(0, x-1, y+1, self._aim_back_mask, 5, 0)
-        # Draw Umby's rocket
+        # Draw Glows's rocket
         if self.rocket_active:
             stage.draw(1, rock_x-p-1, rock_y-7, self._aim, 3, 0)
             stage.draw(0, rock_x-p+(-3 if dire>0 else 1), rock_y-7,
                 self._aim, 3, 0) # Rocket tail
-
-
 
 
 class BonesTheMonster:
