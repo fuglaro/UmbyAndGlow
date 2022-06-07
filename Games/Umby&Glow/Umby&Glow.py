@@ -9,15 +9,7 @@ MID = int(VIEW_H * 8 / 2) - 1 # middle row of pixels
 
 
 
-##
-back = bytearray(VIEW_W*VIEW_H) # non-interaction background layer
-cave = bytearray(VIEW_W*VIEW_H) # non-interaction middle ground layer
-cavefill = bytearray(VIEW_W*VIEW_H) # non-interaction middle ground layer (cleared pixels)
-land = bytearray(VIEW_W*VIEW_H) # ground, platforms and roof layer (players interact)
-landfill = bytearray(VIEW_W*VIEW_H) # ground, platforms and roof layer (cleared pixels)
-trap = bytearray(VIEW_W*VIEW_H) # npcs and traps that kill the players
-umby = bytearray(VIEW_W*VIEW_H) # the player: umby
-glow = bytearray(VIEW_W*VIEW_H) # the player: glow
+
 
 ##
 # Scrolling tape with each layer a section after the other.
@@ -41,9 +33,10 @@ frame = bytearray(VIEW_W*VIEW_H) # composited render buffer (in VLSB format)
 def comp(frame: ptr8, tape: ptr32, tapeScroll: ptr32): # TODO del
     tp0 = tapeScroll[0]
     tp1 = tapeScroll[1]
+    tp3 = tapeScroll[3]
     for x in range(0, 72):
-        a = tape[(x+tp0)%72*2] | tape[(x+tp1)%72*2+144]
-        b = tape[(x+tp0)%72*2+1]
+        a = tape[(x+tp0)%72*2] | tape[(x+tp1)%72*2+144] | tape[(x+tp3)%72*2+432]
+        b = tape[(x+tp0)%72*2+1] | tape[(x+tp1)%72*2+144] | tape[(x+tp3)%72*2+432]
         frame[x] = a
         frame[72+x] = a >> 8
         frame[144+x] = a >> 16
@@ -80,25 +73,6 @@ def room_pattern(x, y):
 def fence_pattern(x, y):
     return 1 if (abs(y-MID) > MID - 12) and not ((x % 4) or (y % 4)) else 0
 
-##
-#
-#
-# TODO del
-def fill_bytes(pattern, layer, tapePos=0, width=VIEW_W):
-    for x in range(tapePos, tapePos+width):
-        for y in range(0, VIEW_H):
-            v = 0
-            for b in range(0, 8):
-                v |= pattern(x, y*8+b) << b
-            layer[x%VIEW_W*VIEW_H+y] = v
-
-def fill(pattern, layer, tapePos=0, width=VIEW_W): # TODO optimise for single column fill
-    for x in range(tapePos, tapePos+width):
-        for y in range(0, 2):
-            v = 0
-            for b in range(0, 32):
-                v |= pattern(x, y*32+b) << b
-            layer[x%VIEW_W*2+y] = v
 
 ##
 # Drawable pattern - basic undulating stalactites and stalagmites
@@ -127,33 +101,27 @@ def extend_tape(pattern, tape: ptr32, tapeScroll: ptr32, layer: int):
             y+=1
         tape[layer*144 + x%72*2+w] = v
 
-fill_bytes(wall_pattern, memoryview(back))
-fill_bytes(room_pattern, memoryview(land))
-fill_bytes(fence_pattern, memoryview(cave))
 
-for tapePos in range(0, 72):
-    extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
+
+for i in range(0, 72):
+    extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
     extend_tape(fence_pattern, memoryview(tape), tapeScroll, 1)
-    extend_tape(room_pattern, memoryview(tape), tapeScroll, 3)
+    extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
 
 
 
 
-land[5] = 5
-land[35] = 5
-land[107] = 5
-land[159] = 5
-land[35*5+4] = 3
+
 
 thumby.display.setFPS(240)
 
 
 
-tapePos = 72;
+t = 0;
 timer = time.ticks_ms()
 while(1):
 
-    if (tapePos % 60 == 0):
+    if (t % 60 == 0):
         print(time.ticks_ms() - timer)
         timer = time.ticks_ms()
 
@@ -163,7 +131,11 @@ while(1):
     thumby.display.blit(frame, 0, 0, 72, 40, -1, 0, 0) # TODO see why this is so slow.
     thumby.display.update()
 
-    extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
-    tapePos += 1
+    extend_tape(wall_pattern, memoryview(tape), tapeScroll, 3)
+    if (t%2==0):
+        extend_tape(fence_pattern, memoryview(tape), tapeScroll, 1)
+        if (t%4==0):
+            extend_tape(pattern_test, memoryview(tape), tapeScroll, 0)
+    t += 1
 
 
