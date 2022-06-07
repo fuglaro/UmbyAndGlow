@@ -12,8 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: remove unused values from tapeScroll (fill layers)
-
 # TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
@@ -117,7 +115,7 @@ tape = array('I', (0 for i in range(72*2*5)))
 # and then the frame number counter and vertical offset appended on the end.
 # The vertical offset (yPos), cannot be different per layer (horizontal
 # parallax only).
-# [L1, L2, L3, L4, L5, frameCounter, yPos]
+# [backPos, midPos, frameCounter, forePos, yPos]
 tapeScroll = array('i', [0, 0, 0, 0, 0, 0, 0])
 # The patterns to feed into each tape section
 feed = [None, None, None, None, None]
@@ -136,14 +134,14 @@ def comp():
     scroll = ptr32(tapeScroll)
     frame = ptr8(thumby.display.display.buffer)
     # Obtain and increase the frame counter
-    scroll[5] += 1 # Counter
-    yPos = scroll[6]
+    scroll[2] += 1 # Counter
+    yPos = scroll[4]
     # Loop through each column of pixels
     for x in range(72):
         # Create a modifier for dimming background layer pixels.
         # The magic number here is repeating on and off bits, which is
         # alternated horizontally and in time. Someone say "time crystal".
-        dim = int(1431655765) << (scroll[5]+x)%2
+        dim = int(1431655765) << (scroll[2]+x)%2
         # Compose the first 32 bits vertically.
         p0 = (x+scroll[0])%72*2
         p1 = (x+scroll[1])%72*2
@@ -195,7 +193,7 @@ def offset_vertically(offset: int):
     specifying the offset from the top position. This cannot
     exceed the total vertical size of the tape (minus the tape height).
     """
-    ptr32(tapeScroll)[6] = (offset if offset>=0 else 0) if offset<=24 else 24
+    ptr32(tapeScroll)[4] = (offset if offset>=0 else 0) if offset<=24 else 24
 
 
 ## Patterns ##
