@@ -641,6 +641,10 @@ class Umby:
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 
     def __init__(self, x, y):
+        # Main behavior modes such as Play, Testing, and Respawn
+        self._mode = 0#Play
+        # If in the respawn mode, the respawn location to move to.
+        self._respawn_x = 0
         # Motion variables
         self._x_pos = x
         self._y_pos = y
@@ -653,18 +657,55 @@ class Umby:
     @micropython.native
     def tick(self, tape):
         """ Updated Umby for one game tick """
-        # Apply gravity and grund check
-        if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
-            # Apply gravity to vertical speed
-            self._y_vel += 0.98 / _FPS
-            # Update vertical position with vertical speed
-            self._y_pos += 1 if self._y_vel > 1 else self._y_vel
-        else:
-            # Stop falling when hit ground
-            self._y_vel = 0
+
+        if self._mode == 0: # Play
+
+            # Apply gravity and grund check
+            if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
+                # Apply gravity to vertical speed
+                self._y_vel += 0.98 / _FPS
+                # Update vertical position with vertical speed
+                self._y_pos += 1 if self._y_vel > 1 else self._y_vel
+            else:
+                # Stop falling when hit ground
+                self._y_vel = 0
+    
+            if not bU():
+                self._y_pos -= 1
+            elif not bD():
+                self._y_pos += 1
+            if not bL():
+                self._x_pos -= 1
+            elif not bR():
+                self._x_pos += 1
+
+            # Check for falling into the abyse
+            if self._y_pos > 80:
+                self._mode = 1#Respawn
+                self._respawn_x = tape.x[0] - 150
+    
+        elif self._mode == 1: # Respawn
+            # Move Umby towards the respawn location
+            if self._x_pos > self._respawn_x:
+                self._x_pos -= 1
+                self._y_pos += 0 if int(self._y_pos) == 32 else \
+                    1 if self._y_pos < 32 else -1
+            else:
+                pass #
 
         
+        else: # Testing
 
+
+            # Explore the level by flying without clipping
+            if not bU():
+                self._y_pos -= 1
+            elif not bD():
+                self._y_pos += 1
+            if not bL():
+                self._x_pos -= 1
+            elif not bR():
+                self._x_pos += 1
 
 
 
@@ -674,16 +715,6 @@ class Umby:
         # TODO: jump
         # TODO: hit ceiling
 
-        #---- TESTING: Explore the level by flying without clipping
-        if not bU():
-            self._y_pos -= 1
-        elif not bD():
-            self._y_pos += 1
-        if not bL():
-            self._x_pos -= 1
-        elif not bR():
-            self._x_pos += 1
-        #---- TESTING: END
 
         # Update the viper friendly variables.
         self.x_pos = int(self._x_pos)
