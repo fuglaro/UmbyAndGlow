@@ -112,10 +112,12 @@ class Tape:
     # Layers from left to right:
     # - 0: far background
     # - 144: close background
-    # - 288: close background fill (opaque off pixels)
+    # - 288: close background fill (opaque: off pixels)
     # - 432: landscape including ground, platforms, and roof
-    # - 576: landscape fill (opaque off pixels)
-    _tape = array('I', (0 for i in range(72*2*5)))
+    # - 576: landscape fill (opaque: off pixels)
+    # - 720: overlay mask (opaque: off pixels)
+    # - 864: overlay
+    _tape = array('I', (0 for i in range(72*2*7)))
     # The scroll distance of each layer in the tape,
     # and then the frame number counter and vertical offset appended on the end.
     # The vertical offset (yPos), cannot be different per layer (horizontal
@@ -129,6 +131,9 @@ class Tape:
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
+
+    def __init__(self):
+        self.clear_overlay()
 
     @micropython.viper
     def check(self, x: int, y: int) -> bool:
@@ -162,38 +167,44 @@ class Tape:
             p1 = (x+scroll[1])%72*2
             p3 = (x+scroll[3])%72*2
             x2 = x*2
-            a = uint((
-                    # Back/mid layer (with monster mask and fill)
-                    ((tape[p0] | tape[p1+144]) & stage[x2+288] & stage[x2+432]
-                        & tape[p1+288] & tape[p3+576])
-                    # Background (non-interactive) monsters
-                    | stage[x2])
-                # Dim all mid and background layers
-                & dim
-                # Foreground monsters (and players)
-                | stage[x2+144]
-                # Foreground (with monster mask and fill)
-                | (tape[p3+432] & stage[x2+432] & tape[p3+576]))
+            a = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0] | tape[p1+144]) & stage[x2+288]
+                            & stage[x2+432] & tape[p1+288] & tape[p3+576])
+                        # Background (non-interactive) monsters
+                        | stage[x2])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stage[x2+144]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+432] & stage[x2+432] & tape[p3+576]))
+                # Now apply the overlay mask and draw layers.
+                & (tape[x2+720] << y_pos)
+                | (tape[x2+864] << y_pos))
             # Now compose the second 32 bits vertically.
-            b = uint((
-                    # Back/mid layer (with monster mask and fill)
-                    ((tape[p0+1] | tape[p1+145]) & stage[x2+289] & stage[x2+433]
-                        & tape[p1+289] & tape[p3+577])
-                    # Background (non-interactive) monsters
-                    | stage[x2+1])
-                # Dim all mid and background layers
-                & dim
-                # Foreground monsters (and players)
-                | stage[x2+145]
-                # Foreground (with monster mask and fill)
-                | (tape[p3+433] & stage[x2+433] & tape[p3+577]))
+            b = uint(((
+                        # Back/mid layer (with monster mask and fill)
+                        ((tape[p0+1] | tape[p1+145]) & stage[x2+289]
+                        & stage[x2+433] & tape[p1+289] & tape[p3+577])
+                        # Background (non-interactive) monsters
+                        | stage[x2+1])
+                    # Dim all mid and background layers
+                    & dim
+                    # Foreground monsters (and players)
+                    | stage[x2+145]
+                    # Foreground (with monster mask and fill)
+                    | (tape[p3+433] & stage[x2+433] & tape[p3+577]))
+                # Now apply the overlay mask and draw layers.
+                & ((tape[x2+720] >> 32-y_pos) | (tape[x2+721] << y_pos-32))
+                | (tape[x2+864] >> 32-y_pos) | (tape[x2+865] << y_pos-32))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> y_pos
             frame[72+x] = (a >> 8 >> y_pos) | (b << (32 - y_pos) >> 8)
             frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
             frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
-            frame[288+x] = (b >> y_pos)
+            frame[288+x] = b >> y_pos
     
     @micropython.viper
     def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
@@ -260,26 +271,76 @@ class Tape:
         ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
 
     @micropython.viper
-    def write(self, text, x: int, y: int):
+    def write(self, layer: int, text, x: int, y: int):
         """ Write text to the mid background layer at an x, y tape position.
         This also clears a space around the text for readability using
         the background clear mask layer.
         Text is drawn with the given position being at the botton left
-        of the written text.
+        of the written text (excluding the mask border).
+        There are 2 layers that can be rendered to:
+            1: Mid background layer.
+            3: Foreground environment mask (1 bit to clear).
         """
         tape = ptr32(self._tape)
         abc_b = ptr8(abc)
         h = y - 11 # ignore top 3 bits of the byte height (5 height font)
+        # Select the relevant layers
+        mask = 288 if layer == 1 else 720
+        draw = 144 if layer == 1 else 864
         # Clear space on background mask layer
         b = 0xFE
         for i in range(int(len(text))*4+1):
-            p = (x-1+i)%72*2+288
+            p = (x-1+i)%72*2+mask
             tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
             tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
         # Draw to the mid background layer
         for i in range(int(len(text))):
             for o in range(3):
-                p = (x+o+i*4)%72*2+144
+                p = (x+o+i*4)%72*2
+                b = abc_b[int(abc_i[text[i]])*3+o]
+                img1 = b >> 0-h if h < 0 else b << h
+                img2 = b >> 32-h if -32+h < 0 else b << -32+h
+                # Draw to the mid background layer
+                tape[p+draw] |= img1
+                tape[p+draw+1] |= img2
+                # Stencil text out of the clear background mask layer
+                tape[p+mask] |= img1
+                tape[p+mask+1] |= img2
+
+    @micropython.viper
+    def clear_overlay(self):
+        """ Reset and clear the overlay layer and it's mask layer.
+        """
+        tape = ptr32(self._tape)
+        # Reset the overlay mask layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(720, 864):
+            tape[i] = mask
+        # Reset and clear the overlay layer
+        mask = uint(0xFFFFFFFF)
+        for i in range(864, 1008):
+            tape[i] = 0
+
+    @micropython.viper
+    def write_over(self, text, x: int, y: int):
+        """ Similar to write_back but does not write to the tape itself.
+        Instead it writes to an additional overlay that is not subject to
+        any tape scrolling. Positional arguments are relative to the screen
+        rather than the tape.
+        """
+        tape = ptr32(self._tape)
+        abc_b = ptr8(abc)
+        h = y - 11 # ignore top 3 bits of the byte height (5 height font)
+        # Clear space on the overlay mask layer
+        b = 0xFE
+        for i in range(int(len(text))*4+1):
+            p = (x-1+i)%72*2+720
+            tape[p] ^= tape[p] & (b >> 1-h if h+1 < 0 else b << h+1)
+            tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
+        # Draw to the overlay layer
+        for i in range(int(len(text))):
+            for o in range(3):
+                p = (x+o+i*4)%72*2+864
                 b = abc_b[int(abc_i[text[i]])*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
                 img2 = b >> 32-h if -32+h < 0 else b << -32+h
@@ -287,9 +348,8 @@ class Tape:
                 tape[p] |= img1
                 tape[p+1] |= img2
                 # Stencil text out of the clear background mask layer
-                tape[p+144] |= img1
-                tape[p+145] |= img2
-
+                tape[p-144] |= img1
+                tape[p-143] |= img2
 
 ## Patterns ##
 
@@ -686,8 +746,8 @@ def set_level(tape, start):
     for i in range(72):
         tape.scroll_tape(1, 1, 1)
     # Draw starting instructions
-    tape.write("THAT WAY!", 22, 26)
-    tape.write("------>", 40, 32)
+    tape.write(1, "THAT WAY!", start+19, 26)
+    tape.write(1, "------>", start+37, 32)
     # Ready tape for main area
     tape.feed[:] = [pattern_toplit_wall,
         pattern_stalagmites, pattern_stalagmites_fill,
@@ -702,6 +762,7 @@ def run_game():
     start = 3
     set_level(tape, start)
     umby = Umby(start+10, 20)
+    tape.write_over("HELLO WORLD", 10, 20)
 
     # Main gameplay loop
     v = 0
