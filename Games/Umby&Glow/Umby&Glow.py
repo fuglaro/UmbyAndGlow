@@ -120,15 +120,11 @@ class Tape:
     feed = [None, None, None, None, None]
 
     @micropython.viper
-    def check(): # TODO
+    def check(self, x: int, y: int) -> bool:
+        """ Returns true if the x, y position is solid foreground """
         tape = ptr32(self._tape)
-        scroll = ptr32(self._tape_scroll)
-
-
-
-
-
-
+        p = x%72*2+432
+        return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
 
     @micropython.viper
     def comp(self, stage: ptr32):
@@ -565,10 +561,12 @@ class Umby:
     _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 
     def __init__(self, x, y):
+        # Motion variables
         self._x_pos = x
         self._y_pos = y
         self._x_vel = 0.0
         self._y_vel = 0.0
+        # Viper friendly variables (ints)
         self.x_pos = int(x)
         self.y_pos = int(y)
 
@@ -576,9 +574,12 @@ class Umby:
     def tick(self, tape):
         """ Updated Umby for one game tick """
         # Apply gravity and grund check
-        if True: # TODO: check ground
+        if not tape.check(self.x_pos, self.y_pos + 1): # check for ground
+            # Apply gravity to vertical speed
             self._y_vel += 0.5 / _FPS
+            # Update vertical position with vertical speed
             self._y_pos += 1 if self._y_vel > 1 else self._y_vel
+            # Update the viper friendly variable.
             self.y_pos = int(self._y_pos)
 
         # TODO: fall off tape
