@@ -39,7 +39,7 @@ Umby and Glow save their cave.
 Suspect bad worm
 Follow monsters to alien spaceship
 Find Lung held hostage
-Lung gives info as sacrifice
+Lung gives info as sacrifice (he will be flooded out - no time to save)
 Flood spaceship mainframe
 Go back home
 Cave -> forest -> air -> rocket -> space -> spaceship ->
@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(2400000) # FPS (intended to be near 120 fps)
+_FPS = const(151000000) # FPS (intended to be near 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -428,8 +428,43 @@ def pattern_panelsv(x: int, oY: int) -> int:
 
 class Umby:
     # Bottom middle position
-    xPos = 37
-    yPos = 10
+    x_pos = 10
+    y_pos = 27 # TODO set to 32
+    
+    @micropython.viper
+    def draw(self, t: int):
+        """ Draw unby to the frame buffer """
+        frame = ptr8(display.display.buffer)
+        x = int(self.x_pos)
+        y = int(self.y_pos)
+        # Steps through 0,1,2,4 every half second.
+        step = t*2 // _FPS % 4
+        up_byte = (y-2 >> 3)*72 + x
+        mid_bype = (y-1 >> 3)*72 + x
+        low_byte = (y >> 3)*72 + x
+        # Protect overflow
+        if up_byte - 1 < 0 or low_byte + 1 > 360:
+            return
+        # Left outline (top, mid, bottom)
+        if step == 1:
+            frame[up_byte - 1] |= 1 << (y-2 & 0x07)
+            frame[mid_bype - 1] |= 1 << (y-1 & 0x07)
+        else:
+            frame[up_byte - 1] &= 0xff ^ (1 << (y-2 & 0x07))
+            frame[mid_bype - 1] &= 0xff ^ (1 << (y-1 & 0x07))
+        frame[low_byte - 1] &= 0xff ^ (1 << (y & 0x07))
+        # Worm  (top, mid, bottom)
+        frame[up_byte] |= 1 << (y-2 & 0x07)
+        frame[mid_bype] |= 1 << (y-1 & 0x07)
+        frame[low_byte] |= 1 << (y & 0x07)
+        # Right outline (top, mid, bottom)
+        if step == 3:
+            frame[up_byte + 1] |= 1 << (y-2 & 0x07)
+            frame[mid_bype + 1] |= 1 << (y-1 & 0x07)      
+        else:
+            frame[up_byte + 1] &= 0xff ^ (1 << (y-2 & 0x07))
+            frame[mid_bype + 1] &= 0xff ^ (1 << (y-1 & 0x07))
+        frame[low_byte + 1] &= 0xff ^ (1 << (y & 0x07))
 
 
 
@@ -458,14 +493,15 @@ def run_game():
     display.setFPS(_FPS)
     tape = Tape()
     set_level(tape)
+    umby = Umby()
 
     # Main gameplay loop
     v = 0
-    c = 0;
+    t = 0;
     profiler = ticks_ms()
     while(1):
         # Speed profiling
-        if (c % 60 == 0):
+        if (t % 60 == 0):
             print(ticks_ms() - profiler)
             profiler = ticks_ms()
 
@@ -475,6 +511,12 @@ def run_game():
 
         # Update the display buffer new frame data
         tape.comp()
+
+
+
+        umby.draw(t)
+
+
         # Flush to the display, waiting on the next frame interval
         display.update()
 
@@ -489,9 +531,9 @@ def run_game():
             v = v + 1 if v < 24 else v
         tape.offset_vertically(v)
         if not bL():
-            tape.scroll_tape(-1 if c % 4 == 0 else 0, -(c % 2), -1)
+            tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
         if not bR():
-            tape.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
-        c += 1
+            tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
+        t += 1
 run_game()
 
