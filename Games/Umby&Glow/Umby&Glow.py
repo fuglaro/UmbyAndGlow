@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(60) # FPS (intended to be near TODO ? 120 fps)
+_FPS = const(600000) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -111,6 +111,10 @@ class Tape:
     # parallax only).
     # [backPos, midPos, frameCounter, forePos, yPos]
     _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+    # Public accessible x position of the tape foreground relative to the level.
+    # This acts as the camera position across the level.
+    # Care must be taken to NOT modify this externally.
+    x = memoryview(_tape_scroll)[3:4]
 
     # The patterns to feed into each tape section
     feed = [None, None, None, None, None]
@@ -219,6 +223,24 @@ class Tape:
         """
         ptr32(self._tape_scroll)[4] = (
             offset if offset >= 0 else 0) if offset <= 24 else 24
+
+    @micropython.viper
+    def auto_camera_parallax(self, x: int, y: int):
+        """ Move the camera so that an x, y position is in the spotlight.
+        This will scroll each tape layer to immitate a camera move and
+        will scroll with standard parallax.
+        """
+        # Get the current camera position
+        c = ptr32(self._tape_scroll)[3]
+        # Scroll the tapes as needed
+        if x < c + 10:
+            self.scroll_tape(-1 if c % 4 == 0 else 0, 0-(c % 2), -1)
+        elif x > c + 40:
+            self.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
+        # Reset the vertical offset as needed
+        y -= 16
+        ptr32(self._tape_scroll)[4] = (
+            y if y >= 0 else 0) if y <= 24 else 24
 
 
 ## Patterns ##
@@ -517,7 +539,7 @@ class Stage:
 
 class Umby: # TODO
     # Bottom middle position
-    x_pos = 10
+    x_pos = 82
     y_pos = 27 # TODO set to 32
     # BITMAP: width: 8, height: 8
     art = bytearray([2,254,66,66,66,66,115,64])
@@ -537,25 +559,12 @@ class Umby: # TODO
             self.x_pos += 1
 
     @micropython.viper
-    def draw(self, t: int, stage):
+    def draw(self, t: int, x: int, stage):
         """ Draw umby to the draw buffer """
-
-
-
-
-
-        stage.draw(1, self.x_pos, self.y_pos, self.art, 8)
-        stage.mask(0, self.x_pos, self.y_pos, self.mask, 8)
-        #for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-        #    b = uint(img[i-x])
-        #    draw[144+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
-        #    draw[144+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
-            
-            
-        #draw[0+8] = 0xFF
-        #draw[288+8] = mask ^ 0xFFFF
-        #draw[144+6] = 0xFF
-        #draw[432+6] = mask ^ 0xFFFF
+        x_pos = int(self.x_pos)
+        y_pos = int(self.y_pos)
+        stage.draw(1, x_pos-x, y_pos, self.art, 8)
+        stage.mask(0, x_pos-x, y_pos, self.mask, 8)
 
         # TODO
         """
@@ -632,17 +641,16 @@ def run_game():
             print(ticks_ms() - profiler)
             profiler = ticks_ms()
 
-
+        # Update the game engine by a tick
         umby.tick()
 
+        # Make the camera follow the action
+        tape.auto_camera_parallax(umby.x_pos, umby.y_pos)
 
         # Update the display buffer new frame data
         stage.clear()
-        umby.draw(t, stage)
+        umby.draw(t, tape.x[0], stage)
         tape.comp(stage.stage)
-
-
-
 
         # Flush to the display, waiting on the next frame interval
         display.update()
