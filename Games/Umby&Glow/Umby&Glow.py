@@ -245,7 +245,7 @@ class Tape:
 
     @micropython.viper
     def auto_camera_parallax(self, x: int, y: int):
-        """ Move the camera so that an x, y position is in the spotlight.
+        """ Move the camera so that an x, y tape position is in the spotlight.
         This will scroll each tape layer to immitate a camera move and
         will scroll with standard parallax.
         """
@@ -260,17 +260,37 @@ class Tape:
         y -= 20
         ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
 
-
-
     @micropython.viper
-    def write(self, text, x: int, y: int): # TODO
+    def write(self, text, x: int, y: int):
+        """ Write text to the mid background layer at an x, y tape position.
+        This also clears a space around the text for readability using
+        the background clear mask layer.
+        Text is drawn with the given position being at the botton left
+        of the written text.
+        """
         tape = ptr32(self._tape)
         abc_b = ptr8(abc)
+        h = y - 11 # ignore top 3 bits of the byte height (5 height font)
+        # Clear space on background mask layer
+        b = 0xFE
+        for i in range(int(len(text))*4+1):
+            p = (x-1+i)%72*2+288
+            tape[p] ^= tape[p] | b >> 1-h if h+1 < 0 else b << h+1
+            tape[p+1] ^= tape[p+1] | b >> -31-h if 31-h < 0 else b << 31-h
+        # Draw to the mid background layer
         for i in range(int(len(text))):
             print(text[i], abc_i[text[i]])
             for o in range(3):
-                p = (x+1+o+i*4)%72*2+144
-                tape[p] |= abc_b[int(abc_i[text[i]])*3+o] << 24
+                p = (x+o+i*4)%72*2+144
+                b = abc_b[int(abc_i[text[i]])*3+o]
+                img1 = b >> 0-h if h < 0 else b << h
+                img2 = b >> -32-h if 32-h < 0 else b << 32-h
+                # Draw to the mid background layer
+                tape[p] |= img1
+                tape[p+1] |= img2
+                # Stencil text out of the clear background mask layer
+                tape[p+144] |= img1
+                tape[p+145] |= img2
 
 
 
@@ -699,7 +719,9 @@ def run_game():
 
 
 
-    tape.write("AHELLO !,.:WORLD", 10, 30)
+    tape.write("THAT WAY!", 22, 26)
+    tape.write("------>", 40, 32)
+    #tape.write("XXXXXX", 60, 52)
 
     # Main gameplay loop
     v = 0
