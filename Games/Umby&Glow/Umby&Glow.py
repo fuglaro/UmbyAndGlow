@@ -55,6 +55,9 @@ import time
 import thumby
 from array import array
 
+
+## Utility Functions ##
+
 ##
 # Fast bitwise abs
 @micropython.viper
@@ -63,7 +66,7 @@ def abs(v: int) -> int:
     return (v + m) ^ m
 
 ##
-# 32 bit deterministic random hash fuction
+# 32 bit deterministic semi-random hash fuction
 # Credit: Thomas Wang
 @micropython.viper
 def ihash(x: uint) -> int:
@@ -72,7 +75,24 @@ def ihash(x: uint) -> int:
     x ^= (x >> 4)
     x *= 0x27d4eb2d
     return int(x ^ (x >> 15))
+##
+# (smooth) deterministic semi-random hash.
+# For x, this will get two random values,
+# one for the nearest interval of 'step' before x,
+# and one for the nearest interval of 'step' after x.
+# The result will be the interpolation between the two
+# random values for where x is positioned along the step.
+# @param x: the position to retrieve the interpolated random value.
+# @param step: the interval between random samples.
+# @param size: the maximum magnitude of the random values.
+@micropython.viper
+def shash(x: int, step: int, size: int) -> int:
+    a = int(ihash(x//step)) % size
+    b = int(ihash(x//step + 1)) % size
+    return a + (b-a) * (x%step) // step
 
+
+## Tape Management ##
 
 ##
 # Scrolling tape with each render layer being a section one after the other.
@@ -87,7 +107,7 @@ def ihash(x: uint) -> int:
 # - 144: close background
 # - 288: close background fill (opaque off pixels)
 # - 432: landscape including ground, platforms, and roof
-# - 720: landscape fill (opaque off pixels)
+# - 576: landscape fill (opaque off pixels)
 tape = array('I', (0 for i in range(0, 72*2*5)))
 # The scroll distance of each layer in the tape,
 # and then the frame number counter and vertical offset appended on the end.
@@ -100,6 +120,8 @@ feed = [None, None, None, None, None]
 # Since the tape patterns must be stateless across columns for rewinding, this
 # should not store data across columns.
 buf = array('i', [0])
+
+# TODO remove unused values from tapeScroll (fill layers)
 
 
 ##
@@ -127,13 +149,14 @@ def comp():
         # horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
         # Compose the first 32 bits vertically.
-        a = uint((tape_[(x+tp0)%72*2] & dim)
-            | (tape_[(x+tp1)%72*2+144] & dim)
-            | tape_[(x+tp3)%72*2+432])
+        p0 = (x+tp0)%72*2
+        p1 = (x+tp1)%72*2
+        p3 = (x+tp3)%72*2
+        a = uint((tape_[p0] | tape_[p1+144] ^ tape_[p1+288]) & dim
+            | tape_[p3+432] ^ tape_[p3+576])
         # Compose the second 32 bits vertically.
-        b = uint((tape_[(x+tp0)%72*2+1] & dim)
-            | (tape_[(x+tp1)%72*2+144+1] & dim)
-            | tape_[(x+tp3)%72*2+432+1])
+        b = uint((tape_[p0+1] | tape_[p1+145] ^ tape_[p1+289]) & dim
+            | tape_[p3+433] ^ tape_[p3+577])
         # Apply the relevant pixels to next vertical column of the display buffer,
         # while also accounting for the vertical offset.
         frame[x] = a >> yPos
@@ -176,6 +199,40 @@ def scroll_tape(pattern, layer: int, direction: int):
         tape_[layer*144 + x%72*2+w] = v
 
 ##
+# scroll_tape_with_fill
+# Similar to scroll_tape but also fills out the fill layer
+# with a fill pattern.
+@micropython.viper
+def scroll_tape_with_fill(pattern, fill_pattern, layer: int, direction: int):
+    tape_ = ptr32(tape)
+    scroll = ptr32(tapeScroll)
+    # Advance the tapeScroll position for the layer
+    tapePos = scroll[layer] + direction
+    scroll[layer] = tapePos
+    # Find the tape position for the column that needs to be filled
+    x = tapePos + 72 - (1 if direction == 1 else 0)
+    offX = x%72*2
+    # Do the top 32 bits, then the bottom 32 bits
+    for w in range(0, 2):
+        # y will iterate through the vertical tape position, for the 32 bits
+        y = w*32
+        # v collects the data for the current 32 bits
+        v = 0
+        # f collects the data for the current 32 bits of the fill layer
+        f = 0
+        # Loop through each bit in this 32 bit word
+        for b in range(0, 32):
+            # Update this 32 bit word with the next bit of fill data from the pattern
+            v |= int(pattern(x, y)) << b
+            # And also for the fill pattern
+            f |= int(fill_pattern(x, y)) << b
+            y+=1
+        # write the current 32 bits to tape
+        tape_[layer*144 + offX+w] = v
+        # same for the fill later
+        tape_[(layer+1)*144 + offX+w] = f
+
+##
 # offset_vertically
 # Shift the view on the tape to a new vertical position, by
 # specifying the offset from the top position. This cannot
@@ -216,38 +273,42 @@ def pattern_wall(x: int, y: int) -> int:
 
 
 ##
-# PATTERN [toothsaw]: TODO
+# PATTERN [toothsaw]: TODO use
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
     return int(y > (113111^x+11) % 64 // 2 + 24)
 
 ##
-# PATTERN [revtoothsaw]: TODO
+# PATTERN [revtoothsaw]: TODO use
 @micropython.viper
 def pattern_revtoothsaw(x: int, y: int) -> int:
     return int(y > (11313321^x) % 64)
 
 ##
-# PATTERN [diamondsaw]: TODO
+# PATTERN [diamondsaw]: TODO use
 @micropython.viper
 def pattern_diamondsaw(x: int, y: int) -> int:
     return int(y > (32423421^x) % 64)
 
 ##
-# PATTERN [fallentree]: TODO
+# PATTERN [fallentree]: TODO use
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
 
 
 
+
+
+##
+# PATTERN [cave]: TODO
 @micropython.viper
-def shash(x: int, step: int, size: int) -> int:
-    a = int(ihash(x//step)) % size
-    b = int(ihash(x//step + 1)) % size
-    return a + (b-a) * (x%step) // step
-
-
+def pattern_cave(x: int, y: int) -> int:
+    # buff: [ground-height]
+    buff = ptr32(buf)
+    if (y == 0):
+        buff[0] = int(shash(x, 32, 48)) + int(shash(x, 16, 24)) + int(shash(x, 4, 16))
+    return int(y > buff[0])
 
 
 ##
@@ -260,6 +321,9 @@ def pattern_dev(x: int, y: int) -> int:
     return int(y > buff[0])
 
 
+
+## Game Engine ##
+
 ##
 # Prepare everything for a level of gameplay including
 # the starting tape, and the feed patterns for each layer.
@@ -269,7 +333,8 @@ def start_level():
         scroll_tape(pattern_fence, 1, 1)
         scroll_tape(pattern_room, 3, 1)
     # Set the feed patterns for each layer.
-    feed[:] = [pattern_none, pattern_fence, None, pattern_dev, None]
+    # (background, mid-background, mid-background-fill, foreground, foreground-fill)
+    feed[:] = [pattern_wall, pattern_fence, pattern_room, pattern_cave, pattern_wall]
 start_level()
 
 
@@ -294,9 +359,9 @@ while(1):
 
     # TESTING: infinitely scroll the tape
     offset_vertically((c // 10) % 24)
-    scroll_tape(feed[3], 3, 1)
+    scroll_tape_with_fill(feed[3], feed[4], 3, 1)
     if (c % 2 == 0):
-        scroll_tape(feed[1], 1, 1)
+        scroll_tape_with_fill(feed[1], feed[2], 1, 1)
         if (c % 4 == 0):
             scroll_tape(feed[0], 0, 1)
     c += 1
