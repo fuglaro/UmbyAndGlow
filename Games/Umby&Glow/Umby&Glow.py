@@ -1,16 +1,15 @@
 # Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-'''
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 
 # TODO: Make load/save
 # TODO: Make help 
@@ -59,7 +58,6 @@ _FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
 from array import array
 from time import ticks_ms
 import math
-import os
 from thumby import display
 import thumby
 
@@ -71,32 +69,124 @@ bR = thumby.buttonR.pin.value
 bB = thumby.buttonB.pin.value
 bA = thumby.buttonA.pin.value
 
-## Tape Management ##
+## Tape Management and Stage ##
+
+class Stage:
+    ### Render and collision detection buffer
+    # for all the maps and monsters, and also the players.
+    # Monsters and players can be drawn to the buffer one
+    # after the other. Collision detection capabilities are
+    # very primitive and only allow checking for pixel collisions
+    # between what is on the buffer and another provided sprite.
+    # The Render buffer is two words (64 pixels) high, and
+    # 72 pixels wide. Sprites passed in must be a byte tall,
+    # but any width.
+    # There are 4 layers on the render buffer, 2 for rendering
+    # background and foreground monsters, and 2 for clearing
+    # background and foreground environment for monster
+    # visibility.
+    ###
+    # Frames for the drawing and checking collisions of all actors.
+    # This includes layers for turning on pixels and clearing lower layers.
+    # Clear layers have 0 bits for clearing and 1 for passing through.
+    # This includes the following layers:
+    # - 0: Non-interactive background monsters.
+    # - 144: Foreground monsters.
+    # - 288: Mid and background clear.
+    # - 432: Foreground clear.
+    stage = array('I', (0 for i in range(72*2*4)))
+
+    @micropython.viper
+    def check(self, x: int, y: int, b: int) -> bool:
+        ### Returns true if the byte going up from the x, y position is solid
+        # foreground where it collides with a given byte.
+        # @param b: Collision byte (as an int). All pixels in this vertical
+        #     byte will be checked. To check just a single pixel, pass in the
+        #     value 128. Additional active bits will be checked going upwards
+        #     from themost significant bit/pixel to least significant.
+        ###
+        stage = ptr32(self.stage)
+        p = x%72*2+144
+        h = y - 8 # y position is from bottom of text
+        img1 = b >> 0-h if h < 0 else b << h
+        img2 = b >> 32-h if h-32 < 0 else b << h-32
+        return bool((stage[p] & img1) | stage[p+1] & img2)
+
+    @micropython.viper
+    def clear(self):
+        ### Reset the render and mask laters to their default blank state ###
+        draw = ptr32(self.stage)
+        for i in range(288):
+            draw[i] = 0
+        mask = uint(0xFFFFFFFF)
+        for i in range(288, 576):
+            draw[i] = mask
+
+    @micropython.viper
+    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a render layer.
+        # Sprites must be 8 pixels high but can be any width.
+        # Sprites can have multiple frames stacked horizontally.
+        # There are 2 layers that can be rendered to:
+        #     0: Non-interactive background monster layer.
+        #     1: Foreground monsters, traps and player.
+        # @param layer: (int) the layer to render to.
+        # @param x: screen x draw position.
+        # @param y: screen y draw position (from top).
+        # @param img: (ptr8) sprite to draw (single row VLSB).
+        # @param w: width of the sprite to draw.
+        # @param f: the frame of the sprite to draw.
+        ###
+        o = x-f*w
+        p = layer*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-o])
+            draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
+
+    @micropython.viper
+    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
+        ### Draw a sprite to a mask (clear) layer.
+        # This is similar to the "draw" method but applies a mask
+        # sprite to a mask later.
+        # There are 2 layers that can be rendered to:
+        #     0: Mid and background environment mask (1 bit to clear).
+        #     1: Foreground environment mask (1 bit to clear).
+        ###
+        o = x-f*w
+        p = (layer+2)*144
+        draw = ptr32(self.stage)
+        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+            b = uint(img[i-o])
+            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
+            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
+stage = Stage()
 
 class Tape:
-    """
-    Scrolling tape with a fore, mid, and background layer.
-    This represents the level of the ground but doesn't include actors.
-    The foreground is the parts of the level that are interactive with
-    actors such as the ground, roof, and platforms.
-    Mid and background layers are purely decorative.
-    Each layer can be scrolled intependently and then composited onto the
-    display buffer.
-    Each layer is created by providing deterministic functions that
-    draw the pixels from x and y coordinates. Its really just an elaborate
-    graph plotter - a scientific calculator turned games console!
-    The tape size is 64 pixels high, with an infinite length, and 216 pixels
-    wide are buffered (72 pixels before tape position, 72 pixels of visible,
-    screen, and 72 pixels beyond the visible screen).
-    This is intended for the 72x40 pixel view. The view can be moved
-    up and down but when it moves forewards and backwards, the buffer
-    is cycled backwards and forewards. This means that the tape
-    can be modified (such as for explosion damage) for the 64 pixels high,
-    and 216 pixels wide, but when the tape is rolled forewards, and backwards,
-    the columns that go out of buffer are reset.
-    There is also an overlay layer and associated mask, which is not
-    subject to any tape scrolling or vertical offsets.
-    """
+    ###
+    # Scrolling tape with a fore, mid, and background layer.
+    # This represents the level of the ground but doesn't include actors.
+    # The foreground is the parts of the level that are interactive with
+    # actors such as the ground, roof, and platforms.
+    # Mid and background layers are purely decorative.
+    # Each layer can be scrolled intependently and then composited onto the
+    # display buffer.
+    # Each layer is created by providing deterministic functions that
+    # draw the pixels from x and y coordinates. Its really just an elaborate
+    # graph plotter - a scientific calculator turned games console!
+    # The tape size is 64 pixels high, with an infinite length, and 216 pixels
+    # wide are buffered (72 pixels before tape position, 72 pixels of visible,
+    # screen, and 72 pixels beyond the visible screen).
+    # This is intended for the 72x40 pixel view. The view can be moved
+    # up and down but when it moves forewards and backwards, the buffer
+    # is cycled backwards and forewards. This means that the tape
+    # can be modified (such as for explosion damage) for the 64 pixels high,
+    # and 216 pixels wide, but when the tape is rolled forewards, and backwards,
+    # the columns that go out of buffer are reset.
+    # There is also an overlay layer and associated mask, which is not
+    # subject to any tape scrolling or vertical offsets.
+    ###
     # Scrolling tape with each render layer being a section one after the other.
     # Each section is a buffer that cycles (via the tape_scroll positions) as the
     # world scrolls horizontally. Each section can scroll independently so
@@ -146,21 +236,20 @@ class Tape:
 
     @micropython.viper
     def check(self, x: int, y: int) -> bool:
-        """ Returns true if the x, y position is solid foreground """
+        ### Returns true if the x, y position is solid foreground ###
         tape = ptr32(self._tape)
         p = x%216*2+1296
         return bool(tape[p] & (1 << y) if y < 32 else tape[p+1] & (1 << y-32))
 
     @micropython.viper
-    def comp(self, stage: ptr32):
-        """ Composite all the render layers together and render directly to
-        the display buffer, taking into account the scroll position of each
-        render layer, and dimming the background layers.
-        @param stage: The draw layers for the monsters and players
-                        to stack within the comp.
-        """
+    def comp(self):
+        ### Composite all the render layers together and render directly to
+        # the display buffer, taking into account the scroll position of each
+        # render layer, and dimming the background layers.
+        ###
         tape = ptr32(self._tape)
         scroll = ptr32(self._tape_scroll)
+        stg = ptr32(stage.stage)
         frame = ptr8(display.display.buffer)
         # Obtain and increase the frame counter
         scroll[2] += 1 # Counter
@@ -178,32 +267,32 @@ class Tape:
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0] | tape[p1+432]) & stage[x2+288]
-                            & stage[x2+432] & tape[p1+864] & tape[p3+1728])
+                        ((tape[p0] | tape[p1+432]) & stg[x2+288]
+                            & stg[x2+432] & tape[p1+864] & tape[p3+1728])
                         # Background (non-interactive) monsters
-                        | stage[x2])
+                        | stg[x2])
                     # Dim all mid and background layers
                     & dim
                     # Foreground monsters (and players)
-                    | stage[x2+144]
+                    | stg[x2+144]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+1296] & stage[x2+432] & tape[p3+1728]))
+                    | (tape[p3+1296] & stg[x2+432] & tape[p3+1728]))
                 # Now apply the overlay mask and draw layers.
                 & (tape[x2+2160] << y_pos)
                 | (tape[x2+2304] << y_pos))
             # Now compose the second 32 bits vertically.
             b = uint(((
                         # Back/mid layer (with monster mask and fill)
-                        ((tape[p0+1] | tape[p1+433]) & stage[x2+289]
-                        & stage[x2+433] & tape[p1+865] & tape[p3+1729])
+                        ((tape[p0+1] | tape[p1+433]) & stg[x2+289]
+                        & stg[x2+433] & tape[p1+865] & tape[p3+1729])
                         # Background (non-interactive) monsters
-                        | stage[x2+1])
+                        | stg[x2+1])
                     # Dim all mid and background layers
                     & dim
                     # Foreground monsters (and players)
-                    | stage[x2+145]
+                    | stg[x2+145]
                     # Foreground (with monster mask and fill)
-                    | (tape[p3+1297] & stage[x2+433] & tape[p3+1729]))
+                    | (tape[p3+1297] & stg[x2+433] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
                 & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
                 | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
@@ -217,19 +306,19 @@ class Tape:
     
     @micropython.viper
     def scroll_tape(self, back_move: int, mid_move: int, fore_move: int):
-        """ Scroll the tape one pixel forwards, or backwards for each layer.
-        Updates the tape scroll position of that layer.
-        Fills in the new column with pattern data from the relevant
-        pattern functions. Since this is a rotating buffer, this writes
-        over the column that has been scrolled offscreen.
-        Each layer can be moved in the following directions:
-            -1 -> rewind layer backwards,
-            0 -> leave layer unmoved,
-            1 -> roll layer forwards
-        @param back_move: Movement of the background layer
-        @param mid_move: Movement of the midground layer (with fill)
-        @param fore_move: Movement of the foreground layer (with fill)
-        """
+        ### Scroll the tape one pixel forwards, or backwards for each layer.
+        # Updates the tape scroll position of that layer.
+        # Fills in the new column with pattern data from the relevant
+        # pattern functions. Since this is a rotating buffer, this writes
+        # over the column that has been scrolled offscreen.
+        # Each layer can be moved in the following directions:
+        #     -1 -> rewind layer backwards,
+        #     0 -> leave layer unmoved,
+        #     1 -> roll layer forwards
+        # @param back_move: Movement of the background layer
+        # @param mid_move: Movement of the midground layer (with fill)
+        # @param fore_move: Movement of the foreground layer (with fill)
+        ###
         tape = ptr32(self._tape)
         scroll = ptr32(self._tape_scroll)
         for i in range(3):
@@ -255,14 +344,14 @@ class Tape:
 
     @micropython.viper
     def redraw_tape(self, layer: int, x: int, pattern, fill_pattern):
-        """ Updates a tape layer for a given x position
-        (relative to the start of the tape) with a pattern function.
-        This can be used to draw to a layer without scrolling.
-        These layers can be rendered to:
-            0: Far background layer
-            1: Mid background layer
-            2: Foreground layer
-        """
+        ### Updates a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This can be used to draw to a layer without scrolling.
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
         offX = l*432 + x%216*2
@@ -274,15 +363,15 @@ class Tape:
 
     @micropython.viper
     def scratch_tape(self, layer: int, x: int, pattern, fill_pattern):
-        """ Carves a hole out of a tape layer for a given x position
-        (relative to the start of the tape) with a pattern function.
-        Draw layer: 1-leave, 0-carve
-        Fill layer: 0-leave, 1-carve
-        These layers can be rendered to:
-            0: Far background layer
-            1: Mid background layer
-            2: Foreground layer
-        """
+        ### Carves a hole out of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
         offX = l*432 + x%216*2
@@ -294,16 +383,16 @@ class Tape:
 
     @micropython.viper
     def draw_tape(self, layer: int, x: int, pattern, fill_pattern):
-        """ Draws over the top of a tape layer for a given x position
-        (relative to the start of the tape) with a pattern function.
-        This combines the existing layer with the provided pattern.
-        Draw layer: 1-leave, 0-carve
-        Fill layer: 0-leave, 1-carve
-        These layers can be rendered to:
-            0: Far background layer
-            1: Mid background layer
-            2: Foreground layer
-        """
+        ### Draws over the top of a tape layer for a given x position
+        # (relative to the start of the tape) with a pattern function.
+        # This combines the existing layer with the provided pattern.
+        # Draw layer: 1-leave, 0-carve
+        # Fill layer: 0-leave, 1-carve
+        # These layers can be rendered to:
+        #     0: Far background layer
+        #     1: Mid background layer
+        #     2: Foreground layer
+        ###
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
         offX = l*432 + x%216*2
@@ -315,9 +404,9 @@ class Tape:
 
     @micropython.viper
     def reset_tape(self, p: int):
-        """ Reset the tape buffers for all layers to the
-        given position and fill with the current feed.
-        """
+        ### Reset the tape buffers for all layers to the
+        # given position and fill with the current feed.
+        ###
         scroll = ptr32(self._tape_scroll)
         for i in range(3):
             layer = 3 if i == 2 else i
@@ -327,19 +416,19 @@ class Tape:
         
     @micropython.viper
     def offset_vertically(self, offset: int):
-        """ Shift the view on the tape to a new vertical position, by
-        specifying the offset from the top position. This cannot
-        exceed the total vertical size of the tape (minus the tape height).
-        """
+        ### Shift the view on the tape to a new vertical position, by
+        # specifying the offset from the top position. This cannot
+        # exceed the total vertical size of the tape (minus the tape height).
+        ###
         ptr32(self._tape_scroll)[4] = (
             offset if offset >= 0 else 0) if offset <= 24 else 24
 
     @micropython.viper
     def auto_camera_parallax(self, x: int, y: int, t: int):
-        """ Move the camera so that an x, y tape position is in the spotlight.
-        This will scroll each tape layer to immitate a camera move and
-        will scroll with standard parallax.
-        """
+        ### Move the camera so that an x, y tape position is in the spotlight.
+        # This will scroll each tape layer to immitate a camera move and
+        # will scroll with standard parallax.
+        ###
         # Get the current camera position
         c = ptr32(self._tape_scroll)[3]
         # Scroll the tapes as needed
@@ -353,17 +442,17 @@ class Tape:
 
     @micropython.viper
     def write(self, layer: int, text, x: int, y: int):
-        """ Write text to the mid background layer at an x, y tape position.
-        This also clears a space around the text for readability using
-        the background clear mask layer.
-        Text is drawn with the given position being at the botton left
-        of the written text (excluding the mask border).
-        There are 2 layers that can be rendered to:
-            1: Mid background layer.
-            3: Overlay layer.
-        When writing to the overlay layer, the positional coordinates
-        should be given relative to the screen, rather than the tape.
-        """
+        ### Write text to the mid background layer at an x, y tape position.
+        # This also clears a space around the text for readability using
+        # the background clear mask layer.
+        # Text is drawn with the given position being at the botton left
+        # of the written text (excluding the mask border).
+        # There are 2 layers that can be rendered to:
+        #     1: Mid background layer.
+        #     3: Overlay layer.
+        # When writing to the overlay layer, the positional coordinates
+        # should be given relative to the screen, rather than the tape.
+        ###
         text = text.upper() # only uppercase is supported
         tape = ptr32(self._tape)
         abc_b = ptr8(self.abc)
@@ -392,12 +481,11 @@ class Tape:
                 tape[p+mask] |= img1
                 tape[p+mask+1] |= img2
 
-    @micropython.native
     def message(self, position, text):
-        """ Write a message to the top (left), center (middle), or
-        bottom (right) of the screen in the overlay layer.
-        @param position: (int) 0 - center, 1 - top, 2 - bottom.
-        """
+        ### Write a message to the top (left), center (middle), or
+        # bottom (right) of the screen in the overlay layer.
+        # @param position: (int) 0 - center, 1 - top, 2 - bottom.
+        ###
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in text.split(' '):
@@ -424,17 +512,16 @@ class Tape:
 
     @micropython.viper
     def tag(self, text, x: int, y: int):
-        """ Write text to the mid background layer centered
-        on the given tape foreground scoll position.
-        """
+        ### Write text to the mid background layer centered
+        # on the given tape foreground scoll position.
+        ###
         scroll = ptr32(self._tape_scroll)
         p = x-scroll[3]+scroll[1] # Translate position to mid background
         self.write(1, text, p-int(len(text))*2, y+3)
 
     @micropython.viper
     def clear_overlay(self):
-        """ Reset and clear the overlay layer and it's mask layer.
-        """
+        ### Reset and clear the overlay layer and it's mask layer. ###
         tape = ptr32(self._tape)
         # Reset the overlay mask layer
         mask = uint(0xFFFFFFFF)
@@ -444,6 +531,7 @@ class Tape:
         mask = uint(0xFFFFFFFF)
         for i in range(2304, 2448):
             tape[i] = 0
+tape = Tape()
 
 
 ## Patterns ##
@@ -454,19 +542,24 @@ class Tape:
 # but is really just a good way to get richness cheaply on this
 # beautiful little piece of hardware.
 
+# Simple cache used across the writing of a single column of the tape.
+# Since the tape patterns must be stateless across columns (for rewinding), this
+# should not store data across columns.
+buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+
 # Utility functions
 
 @micropython.viper
 def abs(v: int) -> int:
-    """ Fast bitwise abs"""
+    ### Fast bitwise abs ###
     m = v >> 31
     return (v + m) ^ m
 
 @micropython.viper
 def ihash(x: uint) -> int:
-    """ 32 bit deterministic semi-random hash fuction
-    Credit: Thomas Wang
-    """
+    ### 32 bit deterministic semi-random hash fuction
+    # Credit: Thomas Wang
+    ###
     x = (x ^ 61) ^ (x >> 16)
     x += (x << 3)
     x ^= (x >> 4)
@@ -475,29 +568,22 @@ def ihash(x: uint) -> int:
 
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:
-    """ (smooth) deterministic semi-random hash.
-    For x, this will get two random values, one for the nearest
-    interval of 'step' before x, and one for the nearest interval
-    of 'step' after x. The result will be the interpolation between
-    the two random values for where x is positioned along the step.
-    @param x: the position to retrieve the interpolated random value.
-    @param step: the interval between random samples.
-    @param size: the maximum magnitude of the random values.
-    """
+    ### (smooth) deterministic semi-random hash.
+    # For x, this will get two random values, one for the nearest
+    # interval of 'step' before x, and one for the nearest interval
+    # of 'step' after x. The result will be the interpolation between
+    # the two random values for where x is positioned along the step.
+    # @param x: the position to retrieve the interpolated random value.
+    # @param step: the interval between random samples.
+    # @param size: the maximum magnitude of the random values.
+    ###
     a = int(ihash(x//step)) % size
     b = int(ihash(x//step + 1)) % size
     return a + (b-a) * (x%step) // step
 
-
-# Simple cache used across the writing of a single column of the tape.
-# Since the tape patterns must be stateless across columns (for rewinding), this
-# should not store data across columns.
-buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-
-
 @micropython.viper
 def pattern_template(x: int, oY: int) -> int:
-    """ PATTERN [template]: Template for patterns. Not intended for use. """
+    ### PATTERN [template]: Template for patterns. Not intended for use. ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -506,17 +592,17 @@ def pattern_template(x: int, oY: int) -> int:
     return v
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
-    """ PATTERN [none]: empty"""
+    ### PATTERN [none]: empty ###
     return 0
 
 @micropython.viper
 def pattern_fill(x: int, oY: int) -> int:
-    """ PATTERN [fill]: completely filled """
+    ### PATTERN [fill]: completely filled ###
     return int(0xFFFFFFFF) # 1 for all bits
 
 @micropython.viper
 def pattern_fence(x: int, oY: int) -> int:
-    """ PATTERN [fence]: - basic dotted fences at roof and high floor """
+    ### PATTERN [fence]: - basic dotted fences at roof and high floor ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -526,7 +612,7 @@ def pattern_fence(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
-    """ PATTERN [room]:- basic flat roof and high floor """
+    ### PATTERN [room]:- basic flat roof and high floor ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -536,7 +622,7 @@ def pattern_room(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_test(x: int, oY: int) -> int:
-    """ PATTERN [test]: long slope plus walls """
+    ### PATTERN [test]: long slope plus walls ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -546,7 +632,7 @@ def pattern_test(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_wall(x: int, oY: int) -> int:
-    """ PATTERN [wall]: dotted vertical lines repeating """
+    ### PATTERN [wall]: dotted vertical lines repeating ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -556,10 +642,10 @@ def pattern_wall(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_cave(x: int, oY: int) -> int:
-    """ PATTERN [cave]:
-    Cave system with ceiling and ground. Ceiling is never less
-    than 5 deep. Both have a random terrain and can intersect.
-    """
+    ### PATTERN [cave]:
+    # Cave system with ceiling and ground. Ceiling is never less
+    # than 5 deep. Both have a random terrain and can intersect.
+    ###
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
     if oY == 0:
@@ -574,10 +660,10 @@ def pattern_cave(x: int, oY: int) -> int:
     return v
 @micropython.viper
 def pattern_cave_fill(x: int, oY: int) -> int:
-    """ PATTERN [cave_fill]:
-    Fill pattern for the cave. The ceiling is semi-reflective
-    at the plane at depth 5. The ground has vertical lines.
-    """
+    ### PATTERN [cave_fill]:
+    # Fill pattern for the cave. The ceiling is semi-reflective
+    # at the plane at depth 5. The ground has vertical lines.
+    ###
     # buff: [ground-height, ceiling-height, ground-fill-on]
     buff = ptr32(buf)
     v = 0
@@ -591,11 +677,11 @@ def pattern_cave_fill(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_stalagmites(x: int, oY: int) -> int:
-    """ PATTERN [stalagmites]:
-    Stalagmite columns coming from the ground and associated
-    stalactite columns hanging from the ceiling.
-    These undulate in height in clustered waves.
-    """
+    ### PATTERN [stalagmites]:
+    # Stalagmite columns coming from the ground and associated
+    # stalactite columns hanging from the ceiling.
+    # These undulate in height in clustered waves.
+    ###
     # buff: [ceiling-height, fill-shading-offset]
     buff = ptr32(buf)
     if oY == 0:
@@ -612,12 +698,12 @@ def pattern_stalagmites(x: int, oY: int) -> int:
     return v
 @micropython.viper
 def pattern_stalagmites_fill(x: int, oY: int) -> int:
-    """ PATTERN [stalagmites_fill]:
-    Associated shading pattern for the stalagmite layer.
-    Stalagmites are shaded in a symetric manner while
-    stalactites have shadows to the left. This is just for
-    visual richness.
-    """
+    ### PATTERN [stalagmites_fill]:
+    # Associated shading pattern for the stalagmite layer.
+    # Stalagmites are shaded in a symetric manner while
+    # stalactites have shadows to the left. This is just for
+    # visual richness.
+    ###
     # buff: [ceiling-height, fill-shading-offset]
     buff = ptr32(buf)
     v = 0
@@ -629,7 +715,7 @@ def pattern_stalagmites_fill(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_toplit_wall(x: int, oY: int) -> int:
-    """ PATTERN [toplit_wall]: organic background with roof shine """
+    ### PATTERN [toplit_wall]: organic background with roof shine ###
     v = 0
     p = x-500
     for y in range(oY, oY+32):
@@ -639,12 +725,12 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
     return v
 
 def bang(blast_x, blast_y, blast_size, invert):
-    """ PATTERN (DYNAMIC) [bang]: explosion blast with customisable
-    position and size. Intended to be used for scratch_tape.
-    Comes with it's own inbuilt fill patter for also blasting away
-    the fill layer.
-    @returns: a pattern (or fill) function.
-    """
+    ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
+    # position and size. Intended to be used for scratch_tape.
+    # Comes with it's own inbuilt fill patter for also blasting away
+    # the fill layer.
+    # @returns: a pattern (or fill) function.
+    ###
     @micropython.viper
     def pattern(x: int, oY: int) -> int:
         s = int(blast_size)
@@ -665,23 +751,23 @@ def bang(blast_x, blast_y, blast_size, invert):
 # Interesting pattern library for future considerations ## 
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
-    """ PATTERN [toothsaw]: TODO use and update for word """
+    ### PATTERN [toothsaw]: TODO use and update for word ###
     return int(y > (113111^x+11) % 64 // 2 + 24)
 @micropython.viper
 def pattern_revtoothsaw(x: int, y: int) -> int:
-    """ PATTERN [revtoothsaw]: TODO use and update for word """
+    ### PATTERN [revtoothsaw]: TODO use and update for word ###
     return int(y > (11313321^x) % 64)
 @micropython.viper
 def pattern_diamondsaw(x: int, y: int) -> int:
-    """ PATTERN [diamondsaw]: TODO use and update for word """
+    ### PATTERN [diamondsaw]: TODO use and update for word ###
     return int(y > (32423421^x) % 64)
 @micropython.viper
 def pattern_fallentree(x: int, y: int) -> int:
-    """ PATTERN [fallentree]: TODO use and update for word """
+    ### PATTERN [fallentree]: TODO use and update for word ###
     return int(y > (32423421^(x+y)) % 64)
 @micropython.viper
 def pattern_panelsv(x: int, oY: int) -> int:
-    """ PATTERN [panels]: TODO """
+    ### PATTERN [panels]: TODO ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -690,99 +776,7 @@ def pattern_panelsv(x: int, oY: int) -> int:
     return v
 
 
-## Actors and Stage ##
-
-class Stage:
-    """ Render and collision detection buffer
-    for all the maps and monsters, and also the players.
-    Monsters and players can be drawn to the buffer one
-    after the other. Collision detection capabilities are
-    very primitive and only allow checking for pixel collisions
-    between what is on the buffer and another provided sprite.
-    The Render buffer is two words (64 pixels) high, and
-    72 pixels wide. Sprites passed in must be a byte tall,
-    but any width.
-    There are 4 layers on the render buffer, 2 for rendering
-    background and foreground monsters, and 2 for clearing
-    background and foreground environment for monster
-    visibility.
-    """
-    # Frames for the drawing and checking collisions of all actors.
-    # This includes layers for turning on pixels and clearing lower layers.
-    # Clear layers have 0 bits for clearing and 1 for passing through.
-    # This includes the following layers:
-    # - 0: Non-interactive background monsters.
-    # - 144: Foreground monsters.
-    # - 288: Mid and background clear.
-    # - 432: Foreground clear.
-    stage = array('I', (0 for i in range(72*2*4)))
-
-    @micropython.viper
-    def check(self, x: int, y: int, b: int) -> bool:
-        """ Returns true if the byte going up from the x, y position is solid
-        foreground where it collides with a given byte.
-        @param b: Collision byte (as an int). All pixels in this vertical
-            byte will be checked. To check just a single pixel, pass in the
-            value 128. Additional active bits will be checked going upwards
-            from themost significant bit/pixel to least significant.
-        """
-        stage = ptr32(self.stage)
-        p = x%72*2+144
-        h = y - 8 # y position is from bottom of text
-        img1 = b >> 0-h if h < 0 else b << h
-        img2 = b >> 32-h if h-32 < 0 else b << h-32
-        return bool((stage[p] & img1) | stage[p+1] & img2)
-
-    @micropython.viper
-    def clear(self):
-        """ Reset the render and mask laters to their default blank state """
-        draw = ptr32(self.stage)
-        for i in range(288):
-            draw[i] = 0
-        mask = uint(0xFFFFFFFF)
-        for i in range(288, 576):
-            draw[i] = mask
-
-    @micropython.viper
-    def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
-        """ Draw a sprite to a render layer.
-        Sprites must be 8 pixels high but can be any width.
-        Sprites can have multiple frames stacked horizontally.
-        There are 2 layers that can be rendered to:
-            0: Non-interactive background monster layer.
-            1: Foreground monsters, traps and player.
-        @param layer: (int) the layer to render to.
-        @param x: screen x draw position.
-        @param y: screen y draw position (from top).
-        @param img: (ptr8) sprite to draw (single row VLSB).
-        @param w: width of the sprite to draw.
-        @param f: the frame of the sprite to draw.
-        """
-        o = x-f*w
-        p = layer*144
-        draw = ptr32(self.stage)
-        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-            b = uint(img[i-o])
-            draw[p+i*2] |= (b << y) if y >= 0 else (b >> 0-y)
-            draw[p+i*2+1] |= (b << y-32) if y >= 32 else (b >> 32-y)
-
-    @micropython.viper
-    def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
-        """ Draw a sprite to a mask (clear) layer.
-        This is similar to the "draw" method but applies a mask
-        sprite to a mask later.
-        There are 2 layers that can be rendered to:
-            0: Mid and background environment mask (1 bit to clear).
-            1: Foreground environment mask (1 bit to clear).
-        """
-        o = x-f*w
-        p = (layer+2)*144
-        draw = ptr32(self.stage)
-        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
-            b = uint(img[i-o])
-            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
-            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
-
+## Actors ##
 
 class Player:
     """ Standard functions that are the same for all players """
@@ -795,7 +789,6 @@ class Player:
     @micropython.native
     def die(self, rewind_distance, death_message):
         """ Put Player into a respawning state """
-        tape = self._tape
         self.mode = -1#Respawn
         self._respawn_x = tape.x[0] - rewind_distance
         tape.message(0, death_message)
@@ -807,14 +800,13 @@ class Player:
         """
         rx = self.rocket_x
         ry = self.rocket_y
-        tape = self._tape
         # Tag the wall with an explostion mark
         tag = t%4
         tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
             "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
         # Tag the wall with a death message
         if monster:
-            self._tape.tag("[RIP]", monster.x, monster.y)
+            tape.tag("[RIP]", monster.x, monster.y)
         # Carve blast hole out of ground
         pattern = bang(rx, ry, 8, 0)
         fill = bang(rx, ry, 10, 1)
@@ -853,7 +845,6 @@ class Player:
         This handles a game tick when a respawn process is
         active
         """
-        tape = self._tape
         # Move Umby towards the respawn location
         if self._x > self._respawn_x:
             self._x -= 1
@@ -916,9 +907,7 @@ class Umby(Player):
     _aim_back_mask = bytearray([112,248,248,248,112])
     name = "Umby"
 
-    def __init__(self, tape, stage, x, y):
-        self._tape = tape
-        self._stage = stage
+    def __init__(self, x, y):
         # Motion variables
         self._x = x # Middle of Umby
         self._y = y # Bottom of Umby
@@ -935,7 +924,6 @@ class Umby(Player):
     @micropython.native
     def _tick_play(self, t):
         """ Handle one game tick for normal play controls """
-        tape = self._tape
         x = self.x
         y = self.y
         _chd = tape.check(x, y+1)
@@ -989,7 +977,6 @@ class Umby(Player):
         During flight, further presses of the rocket button
         will leave a rocket trail that will act as a platform.
         """
-        tape = self._tape
         angle = self._aim_angle
         power = self._aim_pow
         # CONTROLS: Apply rocket
@@ -1046,8 +1033,7 @@ class Umby(Player):
     @micropython.viper
     def draw(self, t: int):
         """ Draw Umby to the draw buffer """
-        p = int(self._tape.x[0])
-        stage = self._stage
+        p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
         aim_x = int(self.aim_x)
@@ -1117,9 +1103,7 @@ class Glow(Player):
     _aim_back_mask = bytearray([112,248,248,248,112])
     name = "Glow"
 
-    def __init__(self, tape, stage, x, y):
-        self._tape = tape
-        self._stage = stage
+    def __init__(self, x, y):
         # Motion variables
         self._x = x # Middle of Glow
         self._y = y # Bottom of Glow (but top because they upside-down!)
@@ -1153,7 +1137,6 @@ class Glow(Player):
     @micropython.native
     def _tick_play(self, t):
         """ Handle one game tick for normal play controls """
-        tape = self._tape
         x = self.x
         y = self.y
         _chd = tape.check(x, y-1)
@@ -1297,7 +1280,6 @@ class Glow(Player):
         ground it clears a blast radius, or kills Glow, if hit.
         See the class doc strings for more details.
         """
-        tape = self._tape
         angle = self._aim_angle
         power = self._aim_pow
         grappling = self.mode == 1
@@ -1362,8 +1344,7 @@ class Glow(Player):
     @micropython.viper
     def draw(self, t: int):
         """ Draw Glow to the draw buffer """
-        p = int(self._tape.x[0])
-        stage = self._stage
+        p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
         aim_x = int(self.aim_x)
@@ -1433,9 +1414,7 @@ class BonesTheMonster:
     # BITMAP: width: 9, height: 8
     _mask = bytearray([28,62,247,243,239,243,247,62,28])
 
-    def __init__(self, tape, stage, spawn, x, y):
-        self._tape = tape
-        self._stage = stage
+    def __init__(self, spawn, x, y):
         self._spawn = spawn
         self.x = int(x) # Middle of Bones
         self.y = int(y) # Middle of Bones
@@ -1449,7 +1428,6 @@ class BonesTheMonster:
     @micropython.native
     def tick(self, t):
         """ Update Bones for one game tick """
-        tape = self._tape
         # Find the potential new coordinates
         x = self.x
         y = self.y
@@ -1486,8 +1464,7 @@ class BonesTheMonster:
     @micropython.viper
     def draw(self, t: int):
         """ Draw Bones to the draw buffer """
-        p = int(self._tape.x[0])
-        stage = self._stage
+        p = int(tape.x[0])
         x_pos = int(self.x)
         y_pos = int(self.y)
         mode = int(self.mode)
@@ -1535,10 +1512,6 @@ class MonsterSpawner:
     mons = [] # Active monsters
     players = [] # Player register for monsters to interact with
 
-    def __init__(self, tape, stage):
-        self._tape = tape
-        self._stage = stage
-
     def reset(self, start):
         """ Remove all monsters and set a new spawn starting position """
         mons = []
@@ -1548,7 +1521,7 @@ class MonsterSpawner:
     def spawn(self):
         """ Spawn new monsters as needed """
         x = ptr32(self._x)
-        p = int(self._tape.x[0])
+        p = int(tape.x[0])
         # Only spawn when scrolling into unseen land
         if x[0] >= p:
             return
@@ -1566,12 +1539,12 @@ class MonsterSpawner:
     def add(self, mon_type, x, y):
         """ Add a monster of the given type """
         if len(self.mons) < 10: # Limit to maximum 10 monsters at once
-            self.mons.append(mon_type(self._tape, self._stage, self, x, y))
+            self.mons.append(mon_type(self, x, y))
 
 
 ## Game Play ##
 
-def set_level(tape, spawn, start):
+def set_level(spawn, start):
     """ Prepare everything for a level of gameplay including
     the starting tape, and the feed patterns for each layer.
     @param start: The starting x position of the tape.
@@ -1595,7 +1568,7 @@ def set_level(tape, spawn, start):
         tape.write(1, "------>", start+37, 32)
 
 @micropython.native
-def run_menu(tape, stage, spawn):
+def run_menu(spawn):
     """ Loads a starting menu and returns the selections.
     @returns: a tuple of the following values:
         * Umby (0), Glow (1)
@@ -1603,7 +1576,7 @@ def run_menu(tape, stage, spawn):
         * New (0), Load (1)
     """
     t = 0
-    set_level(tape, spawn, -9999)
+    set_level(spawn, -9999)
     spawn.add(BonesTheMonster, -9960, 25)
     m = spawn.mons[0]
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
@@ -1633,7 +1606,7 @@ def run_menu(tape, stage, spawn):
         m.draw(t)
         tape.auto_camera_parallax(m.x, m.y, t)
         # Composite everything together to the render buffer
-        tape.comp(stage.stage)
+        tape.comp()
         # Flush to the display, waiting on the next frame interval
         display.update()
         t += 1
@@ -1645,11 +1618,9 @@ def run_game():
     """ Initialise the game and run the game loop """
     # Basic setup
     display.setFPS(_FPS)
-    tape = Tape()
-    stage = Stage()
-    spawn = MonsterSpawner(tape, stage)
+    spawn = MonsterSpawner(stage)
     # Start menu
-    glow, coop, load = run_menu(tape, stage, spawn)
+    glow, coop, load = run_menu(spawn)
 
     # Ready the level for playing
     sav = __file__[:-3] + "-" + ("glow" if glow else "umby") + ".sav"
@@ -1666,14 +1637,13 @@ def run_game():
     #    except:
     #        pass
 
-    tape.message(0, start) # TODO debug
 
     t = 0;
-    set_level(tape, spawn, start)
+    set_level(spawn, start)
     if glow:
-        p1 = Glow(tape, stage, start+10, 20)
+        p1 = Glow(start+10, 20)
     else:
-        p1 = Umby(tape, stage, start+10, 20)
+        p1 = Umby(start+10, 20)
     spawn.players.append(p1)
     # (Secret) Testing mode
     if not (bR() or bA() or bB()):
@@ -1717,7 +1687,7 @@ def run_game():
         p1.draw(t)
 
         # Composite everything together to the render buffer
-        tape.comp(stage.stage)
+        tape.comp()
         # Flush to the display, waiting on the next frame interval
         display.update()
 
