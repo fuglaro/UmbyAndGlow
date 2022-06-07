@@ -52,7 +52,7 @@ Cave -> forest -> air -> rocket -> space -> spaceship ->
 script = [
 ]
 
-_FPS = const(60) # FPS (intended to be near 120 fps)
+_FPS = const(6000000) # FPS (intended to be near TODO ? 120 fps)
 
 from array import array
 from time import ticks_ms
@@ -116,10 +116,12 @@ class Tape:
     feed = [None, None, None, None, None]
     
     @micropython.viper
-    def comp(self):
+    def comp(self, actors: ptr32):
         """ Composite all the render layers together and render directly to
         the display buffer, taking into account the scroll position of each
         render layer, and dimming the background layers.
+        @param actors: The draw layers for the monsters and players
+                        to stack within the comp.
         """
         tape = ptr32(self._tape)
         scroll = ptr32(self._tapeScroll)
@@ -137,11 +139,45 @@ class Tape:
             p0 = (x+scroll[0])%72*2
             p1 = (x+scroll[1])%72*2
             p3 = (x+scroll[3])%72*2
-            a = uint(((tape[p0] | tape[p1+144]) & tape[p1+288] & dim
-                | tape[p3+432]) & tape[p3+576])
-            # Compose the second 32 bits vertically.
-            b = uint(((tape[p0+1] | tape[p1+145]) & tape[p1+289] & dim
-                | tape[p3+433]) & tape[p3+577])
+
+
+# - 0: Non-interactive monsters between far and mid background layers (clear).
+# - 144: Monsters between mid background and foreground (clear).
+# - 288: Monsters in front of the foreground layer (clear).
+# - 432: Non-interactive monsters between far and mid background layers.
+# - 576: Monsters between mid background and foreground.
+# - 720: Monsters in front of the foreground layer.
+            a = uint((((((
+                # Background layer
+                tape[p0]
+                # Background (non-interactive monsters)
+                & actors[x] | actors[x+432])
+                # Midground layer
+                | tape[p1+144]) & tape[p1+288])
+                # Dim all mid and background layers
+                & dim
+                # Mid monsters (and players)
+                & actors[x+144] | actors[x+576])
+                # Foreground
+                | tape[p3+432]) & tape[p3+576]
+                # Fore monsters
+                & actors[x+288] | actors[x+720])
+            # Now compose the second 32 bits vertically.
+            b = uint((((((
+                # Background layer
+                tape[p0+1]
+                # Background (non-interactive monsters)
+                & actors[x+1] | actors[x+433])
+                # Midground layer
+                | tape[p1+145]) & tape[p1+289])
+                # Dim all mid and background layers
+                & dim
+                # Mid monsters (and players)
+                & actors[x+145] | actors[x+577])
+                # Foreground
+                | tape[p3+433]) & tape[p3+577]
+                # Fore monsters
+                & actors[x+289] | actors[x+721])
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
             frame[x] = a >> yPos
@@ -427,12 +463,16 @@ def pattern_panelsv(x: int, oY: int) -> int:
 ## Actors ##
 
 # Frames for drawing and checking collisions of all actors.
-# Non-interactive monsters between background layers
-back_mons = array('I', (0 for i in range(72*2)))
-# interactive monsters behind foreground
-mid_mons = array('I', (0 for i in range(72*2)))
- # interactive in front of foreground
-fore_mons = array('I', (0 for i in range(72*2)))
+# This includes layers for turning on pixels and clearing lower layers.
+# Clear layers have 0 bits for clearing and 1 for passing through.
+# This includes 6 layers:
+# - 0: Non-interactive monsters between far and mid background layers (clear).
+# - 144: Monsters between mid background and foreground (clear).
+# - 288: Monsters in front of the foreground layer (clear).
+# - 432: Non-interactive monsters between far and mid background layers.
+# - 576: Monsters between mid background and foreground.
+# - 720: Monsters in front of the foreground layer.
+actors = array('I', (0 for i in range(72*2*6)))
 
 class Umby:
     # Bottom middle position
@@ -456,6 +496,17 @@ class Umby:
     def draw(self, t: int):
         """ Draw unby to the frame buffer """
 
+        draw = ptr32(actors)
+
+        mask = uint(0xFFFFFFFF)
+        for i in range(432):
+            draw[i] = mask
+        #for i in range(432, 864):
+        #    draw[i] = 0
+        draw[144+8] = 0xFFFF
+        draw[576+8] = 0xFF
+        draw[288+7] = 0xFFFF
+        draw[720+4] = 0xFFFF
 
 
         frame = ptr8(display.display.buffer)
@@ -534,7 +585,7 @@ def run_game():
 
 
         # Update the display buffer new frame data
-        tape.comp()
+        tape.comp(actors)
 
 
 
@@ -549,15 +600,15 @@ def run_game():
     
 
         # TESTING: infinitely scroll the tape
-        #if not bU():
-        #    v = v - 1 if v > 0 else v
-        #elif not bD():
-        #    v = v + 1 if v < 24 else v
-        #tape.offset_vertically(v)
-        #if not bL():
-        #    tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
-        #elif not bR():
-        #    tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
+        if not bU():
+            v = v - 1 if v > 0 else v
+        elif not bD():
+            v = v + 1 if v < 24 else v
+        tape.offset_vertically(v)
+        if not bL():
+            tape.scroll_tape(-1 if t % 4 == 0 else 0, -(t % 2), -1)
+        elif not bR():
+            tape.scroll_tape(1 if t % 4 == 0 else 0, t % 2, 1)
         t += 1
 run_game()
 
