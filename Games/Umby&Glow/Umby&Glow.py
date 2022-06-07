@@ -1234,10 +1234,10 @@ class Glow(Player):
                 y1 = y - self._hook_y
                 self._hook_len = math.sqrt(x1*x1+y1*y1)
                 # Now get the velocity in the grapple angle
-                v1 = (1-self._x_vel*y1+self._y_vel*x1)/self._hook_len
+                v1 = (1-self._x_vel*y1+self._y_vel*x1)/(self._hook_len+1)
                 xv = self._x_vel
                 yv = self._y_vel
-                self._hook_vel = -math.sqrt(xv*xv+yv+yv)*v1*2
+                self._hook_vel = -math.sqrt(xv*xv+yv+yv)*v1*4
                 # Start normal grappling hook mode
                 self.mode = 1
             # CONTROLS: Fall (force when jumping)
