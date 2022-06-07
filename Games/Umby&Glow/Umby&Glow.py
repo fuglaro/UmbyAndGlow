@@ -955,15 +955,13 @@ class Umby(Player):
             self._y_vel = 0.5
         # CONTROLS: Apply movement
         if not bL():
-            if not _chl and not _chlu: # Movement
-                if t%3:
-                    self._x -= 1
+            if not _chl and not _chlu and t%3: # Movement
+                self._x -= 1
             elif t%3==0 and not _chu: # Climbing
                 self._y -= 1
         elif not bR():
-            if not _chr and not _chru: # Movement
-                if t%3:
-                    self._x += 1
+            if not _chr and not _chru and t%3: # Movement
+                self._x += 1
             elif t%3==0 and not _chu: # Climbing
                 self._y -= 1
         # CONTROLS: Apply jump - allow continual jump until falling begins
@@ -1153,32 +1151,46 @@ class Glow(Player): # TODO
         x = self.x
         y = self.y
         _chd = tape.check(x, y-1)
-        _chu = tape.check(x, y+3)
+        _chrd = tape.check(x+1, y-1)
+        _chlld = tape.check(x-2, y-1)
+        _chrrd = tape.check(x+2, y-1)
+        _chld = tape.check(x-1, y-1)
         _chl = tape.check(x-1, y)
-        _chlu = tape.check(x-1, y+3)
         _chr = tape.check(x+1, y)
+        _chll = tape.check(x-2, y)
+        _chrr = tape.check(x+2, y)
+        _chu = tape.check(x, y+3)
+        _chlu = tape.check(x-1, y+3)
         _chru = tape.check(x+1, y+3)
-        # Apply gravity and grund check
-        if (not _chd and not _chl and not _chr):
+        # Apply gravity and ground check
+        if (not _chd and not _chld and not _chrd and not _chl and not _chr):
             # Apply gravity to vertical speed
             self._y_vel += 2.5 / _FPS
             # Update vertical position with vertical speed
-            self._y -= self._y_vel
+            self._y += self._y_vel
         else:
             # Stop falling when hit ground but keep some fall speed ready
             self._y_vel = 0.5
         # CONTROLS: Apply movement
-        if not bL():
-            if not _chl and not _chlu: # Movement
-                if t%3:
-                    self._x -= 1
-            elif t%3==0 and not _chu: # Climbing
+        if not bL() and t%2:
+            # Check if moving left possible and safe
+            if not (_chl or _chlu) and (_chld or _chd or _chlld or _chll):
+                self._x -= 1
+            # Check if climbing is needed and safe
+            elif not _chd and _chrd:
+                self._y -= 1
+            # Check is we should decend
+            elif (_chl or _chlu) and not _chu:
                 self._y += 1
-        elif not bR():
-            if not _chr and not _chru: # Movement
-                if t%3:
-                    self._x += 1
-            elif t%3==0 and not _chu: # Climbing
+        elif not bR() and t%2:
+            # Check if moving right possible and safe
+            if not (_chr or _chru) and (_chrd or _chd or _chrrd or _chrr):
+                self._x += 1
+            # Check if climbing is needed and safe
+            elif not _chd and _chld:
+                self._y -= 1
+            # Check is we should decend
+            elif (_chr or _chru) and not _chu:
                 self._y += 1
         # CONTROLS: Apply jump - allow continual jump until falling begins
         if not bA() and (self._y_vel < 0 or _chd or _chl or _chr):
@@ -1498,7 +1510,7 @@ def run_game():
     start = 3
     set_level(tape, spawn, start)
     #p1 = Umby(tape, stage, start+10, 20)
-    p1 = Glow(tape, stage, start+10, 20)
+    p1 = Glow(tape, stage, start+10, 3)#TODO 20)
     spawn.players.append(p1)
 
 
