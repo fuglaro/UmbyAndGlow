@@ -586,7 +586,12 @@ class Umby:
             
 
         # TODO: fall off tape
-
+        # TODO: allow digging straight down
+        # TODO: climb
+        # TODO: jump
+        # TODO: hit ceiling
+        # TODO: writing top, bottom
+        # TODO: writing wall
 
         #---- TESTING: Explore the level by flying without clipping
         if not bU():
