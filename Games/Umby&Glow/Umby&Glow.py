@@ -54,9 +54,18 @@ script = [
 
 _FPS = const(2400000) # FPS (intended to be near 120 fps)
 
+from array import array
 from time import ticks_ms
 from thumby import display
-from array import array
+import thumby
+
+# Button functions. Note they return the inverse pressed state
+bU = thumby.buttonU.pin.value
+bD = thumby.buttonD.pin.value
+bL = thumby.buttonL.pin.value
+bR = thumby.buttonR.pin.value
+bB = thumby.buttonB.pin.value
+bA = thumby.buttonA.pin.value
 
 ## Tape Management ##
 
@@ -167,7 +176,7 @@ class Tape:
             tapePos = scroll[layer] + move
             scroll[layer] = tapePos
             # Find the tape position for the column that needs to be filled
-            x = tapePos + 72 - (1 if move == 1 else 0)
+            x = tapePos + 71 if move == 1 else tapePos
             offX = layer*144 + x%72*2
             # Update 2 words of vertical pattern for the tape
             # (the top 32 bits, then the bottom 32 bits)
@@ -418,7 +427,9 @@ def pattern_panelsv(x: int, oY: int) -> int:
 ## Actors ##
 
 class Umby:
-    pass
+    # Bottom middle position
+    xPos = 37
+    yPos = 10
 
 
 
@@ -441,6 +452,7 @@ def set_level(tape):
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
 
+@micropython.native
 def run_game():
     """ Initialise the game and run the game loop """
     display.setFPS(_FPS)
@@ -448,6 +460,7 @@ def run_game():
     set_level(tape)
 
     # Main gameplay loop
+    v = 0
     c = 0;
     profiler = ticks_ms()
     while(1):
@@ -458,15 +471,27 @@ def run_game():
 
 
 
+
+
         # Update the display buffer new frame data
         tape.comp()
         # Flush to the display, waiting on the next frame interval
         display.update()
+
+
+
     
-    
+
         # TESTING: infinitely scroll the tape
-        tape.offset_vertically((c // 10) % 24)
-        tape.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
+        if not bU():
+            v = v - 1 if v > 0 else v
+        if not bD():
+            v = v + 1 if v < 24 else v
+        tape.offset_vertically(v)
+        if not bL():
+            tape.scroll_tape(-1 if c % 4 == 0 else 0, -(c % 2), -1)
+        if not bR():
+            tape.scroll_tape(1 if c % 4 == 0 else 0, c % 2, 1)
         c += 1
 run_game()
 
