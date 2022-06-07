@@ -343,7 +343,7 @@ class Player:
         xs, ys = -sin(angle)/2, -cos(angle)/2
         xh, yh = x, y
         d = self.dir
-        while (yh > 0 and (x-xh)*d < 40 and not ch(int(xh), int(yh))):
+        while (yh >= -1 and (x-xh)*d < 40 and not ch(int(xh), int(yh))):
             xh += xs
             yh += ys
         # Apply grapple hook parameters
@@ -396,7 +396,9 @@ class Player:
             elif head_hit or (not falling and vel*ang > 0):
                 # Rebound off ceiling
                 self._hook_vel = -self._hook_vel
-            if falling and self._bAO(): # Release grappling hook
+            # Release grappling hook with button or randomly within a second
+            # when not connected to solid roof.
+            if (falling and self._bAO() or (self.hook_y < 0 and t%_FPS==0)):
                 self.mode = 12
                 # Convert angular momentum to free falling momentum
                 ang2 = ang + vel/128.0

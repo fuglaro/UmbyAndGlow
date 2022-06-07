@@ -10,7 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Make Glows hook break lose if off top of screen (after 0-1 sec).
 # TODO: Refactor explosions across Players and explode on monsters.
 # TODO: Make testing mode draw be a cross-hair.
 # TODO: Refactor Monsters to be type switchable single obkects (ready for coop comms)
