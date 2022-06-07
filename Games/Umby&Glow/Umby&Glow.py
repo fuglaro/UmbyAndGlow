@@ -136,10 +136,6 @@ def comp():
     tape_ = ptr32(tape)
     scroll = ptr32(tapeScroll)
     frame = ptr8(thumby.display.display.buffer)
-    # Get the scoll position of each tape section (render layer)
-    tp0 = scroll[0]
-    tp1 = scroll[1]
-    tp3 = scroll[3]
     # Obtain and increase the frame counter
     scroll[5] += 1
     ctr = scroll[5]
@@ -151,9 +147,9 @@ def comp():
         # alternated horizontally and in time. Someone say "time crystal".
         dim = int(1431655765) << (ctr+x)%2
         # Compose the first 32 bits vertically.
-        p0 = (x+tp0)%72*2
-        p1 = (x+tp1)%72*2
-        p3 = (x+tp3)%72*2
+        p0 = (x+scroll[0])%72*2
+        p1 = (x+scroll[1])%72*2
+        p3 = (x+scroll[3])%72*2
         a = uint(((tape_[p0] | tape_[p1+144]) & tape_[p1+288] & dim
             | tape_[p3+432]) & tape_[p3+576])
         # Compose the second 32 bits vertically.
@@ -347,35 +343,37 @@ def start_level():
     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
     feed[:] = [pattern_wall, pattern_fence, pattern_room,
         pattern_cave, pattern_cave_fill]
-start_level()
 
+def run_game():
+    """ Initialise the game and run the game loop"""
+    start_level()
 
-# FPS (intended to be between 60 and 120 variable fps)
-thumby.display.setFPS(24000000) # TESTING: for speed profiling
+    # FPS (intended to be between 60 and 120 variable fps)
+    thumby.display.setFPS(24000000) # TESTING: for speed profiling
 
-# Main gameplay loop
-c = 0;
-profiler = time.ticks_ms()
-while(1):
-    # Speed profiling
-    if (c % 60 == 0):
-        print(time.ticks_ms() - profiler)
-        profiler = time.ticks_ms()
-
-    # Update the display buffer new frame data
-    comp()
-    # Flush to the display, waiting on the next frame interval
-    thumby.display.update()
-
-
-    # TESTING: infinitely scroll the tape
-    offset_vertically((c // 10) % 24)
-    if (c % 1 == 0):
-        scroll_tape_with_fill(feed[3], feed[4], 3, 1)
-        if (c % 2 == 0):
-            scroll_tape_with_fill(feed[1], feed[2], 1, 1)
-            if (c % 4 == 0):
-                scroll_tape(feed[0], 0, 1)
-    c += 1
-
+    # Main gameplay loop
+    c = 0;
+    profiler = time.ticks_ms()
+    while(1):
+        # Speed profiling
+        if (c % 60 == 0):
+            print(time.ticks_ms() - profiler)
+            profiler = time.ticks_ms()
+    
+        # Update the display buffer new frame data
+        comp()
+        # Flush to the display, waiting on the next frame interval
+        thumby.display.update()
+    
+    
+        # TESTING: infinitely scroll the tape
+        offset_vertically((c // 10) % 24)
+        if (c % 1 == 0):
+            scroll_tape_with_fill(feed[3], feed[4], 3, 1)
+            if (c % 2 == 0):
+                scroll_tape_with_fill(feed[1], feed[2], 1, 1)
+                if (c % 4 == 0):
+                    scroll_tape(feed[0], 0, 1)
+        c += 1
+run_game()
 
