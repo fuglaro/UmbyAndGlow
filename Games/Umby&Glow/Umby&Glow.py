@@ -12,7 +12,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-# TODO: Add starting level arrow
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
 # TODO: Make 2 player
@@ -279,7 +278,6 @@ class Tape:
             tape[p+1] ^= tape[p+1] & (b >> 31-h if -31+h < 0 else b << -31+h)
         # Draw to the mid background layer
         for i in range(int(len(text))):
-            print(text[i], abc_i[text[i]])
             for o in range(3):
                 p = (x+o+i*4)%72*2+144
                 b = abc_b[int(abc_i[text[i]])*3+o]
