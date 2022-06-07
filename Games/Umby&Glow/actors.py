@@ -10,7 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: got math domain error (hooking wall?)
 
 ## Actors (Players and Monsters), and input ##
 
@@ -397,7 +396,7 @@ class Glow(_Player):
         self.aim_x = int(sin(self._aim_angle)*10.0)
         self.aim_y = int(cos(self._aim_angle)*10.0)
         # Grappling hook variables
-        self._bAOnce = 0 # Had a press down of A button
+        self._bAOnce = -1 # Had a press down of A button
         self._hook_x = 0 # Position where hook attaches ceiling
         self._hook_y = 0
         self._hook_ang = 0.0
@@ -502,7 +501,7 @@ class Glow(_Player):
                 v1 = (1-self._x_vel*y1+self._y_vel*x1)/(self._hook_len+1)
                 xv = self._x_vel
                 yv = self._y_vel
-                self._hook_vel = -sqrt(xv*xv+yv+yv)*v1*4
+                self._hook_vel = -sqrt(xv*xv+yv*yv)*v1*4
                 # Start normal grappling hook mode
                 self.mode = 1
             # CONTROLS: Fall (force when jumping)
@@ -612,7 +611,7 @@ class Glow(_Player):
             # Check fallen through ground or above ceiling,
             # or out of range
             px = self.rocket_x - tape.x[0]
-            if ry > 80 or ry < -1 or px < -72 or px > 144:
+            if ry > 80 or ry < -1 or px < -30 or px > 102:
                 # Diffuse rocket
                 self.rocket_active = 0
             # Check if the rocket hit the ground
