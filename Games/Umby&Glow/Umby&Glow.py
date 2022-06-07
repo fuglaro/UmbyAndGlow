@@ -1129,6 +1129,7 @@ class Glow(Player): # TODO
         # Motion variables
         self._x = x # Middle of Glow
         self._y = y # Bottom of Glow (but top because they upside-down!)
+        self._x_vel = 0.0
         self._y_vel = 0.0
         # Viper friendly variants (ints)
         self.x = int(x)
@@ -1140,6 +1141,13 @@ class Glow(Player): # TODO
         self._r_dir = 1
         self.aim_x = int(math.sin(self._aim_angle)*10.0)
         self.aim_y = int(math.cos(self._aim_angle)*10.0)
+        # Grappling hook variables
+        self._fall_held = 0
+        self._hook_x = 0
+        self._hook_y = 0
+        self._hook_angle = 0.0
+        self._hook_vel = 0.0
+        self._hook_length = 0.0
 
 
 
@@ -1172,7 +1180,7 @@ class Glow(Player): # TODO
 
 
 
-            self.mode == 1
+            self.mode = 1
         # CONTROLS: Grappling hook swing
         if self.mode == 1:
             
@@ -1180,14 +1188,22 @@ class Glow(Player): # TODO
 
 
             if not free_falling:
-                self.mode == 2
-        else: # Normal movement (without grappling hook)
+                self.mode = 2
+        elif self.mode == 2: # Normal movement (without grappling hook)
+            # CONTROLS: Activate hook
+            if free_falling and not bA() and not self._fall_held:
+                self.mode = 1
             # CONTROLS: Fall (force when jumping)
-            if free_falling or not bA():
+            elif free_falling or not bA():
+                if not free_falling:
+                    self._x_vel = -0.5 if not bL() else 0.5 if not bR() else 0.0
+                if not bA():
+                    self._fall_held = 1
                 # Apply gravity to vertical speed
-                self._y_vel += 2.5 / _FPS
-                # Update vertical position with vertical speed
+                self._y_vel += 1.5 / _FPS
+                # Update positions with momentum
                 self._y += self._y_vel
+                self._x += self._x_vel
             else:
                 # Stop falling when attached to roof
                 self._y_vel = 0
@@ -1217,7 +1233,8 @@ class Glow(Player): # TODO
 
 
 
-
+        if bA() and self._fall_held:
+            self._fall_held = 0
 
 
 
