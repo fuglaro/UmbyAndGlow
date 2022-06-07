@@ -12,6 +12,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+# TODO: vertical movement of tape (within 64 bit height)
 # TODO: Make level 1 patterns
 # TODO: Make basic game dynamics (Umby)
 # TODO: Extend game dynamics (Glow)
