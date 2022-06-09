@@ -15,10 +15,8 @@
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
-from patterns import ihash
-from actors import Monster
 
-_FPS = const(60) # FPS (intended to be 60 fps) - increase to speed profile
+_FPS = const(60000000) # FPS (intended to be 60 fps) - increase to speed profile
 
 # Setup basic display access
 from ssd1306 import SSD1306_SPI
@@ -26,7 +24,7 @@ display = SSD1306_SPI(72, 40,
     SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
 if "rate" not in dir(display): # Load the emulator display if using the IDE API
     from thumby import display as emu_dpy
-    emu_dpy.setFPS(60)
+    emu_dpy.setFPS(_FPS)
     display_update = emu_dpy.update
     _display_buffer = emu_dpy.display.buffer
 else: # Otherwise use the raw one if on the thumby device
@@ -40,6 +38,16 @@ else: # Otherwise use the raw one if on the thumby device
         sleep_ms(1000//_FPS + timer - ticks_ms())
         timer = ticks_ms()
 
+@micropython.viper
+def ihash(x: uint) -> int:
+    ### 32 bit deterministic semi-random hash fuction
+    # Credit: Thomas Wang
+    ###
+    x = (x ^ 61) ^ (x >> 16)
+    x += (x << 3)
+    x ^= (x >> 4)
+    x *= 0x27d4eb2d
+    return int(x ^ (x >> 15))
 
 class Tape:
     ###
@@ -67,88 +75,94 @@ class Tape:
     # There are also actor stage layers for managing rendering
     # and collision detection of players and monsters.
     ###
-    # Scrolling tape with each render layer being a section one after the other.
-    # Each section is a buffer that cycles (via the tape_scroll positions) as the
-    # world scrolls horizontally. Each section can scroll independently so
-    # background layers can move slower than foreground layers.
-    # Layers each have 1 bit per pixel from top left, descending then wrapping
-    # to the right.
-    # The vertical height is 64 pixels and comprises of 2 ints each with 32 bits. 
-    # Each layer is a layer in the composited render stack.
-    # Layers from left to right:
-    # - 0: far background
-    # - 432: close background
-    # - 864: close background fill (opaque: off pixels)
-    # - 1296: landscape including ground, platforms, and roof
-    # - 1728: landscape fill (opaque: off pixels)
-    # - 2160: overlay mask (opaque: off pixels)
-    # - 2304: overlay
-    _tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
-    # The scroll distance of each layer in the tape,
-    # and then the frame number counter and vertical offset appended on the end.
-    # The vertical offset (yPos), cannot be different per layer (horizontal
-    # parallax only).
-    # [backPos, midPos, frameCounter, forePos, yPos]
-    _tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
-    # Public accessible x position of the tape foreground relative to the level.
-    # This acts as the camera position across the level.
-    # Care must be taken to NOT modify this externally.
-    x = memoryview(_tape_scroll)[3:4]
-    midx = memoryview(_tape_scroll)[1:2]
+
+    def __init__(self, mon_class):
+        # Scrolling tape with each render layer being a section,
+        # one after the other.
+        # Each section is a buffer that cycles (via the tape_scroll positions)
+        # as the world scrolls horizontally. Each section can scroll
+        # independently so background layers can move slower than
+        # foreground layers.
+        # Layers each have 1 bit per pixel from top left, descending then
+        # wrapping to the right.
+        # The vertical height is 64 pixels and comprises of 2 ints,
+        # each with 32 bits. 
+        # Each layer is a layer in the composited render stack.
+        # Layers from left to right:
+        # - 0: far background
+        # - 432: close background
+        # - 864: close background fill (opaque: off pixels)
+        # - 1296: landscape including ground, platforms, and roof
+        # - 1728: landscape fill (opaque: off pixels)
+        # - 2160: overlay mask (opaque: off pixels)
+        # - 2304: overlay
+        self._tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
+        # The scroll distance of each layer in the tape, and then
+        # the frame number counter and vertical offset appended on the end.
+        # The vertical offset (yPos), cannot be different per layer
+        # (horizontal parallax only).
+        # [backPos, midPos, frameCounter, forePos, yPos]
+        self._tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+        # Public accessible x position of the tape foreground
+        # relative to the level.
+        # This acts as the camera position across the level.
+        # Care must be taken to NOT modify this externally.
+        self.x = memoryview(self._tape_scroll)[3:5]
+        self.midx = memoryview(self._tape_scroll)[1:2]
+        
+        # Alphabet for writing text - 3x5 text size (4x6 with spacing)
+        # @ = Umby and ^ = Glow
+        # BITMAP: width: 123, height: 8
+        self.abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,
+            248,168,136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,
+            248,248,32,216,248,128,128,248,16,248,248,8,240,248,136,248,248,40,
+            56,120,200,184,248,40,216,184,168,232,8,248,8,248,128,248,120,128,
+            120,248,64,248,216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,
+            128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,80,32,8,168,56,
+            248,136,136,136,136,248,128,240,48,8,120,96,16,248,0,144,200,176])
+        self.abc_i = dict((v, i) for i, v in enumerate(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^12"))
     
-    # Alphabet for writing text - 3x5 text size (4x6 with spacing)
-    # @ = Umby and ^ = Glow
-    # BITMAP: width: 123, height: 8
-    abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,248,168,136,
-        248,40,8,112,136,232,248,32,248,136,248,136,192,136,248,248,32,216,248,
-        128,128,248,16,248,248,8,240,248,136,248,248,40,56,120,200,184,248,40,
-        216,184,168,232,8,248,8,248,128,248,120,128,120,248,64,248,216,112,216,
-        184,160,248,200,168,152,0,0,0,0,184,0,128,96,0,192,192,0,0,80,0,32,32,
-        32,32,80,136,136,80,32,8,168,56,248,136,136,136,136,248,128,240,48,8,
-        120,96,16,248,0,144,200,176])
-    abc_i = dict((v, i) for i, v in enumerate(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^12"))
-
-    # The patterns to feed into each tape section
-    feed = [None, None, None, None, None]
-
-    # Actor and player management variables
-    ### Render and collision detection buffer
-    # for all the maps and monsters, and also the players.
-    # Monsters and players can be drawn to the buffer one
-    # after the other. Collision detection capabilities are
-    # very primitive and only allow checking for pixel collisions
-    # between what is on the buffer and another provided sprite.
-    # The Render buffer is two words (64 pixels) high, and
-    # 72 pixels wide for the background and mask layers, and
-    # 132 pixels wide (30 pixels extra to the right and left for collision
-    # checks) for the primary interactive actor layer.
-    # Sprites passed in must be a byte tall,
-    # but any width.
-    # There are 4 layers on the render buffer, 2 for rendering
-    # background and foreground monsters, and 2 for clearing
-    # background and foreground environment for monster
-    # visibility.
-    # Frames for the drawing and checking collisions of all actors.
-    # This includes layers for turning on pixels and clearing lower layers.
-    # Clear layers have 0 bits for clearing and 1 for passing through.
-    # This includes the following layers:
-    # - 0: Mid and background clear.
-    # - 144: Foreground clear.
-    # - 288: Non-interactive background monsters.
-    # - 432: Foreground monsters.
-    _stage = array('I', (0 for i in range(72*2*3+132*2)))
-    # Monster classes to spawn
-    types = []
-    # Likelihood of each monster class spawning (out of 255) for every 5 steps
-    rates = bytearray([])
-    # How far along the tape spawning has completed
-    _x = array('I', [0])
-    mons = [] # Active monsters
-    players = [] # Player register for monsters to interact with
-
-    def __init__(self):
+        # The patterns to feed into each tape section
+        self.feed = [None, None, None, None, None]
+    
+        # Actor and player management variables
+        ### Render and collision detection buffer
+        # for all the maps and monsters, and also the players.
+        # Monsters and players can be drawn to the buffer one
+        # after the other. Collision detection capabilities are
+        # very primitive and only allow checking for pixel collisions
+        # between what is on the buffer and another provided sprite.
+        # The Render buffer is two words (64 pixels) high, and
+        # 72 pixels wide for the background and mask layers, and
+        # 132 pixels wide (30 pixels extra to the right and left for collision
+        # checks) for the primary interactive actor layer.
+        # Sprites passed in must be a byte tall,
+        # but any width.
+        # There are 4 layers on the render buffer, 2 for rendering
+        # background and foreground monsters, and 2 for clearing
+        # background and foreground environment for monster
+        # visibility.
+        # Frames for the drawing and checking collisions of all actors.
+        # This includes layers for turning on pixels and clearing lower layers.
+        # Clear layers have 0 bits for clearing and 1 for passing through.
+        # This includes the following layers:
+        # - 0: Mid and background clear.
+        # - 144: Foreground clear.
+        # - 288: Non-interactive background monsters.
+        # - 432: Foreground monsters.
+        self._stage = array('I', (0 for i in range(72*2*3+132*2)))
+        # Monster classes to spawn
+        self.types = []
+        # Likelihood of each monster class spawning (out of 255),
+        # for every 5 steps
+        self.rates = bytearray([])
+        # How far along the tape spawning has completed
+        self._x = array('I', [0])
+        self.mons = [] # Active monsters (set mon to the monster class to use)
+        self.players = [] # Player register for monsters to interact with
         self.clear_overlay()
+        self.mon = mon_class
 
     @micropython.viper
     def reset(self, p: int):
@@ -169,7 +183,7 @@ class Tape:
     def add(self, mon_type, x, y):
         ### Add a monster of the given type ###
         if len(self.mons) < 10: # Limit to maximum 10 monsters at once
-            self.mons.append(Monster(self, mon_type, x, y))
+            self.mons.append(self.mon(self, mon_type, x, y))
 
     @micropython.viper
     def check(self, x: int, y: int, b: int) -> bool:

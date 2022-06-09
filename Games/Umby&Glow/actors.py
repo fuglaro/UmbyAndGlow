@@ -27,6 +27,28 @@ bR = Pin(5, Pin.IN, Pin.PULL_UP).value
 bB = Pin(24, Pin.IN, Pin.PULL_UP).value
 bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
+## Umby and Glow artwork ##
+# BITMAP: width: 3, height: 8, frames: 6
+_u_art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+# Umby's shadow
+_u_sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
+# BITMAP: width: 3, height: 8, frames: 3.
+_u_fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
+# BITMAP: width: 3, height: 8, frames: 6
+_g_art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
+# Umby's shadow
+_g_sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
+# BITMAP: width: 3, height: 8, frames: 3
+_g_fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
+# BITMAP: width: 9, height: 8
+_ug_back_mask = bytearray([120,254,254,255,255,255,254,254,120])
+# BITMAP: width: 3, height: 8
+_aim = bytearray([64,224,64])
+ # BITMAP: width: 3, height: 8
+_aim_fore_mask = bytearray([224,224,224])
+# BITMAP: width: 5, height: 8
+_aim_back_mask = bytearray([112,248,248,248,112])
+
 
 class Player:
     ### Umby and Glow ###
@@ -70,62 +92,38 @@ class Player:
     # transform into Umby or Glow (name will stay as "Clip")
     # Activate by creating object with name == "Clip"
 
-    # BITMAP: width: 3, height: 8, frames: 6
-    _u_art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
-    # Umby's shadow
-    _u_sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _u_fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
-    # BITMAP: width: 3, height: 8, frames: 6
-    _g_art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
-    # Umby's shadow
-    _g_sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
-    # BITMAP: width: 3, height: 8, frames: 3
-    _g_fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
-    # BITMAP: width: 9, height: 8
-    _back_mask = bytearray([120,254,254,255,255,255,254,254,120])
-    # BITMAP: width: 3, height: 8
-    _aim = bytearray([64,224,64])
-     # BITMAP: width: 3, height: 8
-    _aim_fore_mask = bytearray([224,224,224])
-    # BITMAP: width: 5, height: 8
-    _aim_back_mask = bytearray([112,248,248,248,112])
-    # Modes:
-    # TODO:
-    #     199: Testing (Clip)
-    #     200: Frozen (immune)
-    #     201: Respawning to Umby
-    #     202: Respawning to Glow
-    # ----0-9: Umby modes----
-    #       0: Crawling (along ground)
-    # --10-19: Glow modes----
-    #      10: Auto latching grapple
-    #      11: Swinging from grapple
-    #      12: Clinging (from ceiling)
-    mode = 0 # (int)
-    _bAOnce = _bBOnce = -1 # Had pressed button (-1 held, 1 pressed, 0 none)
-    # Movement variables
-    _x_vel, _y_vel = 0.0, 0.0
-    # Rocket variables
-    rocket_x, rocket_y = 0, 0 # (int)
-    _aim_ang = 2.5
-    _aim_pow = 1.0
-    # Grappling hook variables
-    hook_x, hook_y = 0, 0 # (int) Position where hook attaches ceiling
-    # Internal calulation of hook parameters (resolved to player x, y in tick)
-    _hook_ang = _hook_vel = _hook_len = 0.0
-    # Packed (byte) variables.
-    #   Direction and boolean states.
-    #     0: dir(left:0, right:1), 1: rocket_dir, 2: moving, 3: rocket_on
-    mstates = bytearray([1])
-
-    def __init__(self, tape, name, x, y):
+    def __init__(self, tape, name, x, y, ai=False):
+        # Modes:
+        #     199: Testing (Clip)
+        #     200: Frozen (immune)
+        #     201: Respawning to Umby
+        #     202: Respawning to Glow
+        # ----0-9: Umby modes----
+        #       0: Crawling (along ground)
+        # --10-19: Glow modes----
+        #      10: Auto latching grapple
+        #      11: Swinging from grapple
+        #      12: Clinging (from ceiling)
+        self.mode = 0 # (int)
+        self.dir = 1
+        self.rocket_dir = self.moving = self.rocket_on = 0
+        # Movement variables
+        self._x_vel, self._y_vel = 0.0, 0.0
+        # Rocket variables
+        self.rocket_x, self.rocket_y = 0, 0 # (int).
+        self._aim_ang = 2.5
+        self._aim_pow = 1.0
+        # Grappling hook variables
+        self.hook_x, self.hook_y = 0, 0 # (int) Position where hook attaches ceiling
+        # Internal calulation of hook parameters (resolved to player x, y in tick)
+        self._hook_ang = self._hook_vel = self._hook_len = 0.0
         if name == "Glow": # Glow's starting behaviors
             self.mode = 10
             self._aim_ang = -0.5
         elif name == "Clip": # Test mode starting behaviors
             self.mode = 199
         self.name = name
+        self.ai = ai
         self._tp = tape
         # Motion variables
         self._x, self._y = x, y
@@ -133,77 +131,17 @@ class Player:
         self.x, self.y = int(x), int(y)
         self.aim_x = int(sin(self._aim_ang)*10.0)
         self.aim_y = int(cos(self._aim_ang)*10.0)
-
-    ### Getter and setter for the direction the player is facing ###
-    @property
-    @micropython.viper
-    def dir(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 1 else -1
-    @dir.setter
-    @micropython.viper
-    def dir(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 1) ^ 1) | (0 if d == -1 else 1)
-
-    ### Getter and setter for the direction the rocket is facing ###
-    @property
-    @micropython.viper
-    def rocket_dir(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 2 else -1
-    @rocket_dir.setter
-    @micropython.viper
-    def rocket_dir(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 2) ^ 2) | (0 if d == -1 else 2)
-
-    ### Getter and setter for whether the rocket is active ###
-    @property
-    @micropython.viper
-    def rocket_on(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 8 else 0
-    @rocket_on.setter
-    @micropython.viper
-    def rocket_on(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 8) ^ 8) | (0 if d == 0 else 8)
-
-    ### Getter and setter for whether the player is trying to move ###
-    @property
-    @micropython.viper
-    def moving(self) -> int:
-        return 1 if ptr8(self.mstates)[0] & 4 else 0
-    @moving.setter
-    @micropython.viper
-    def moving(self, d: int):
-        m = ptr8(self.mstates)
-        m[0] = ((m[0] | 4) ^ 4) | (0 if d == 0 else 4)
-
-    @micropython.native
-    def _bAO(self):
-        ### Returns true if the A button was hit
-        # since the last time thie was called
-        ###
-        if self._bAOnce == 1:
-            self._bAOnce = -1
-            return 1
-        return 0
-
-    @micropython.native
-    def _bBO(self):
-        ### Returns true if the B button was hit
-        # since the last time thie was called
-        ###
-        if self._bBOnce == 1:
-            self._bBOnce = -1
-            return 1
-        return 0
+        # Control registers
+        self.u = self.d = self.l = self.r = self.b = self.a = False
 
     @property
     def immune(self):
         ### Returns if Umby is in a mode that can't be killed ###
-        return 199 <= self.mode <= 202
+        return 199 <= self.mode <= 202 or self.ai
 
     def die(self, rewind_distance, death_message):
+        if self.immune:
+            return
         ### Put Player into a respawning state ###
         self._x_vel = 0.0 # Reset speed
         self._y_vel = 0.0 # Reset fall speed
@@ -249,11 +187,6 @@ class Player:
         # Update directional states
         self.dir = -1 if self.l else 1 if self.r else self.dir
         self.moving = 1 if self.l or self.r else 0
-        # Update the state of the button pressed detectors
-        self._bAOnce = (0 if not self.a else
-            1 if (self.a and self._bAOnce == 0) else self._bAOnce)
-        self._bBOnce = (0 if not self.b else
-            1 if (self.b and self._bBOnce == 0) else self._bBOnce)
         # Normal Play modes
         if self.mode < 199:
             # Normal play modes
@@ -332,6 +265,7 @@ class Player:
         self._hook_vel = -sqrt(xv*xv+yv*yv)*(1-xv*y1+yv*x1)*4/(self._hook_len+1)
         # Start normal grappling hook mode
         self.mode = 11
+        self._hold = True
 
     @micropython.native
     def _tick_play_roof(self, t):
@@ -348,6 +282,7 @@ class Player:
         cru = ch(x+1, y+3)
         falling = not (cd or cld or crd or cl or cr)
         head_hit = cu or clu or cru
+        self._hold = False if falling and not self.a else self._hold
         # CONTROLS: Activation of grappling hook
         if self.mode == 10:
             # Shoot hook straight up
@@ -374,25 +309,25 @@ class Player:
                 self._hook_vel = -self._hook_vel
             # Release grappling hook with button or randomly within a second
             # when not connected to solid roof.
-            if (falling and self._bAO() or (self.hook_y < 0 and t%_FPS==0)):
+            elif (not self._hold and self.a or (self.hook_y < 0 and t%_FPS==0)):
                 self.mode = 12
                 # Convert angular momentum to free falling momentum
                 ang2 = ang + vel/128.0
                 self._x_vel = self.hook_x + sin(ang2)*self._hook_len - self._x
                 self._y_vel = self.hook_y + cos(ang2)*self._hook_len - self._y
+                self._hold = True
             # Update motion and position variables based on swing
             self._hook_ang += self._hook_vel/128.0
             self._x = self.hook_x + sin(self._hook_ang)*self._hook_len
             self._y = self.hook_y + cos(self._hook_ang)*self._hook_len
         elif self.mode == 12: # Clinging movement (without grappling hook)
             # CONTROLS: Activate hook
-            if falling and self._bAO() and self.y < 64:
+            if falling and self.a and not self._hold and self.y < 64:
                 # Activate grappling hook in aim direction
                 self._launch_hook(self._aim_ang*self.dir)
             # CONTROLS: Fall (force when jumping)
             elif falling or self.a:
                 if not falling:
-                    self._bAO() # Claim 'A' so we don't immediately grapple
                     self._x_vel = -0.5 if self.l else 0.5 if self.r else 0.0
                 # Apply gravity to vertical speed
                 self._y_vel += 1.5 / _FPS
@@ -429,7 +364,7 @@ class Player:
             # CONTROLS: Aim rocket
             self._aim_ang += 0.02 if self.u else -0.02 if self.d else 0
             if self.b and not self.rocket_on and (
-                    self._bBO() or self._aim_pow > 1.0):
+                    not self._hold or self._aim_pow > 1.0):
                 self._aim_pow += 0.03
             # CONTROLS: Launch the rocket when button is released
             if not self.b and not self.rocket_on and self._aim_pow > 1.0:
@@ -439,6 +374,8 @@ class Player:
                 self._rocket_y_vel = cos(self._aim_ang)*self._aim_pow/2.0
                 self._aim_pow = 1.0
                 self.rocket_dir = 1 if self.aim_x > 0 else -1
+                # Wait until the rocket button is released before firing another
+                self._hold = True
             # Resolve rocket aim to the x by y vector form
             self.aim_x = int(sin(self._aim_ang)*self._aim_pow*10.0)
             self.aim_y = int(cos(self._aim_ang)*self._aim_pow*10.0)
@@ -462,8 +399,8 @@ class Player:
             # Check if the rocket hit the ground
             if tape.check_tape(rx, ry):
                 self.kill(t, None) # Explode rocket
-        # Wait until the rocket button is released before firing another
-        self._bBO()
+        else:
+            self._hold = False if not self.b else self._hold
 
     @micropython.native
     def _tick_rocket_missile(self, t):
@@ -551,17 +488,16 @@ class Player:
         self._y += -1 if self.u else 1 if self.d else 0
         self._x += -1 if self.l else 1 if self.r else 0
         # Switch to characters if buttons are pressed
-        self.mode = 0 if self._bBO() else 10 if self._bAO() else 199
+        if not self.r:
+            self.mode = 0 if self.b else 10 if self.a else 199
 
     @micropython.viper
     def draw(self, t: int):
         mode = int(self.mode)
         tape = self._tp
         p = int(tape.x[0])
-        x_pos = int(self.x)
-        y_pos = int(self.y)
-        aim_x = int(self.aim_x)
-        aim_y = int(self.aim_y)
+        py = int(tape.x[1])
+        x_pos, y_pos = int(self.x) - p, int(self.y)
         m = int(self.moving)
         d = int(self.dir)
         # Get animation frame
@@ -571,54 +507,56 @@ class Player:
         f = t*2 // _FPS % 4 if not m else 4 if d < 0 else 5
         # 0 when still, 1 when left moving, 2 when right
         fm = 0 if not m else 1 if d < 0 else 2
-        # Rocket aim (or test player if in test mode)
         abl = t*6//_FPS%2 # aim blinker
-        if mode == 199:
-            aim_x = aim_y = 0
-        hx = x_pos-p+aim_x-1
-        hy = y_pos-6+aim_y
-        tape.draw(abl, hx, hy, self._aim, 3, 0)
-        tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
-        tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
-        if mode == 199:
-            return # Test mode
+        # Test mode or offscreen
+        if mode == 199 or not (-2 < x_pos < 73 and -1 < y_pos-py < 42):
+            hx = 0 if x_pos < -1 else 69 if x_pos > 72 else x_pos-1
+            hy = py-5 if y_pos < py else py+32 if y_pos > py + 41 else y_pos-6
+            tape.draw(abl, hx, hy, _aim, 3, 0)
+            tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
+            tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
+            return
         # Draw rocket, if active
         if self.rocket_on:
-            hx = int(self.rocket_x)
-            hy = int(self.rocket_y)
+            hx, hy = int(self.rocket_x), int(self.rocket_y)
             rdir = int(self.rocket_dir)
-            tape.draw(1, hx-p-1, hy-7, self._aim, 3, 0)#head
-            tape.draw(0, hx-p+(-3 if rdir>0 else 1), hy-7, self._aim, 3, 0)#tail
+            tape.draw(1, hx-p-1, hy-7, _aim, 3, 0)#head
+            tape.draw(0, hx-p+(-3 if rdir>0 else 1), hy-7, _aim, 3, 0)#tail
         # Select the character specifics
-        umby = int(mode == 0 or mode == 201)
-        sdw = self._u_sdw if umby else self._g_sdw
-        art = self._u_art if umby else self._g_art
-        msk = self._u_fore_mask if umby else self._g_fore_mask
+        umby = mode == 0 or mode == 201
+        sdw = _u_sdw if umby else _g_sdw
+        art = _u_art if umby else _g_art
+        msk = _u_fore_mask if umby else _g_fore_mask
         hy = y_pos-6 if umby else y_pos-1
         # Draw Umby's or Glow's layers and masks
-        tape.draw(0, x_pos-1-p, hy, sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1-p, hy, art, 3, f) # Umby
-        tape.mask(1, x_pos-1-p, hy, msk, 3, fm)
-        tape.mask(0, x_pos-4-p, hy, self._back_mask, 9, 0)
+        tape.draw(0, x_pos-1, hy, sdw, 3, f) # Shadow
+        tape.draw(1, x_pos-1, hy, art, 3, f) # Umby
+        tape.mask(1, x_pos-1, hy, msk, 3, fm)
+        tape.mask(0, x_pos-4, hy, _ug_back_mask, 9, 0)
+        # Aims and hooks
+        if mode == 11: # Activated grappling hook rope
+            hook_x, hook_y = int(self.hook_x), int(self.hook_y)
+            # Draw Glow's grappling hook rope
+            for i in range(0, 8):
+                sx = x_pos + (hook_x-(x_pos+p))*i//8
+                sy = y_pos + (hook_y-y_pos)*i//8
+                tape.draw(1, sx-1, sy-6, _aim, 3, 0)
+            hx, hy = hook_x-p-1, hook_y-6
+        aim_x, aim_y = int(self.aim_x), int(self.aim_y)
+        if self.ai: # Only main player has aiming
+            return
         if not umby:
-            # Draw Glows's grappling hook and aim
-            # Rope aim
-            if mode == 11: # Activated hook
-                hook_x = int(self.hook_x)
-                hook_y = int(self.hook_y)
-                # Draw Glow's grappling hook rope
-                for i in range(0, 8):
-                    sx = x_pos-p + (hook_x-x_pos)*i//8
-                    sy = y_pos + (hook_y-y_pos)*i//8
-                    tape.draw(1, sx-1, sy-6, self._aim, 3, 0)
-                hx = hook_x-p-1
-                hy = hook_y-6
-            else:
-                hx = x_pos-p-aim_x//2-1
-                hy = y_pos-6-aim_y//2
-            tape.draw(abl, hx, hy, self._aim, 3, 0)
-            tape.mask(1, hx, hy, self._aim_fore_mask, 3, 0)
-            tape.mask(0, hx-1, hy+1, self._aim_back_mask, 5, 0)
+            # Draw Glows's grappling hook aim
+            hx, hy = x_pos-aim_x//2-1, y_pos-aim_y//2-6
+            tape.draw(abl, hx, hy, _aim, 3, 0)
+            tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
+            tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
+        # Rocket aim
+        hx = x_pos+aim_x-1
+        hy = y_pos+aim_y-6
+        tape.draw(abl, hx, hy, _aim, 3, 0)
+        tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
+        tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
 
 
 ## Monster types ##
@@ -688,16 +626,16 @@ _painter = _MonsterPainter()
 
 
 class Monster:
-    ### Engine for all the different monsters ###
-    # Modes:
-    #     0 - Random flying, prefering space, and ready to charge player
-    #     1 - Charging player 1 (this device's player)
-    #     2 - Charging player 2 (other device's player)
-    mode = 0
-    _dx = _dy = 0 # directional motion
 
     @micropython.native
     def __init__(self, tape, tid, x, y):
+        ### Engine for all the different monsters ###
+        # Modes:
+        #     0 - Random flying, prefering space, and ready to charge player
+        #     1 - Charging player 1 (this device's player)
+        #     2 - Charging player 2 (other device's player)
+        self.mode = 0
+        self._dx = self._dy = 0 # directional motion
         self.tid = tid
         self._tp = tape
         self.x, self.y = int(x), int(y) # Middle of Bones

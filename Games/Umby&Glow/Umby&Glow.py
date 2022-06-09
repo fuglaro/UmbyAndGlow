@@ -10,9 +10,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Player img - if offscreen show aim where they are.
 # TODO: Make AI Umby
 # TODO: Make AI Glow
+# TODO: Spin off AI and Monster ticks into second thread (readying for comms in same thread)
 # TODO: Make 2 player (remote monsters out of range go to background)
 #          - Run all comms in a thread with thread locking on shared variables
 #          - half frame rate for each two way comms.
@@ -92,7 +92,7 @@ from patterns import *
 
 ## Game Play ##
 
-tape = Tape()
+tape = Tape(Monster)
 
 def set_level(start):
     ### Prepare everything for a level of gameplay including
@@ -182,21 +182,22 @@ def run_game():
     # Ready the level for playing
     sav = "/Games/Umby&Glow/" + ("glow" if glow else "umby") + ".sav"
     start = load_save(sav, load)
-    t = 0;
+    t = 1;
     set_level(start)
     name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
     p1 = Player(tape, name, start+10, 20)
+    p2 = Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True)
     tape.players.append(p1)
 
     # Force memory cleanup before entering game loop
     gc.collect()
 
     # Main gameplay loop
-    profiler = ticks_ms()
+    profiler = profiler0 = ticks_ms()
     while(1):
         # Speed amd memory profiling
         if (t % 60 == 0):
-            print(ticks_ms() - profiler)
+            print(ticks_ms() - profiler, int((ticks_ms() - profiler0)*60/t))
             print(gc.mem_alloc(), gc.mem_free())
             profiler = ticks_ms()
             # Save game every 30 seconds
@@ -207,6 +208,7 @@ def run_game():
 
         # Update the game engine by a tick
         p1.tick(t)
+        p2.tick(t)
         for mon in tape.mons:
             mon.tick(t)
 
@@ -218,16 +220,22 @@ def run_game():
         for mon in tape.mons:
             mon.draw(t)
             # Check if a rocket hits this monster
-            if p1.rocket_on:
-                if tape.check(p1.rocket_x-tape.x[0], p1.rocket_y+1, 224):
-                    tape.mons.remove(mon)
-                    p1.kill(t, mon)
+            if p1.rocket_on and tape.check(
+                    p1.rocket_x-tape.x[0], p1.rocket_y+1, 224):
+                tape.mons.remove(mon)
+                p1.kill(t, mon)
+            # Check if ai helper's rocket hits the monster
+            elif p2.ai and p2.rocket_on and tape.check(
+                    p2.rocket_x-tape.x[0], p2.rocket_y+1, 224):
+                tape.mons.remove(mon)
+                p2.kill(t, mon)
         # If player is in play mode, check for monster collisions
         if (not p1.immune) and tape.check(p1.x-tape.x[0], p1.y, 224):
             p1.die(240, "Umby became monster food!")
 
         # Draw the players
         p1.draw(t)
+        p2.draw(t)
 
         # Composite everything together to the render buffer
         tape.comp()
