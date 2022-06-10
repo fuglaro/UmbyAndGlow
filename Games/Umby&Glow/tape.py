@@ -407,12 +407,14 @@ class Tape:
         ###
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
-        offX = l*432 + x%216*2
-        tape[offX] &= int(pattern(x, 0))
-        tape[offX+1] &= int(pattern(x, 32))
-        if l != 0 and fill_pattern:
-            tape[offX+432] |= int(fill_pattern(x, 0))
-            tape[offX+433] |= int(fill_pattern(x, 32))
+        p = ptr32(self._tape_scroll)[l]
+        if 0 <= x - p < 72:
+            offX = l*432 + x%216*2
+            tape[offX] &= int(pattern(x, 0))
+            tape[offX+1] &= int(pattern(x, 32))
+            if l != 0 and fill_pattern:
+                tape[offX+432] |= int(fill_pattern(x, 0))
+                tape[offX+433] |= int(fill_pattern(x, 32))
 
     @micropython.viper
     def draw_tape(self, layer: int, x: int, pattern, fill_pattern):

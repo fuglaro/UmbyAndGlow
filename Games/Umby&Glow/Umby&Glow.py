@@ -10,7 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Make AI Umby
 # TODO: Make AI Glow
 # TODO: Spin off AI and Monster ticks into second thread (readying for comms in same thread)
 # TODO: Make 2 player (remote monsters out of range go to background)

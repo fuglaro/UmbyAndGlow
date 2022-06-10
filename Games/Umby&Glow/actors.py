@@ -133,6 +133,7 @@ class Player:
         self.aim_y = int(cos(self._aim_ang)*10.0)
         # Control registers
         self.u = self.d = self.l = self.r = self.b = self.a = False
+        self._hold = False
 
     @property
     def immune(self):
@@ -177,13 +178,31 @@ class Player:
         self.rocket_on = 0
 
     @micropython.native
+    def _ai(self, t):
+        ### Consult with the digital oracle for button presses ###
+        x, y = self.x, self.y
+        d = self.dir
+        p = self._tp.x[0] + 36 # Horizontal middle
+        m = bool(self._tp.mons)
+        # Vertical super powers
+        self._y = 9 if y < 3 else 63 if y > 63 else self._y
+        # Horizontal super powers
+        self._x = p-50 if x < p-50 else self._x
+        if self.mode == 0: # Umby
+            # Vertical jump super powers
+            self._y_vel = -1 if y > 63 else self._y_vel
+            # Horizontal walking, rocket, and jump
+            return 0, 0, x > p+d*10, x < p+d*10, m&t//64%8==0, y >= 50
+
+    @micropython.native
     def tick(self, t):
         ### Updated Player for one game tick.
         # @param t: the current game tick count
         ###
         # Update button press states
         self.u, self.d, self.l, self.r, self.b, self.a = (
-            not bU(), not bD(), not bL(), not bR(), not bB(), not bA())
+            not bU(), not bD(), not bL(), not bR(), not bB(), not bA()
+            ) if not self.ai else self._ai(t)
         # Update directional states
         self.dir = -1 if self.l else 1 if self.r else self.dir
         self.moving = 1 if self.l or self.r else 0
