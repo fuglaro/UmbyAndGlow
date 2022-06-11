@@ -558,7 +558,6 @@ class Player:
             hy = py-5 if y_pos < py else py+32 if y_pos > py + 41 else y_pos-6
             tape.draw(abl, hx, hy, _aim, 3, 0)
             tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
-            tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
             return
         # Draw rocket, if active
         if self.rocket_on:
@@ -587,20 +586,13 @@ class Player:
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self.aim_x), int(self.aim_y)
-        if self.ai: # Only main player has aiming
-            return
-        if not umby:
-            # Draw Glows's grappling hook aim
-            hx, hy = x_pos-aim_x//2-1, y_pos-aim_y//2-6
+        if not self.ai: # Only main player has aiming
+            # Rocket aim
+            hx = x_pos+aim_x-1
+            hy = y_pos+aim_y-6
             tape.draw(abl, hx, hy, _aim, 3, 0)
             tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
             tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
-        # Rocket aim
-        hx = x_pos+aim_x-1
-        hy = y_pos+aim_y-6
-        tape.draw(abl, hx, hy, _aim, 3, 0)
-        tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
-        tape.mask(0, hx-1, hy+1, _aim_back_mask, 5, 0)
 
 
 ## Monster types ##
