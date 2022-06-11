@@ -134,6 +134,7 @@ class Player:
         # Control registers
         self.u = self.d = self.l = self.r = self.b = self.a = False
         self._hold = False
+        self._falling = False
 
     @property
     def immune(self):
@@ -181,18 +182,39 @@ class Player:
     def _ai(self, t):
         ### Consult with the digital oracle for button presses ###
         x, y = self.x, self.y
-        d = self.dir
+        d = self.dir * 10
         p = self._tp.x[0] + 36 # Horizontal middle
         m = bool(self._tp.mons)
-        # Vertical super powers
-        self._y = 9 if y < 3 else 63 if y > 63 else self._y
         # Horizontal super powers
         self._x = p-50 if x < p-50 else self._x
+        # Vertical super powers
+        self._y = 9 if y < 3 else 63 if y > 63 else self._y
         if self.mode == 0: # Umby
             # Vertical jump super powers
             self._y_vel = -1 if y > 63 else self._y_vel
             # Horizontal walking, rocket, and jump
-            return 0, 0, x > p+d*10, x < p+d*10, m&t//64%8==0, y >= 50
+            return 0, 0, x > p+d, x < p+d, m and t%512<48, y >= 50
+        elif self.mode == 12: # Glow (roof-walk)
+            # Super hook
+            if y > 55:
+                self._launch_hook(3.14)
+                # Apply super grapple hook parameters
+                self.hook_x, self.hook_y = x, 1
+                self._hook_len = y-1
+            # Horizongal roof walking, rocket, and fall/grapple.
+            return 0, 0, x > p+d, x < p+d, m and t%256<5, (
+                t%16 if self._falling else t%512<8)
+        else: # Glow (grappling swing)
+            self._aim_ang = -0.8
+            a = self._hook_ang
+            if y < 0:
+                self.mode = 12
+            # Climb rope including when off screen so super powers work,
+            # swing left/right towards center,
+            # Fire rockets if monsters about, and
+            # grapple when at end of swing if going in intended direction.
+            return self._hook_len>15 or x < p-50, 0, x>p, x<p, m and t%256<4, (
+                1 if d > a > 0.5 or d < a < -0.5 else 0)
 
     @micropython.native
     def tick(self, t):
@@ -299,7 +321,7 @@ class Player:
         cu = ch(x, y+3)
         clu = ch(x-1, y+3)
         cru = ch(x+1, y+3)
-        falling = not (cd or cld or crd or cl or cr)
+        self._falling = falling = not (cd or cld or crd or cl or cr)
         head_hit = cu or clu or cru
         self._hold = False if falling and not self.a else self._hold
         # CONTROLS: Activation of grappling hook
@@ -315,6 +337,9 @@ class Player:
             self._hook_vel += -g if ang > 0 else g if ang < 0 else 0.0
             # Air friction
             vel = self._hook_vel
+            # Swing speed limit
+            self._hook_vel = vel = (
+                14.0 if vel > 14 else -14.0 if vel < -14 else vel)
             self._hook_vel -= vel*vel*vel/64000
             # CONTROLS: swing
             self._hook_vel += -0.08 if self.l else 0.08 if self.r else 0

@@ -10,7 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Make AI Glow
 # TODO: Spin off AI and Monster ticks into second thread (readying for comms in same thread)
 # TODO: Make 2 player (remote monsters out of range go to background)
 #          - Run all comms in a thread with thread locking on shared variables
@@ -157,6 +156,7 @@ def run_menu():
         display_update()
         t += 1
     tape.clear_overlay()
+    tape.mons.remove(m)
     return ch[0], ch[1], ch[2]
 
 def load_save(sav, load):
