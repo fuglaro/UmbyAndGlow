@@ -183,7 +183,9 @@ def run_game():
     start = load_save(sav, load)
     t = 1;
     set_level(start)
+    # Select character, or testing mode by holding Right+B+A (release R last)
     name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
+    prof = not bR() # Activate profiling by holding Right direction
     p1 = Player(tape, name, start+10, 20)
     p2 = Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True)
     tape.players.append(p1)
@@ -192,19 +194,8 @@ def run_game():
     gc.collect()
 
     # Main gameplay loop
-    profiler = profiler0 = ticks_ms()
+    pstat, ptot, pw = 0, 0, ticks_ms()
     while(1):
-        # Speed amd memory profiling
-        if (t % 60 == 0):
-            print(ticks_ms() - profiler, int((ticks_ms() - profiler0)*60/t))
-            print(gc.mem_alloc(), gc.mem_free())
-            profiler = ticks_ms()
-            # Save game every 30 seconds
-            if (t % 1800):
-                f = open(sav, "w")
-                f.write(str(tape.x[0]))
-                f.close()
-
         # Update the game engine by a tick
         p1.tick(t)
         p2.tick(t)
@@ -235,11 +226,28 @@ def run_game():
         # Draw the players
         p1.draw(t)
         p2.draw(t)
+        t += 1
+
+        # Save game every 30 seconds
+        if (t % 1800 == 0):
+            f = open(sav, "w")
+            f.write(str(tape.x[0]))
+            f.close()
 
         # Composite everything together to the render buffer
         tape.comp()
-        # Flush to the display, waiting on the next frame interval
-        display_update()
 
-        t += 1
+        # Flush to the display, waiting on the next frame interval
+        if not prof:
+            display_update()
+            continue
+        # Or flush display with speed and memory profiling
+        pstat += ticks_ms() - pw
+        display_update()
+        if t % 60 == 0:
+            ptot += pstat
+            print(pstat, ptot*60//t, gc.mem_alloc(), gc.mem_free())
+            pstat = 0
+        pw = ticks_ms()
+
 run_game()

@@ -16,7 +16,7 @@ from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
 
-_FPS = const(60000000) # FPS (intended to be 60 fps) - increase to speed profile
+_FPS = const(60)
 
 # Setup basic display access
 from ssd1306 import SSD1306_SPI
@@ -35,8 +35,9 @@ else: # Otherwise use the raw one if on the thumby device
     def display_update():
         global timer
         display.show()
-        sleep_ms(1000//_FPS + timer - ticks_ms())
-        timer = ticks_ms()
+        t = ticks_ms()
+        sleep_ms(timer - t)
+        timer = t + 1000//_FPS
 
 @micropython.viper
 def ihash(x: uint) -> int:
