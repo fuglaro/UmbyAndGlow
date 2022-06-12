@@ -51,6 +51,16 @@
 ###
 
 
+import _thread
+import time
+
+def th_func():
+    while True:
+        time.sleep(1)
+        print("THREAD")
+
+_thread.start_new_thread(th_func, ())
+
 ##
 # Script - the story through the dialog of the characters.
 script = [ # TODO: apply as tape scrolls - displaying each message for half a second and then until some input is down.
@@ -86,9 +96,12 @@ path.append("/Games/Umby&Glow")
 from tape import Tape, display_update
 from actors import Player, Bones, Monster, bU, bD, bL, bR, bB, bA
 from patterns import *
+from sidethread import SideThread
 
 
 ## Game Play ##
+
+_FPS = const(60)
 
 tape = Tape(Monster)
 
@@ -129,6 +142,7 @@ def run_menu():
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     h = s = 0
     while(bA()):
+        gc.collect()
         # Update the menu text
         if h == 0 and (t == 0 or not (bU() and bD() and bL() and bR())):
             s = (s + (1 if not bD() else -1 if not bU() else 0)) % 3
@@ -187,15 +201,36 @@ def run_game():
     name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
     prof = not bR() # Activate profiling by holding Right direction
     p1 = Player(tape, name, start+10, 20)
-    p2 = Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True)
+
+
+
+    sider = SideThread(prof,
+        p2=Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True))
+    sider.run()
+
+
+    p2 = Player(tape, "Umby" if glow else "Glow", 0, 0, driven=sider.p2data)
+
+
+
+
     tape.players.append(p1)
 
-    # Force memory cleanup before entering game loop
-    gc.collect()
+
+
 
     # Main gameplay loop
     pstat, ptot, pw = 0, 0, ticks_ms()
-    while(1):
+    while True:
+
+        gc.collect()
+
+
+
+
+
+
+
         # Update the game engine by a tick
         p1.tick(t)
         p2.tick(t)
@@ -244,9 +279,9 @@ def run_game():
         # Or flush display with speed and memory profiling
         pstat += ticks_ms() - pw
         display_update()
-        if t % 60 == 0:
+        if t % _FPS == 0:
             ptot += pstat
-            print(pstat, ptot*60//t, gc.mem_alloc(), gc.mem_free())
+            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free())
             pstat = 0
         pw = ticks_ms()
 

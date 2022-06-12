@@ -92,7 +92,7 @@ class Player:
     # transform into Umby or Glow (name will stay as "Clip")
     # Activate by creating object with name == "Clip"
 
-    def __init__(self, tape, name, x, y, ai=False):
+    def __init__(self, tape, name, x, y, ai=False, driven=False):
         # Modes:
         #     199: Testing (Clip)
         #     200: Frozen (immune)
@@ -124,6 +124,8 @@ class Player:
             self.mode = 199
         self.name = name
         self.ai = ai
+        self._driven = driven
+        self._auto = ai or driven
         self._tp = tape
         # Motion variables
         self._x, self._y = x, y
@@ -139,7 +141,7 @@ class Player:
     @property
     def immune(self):
         ### Returns if Umby is in a mode that can't be killed ###
-        return 199 <= self.mode <= 202 or self.ai
+        return 199 <= self.mode <= 202 or self._auto
 
     def die(self, rewind_distance, death_message):
         if self.immune:
@@ -221,6 +223,9 @@ class Player:
         ### Updated Player for one game tick.
         # @param t: the current game tick count
         ###
+        if self._driven:
+            self._tick_driven()
+            return
         # Update button press states
         self.u, self.d, self.l, self.r, self.b, self.a = (
             not bU(), not bD(), not bL(), not bR(), not bB(), not bA()
@@ -535,6 +540,20 @@ class Player:
         if not self.r:
             self.mode = 0 if self.b else 10 if self.a else 199
 
+    @micropython.native
+    def _tick_driven(self):
+        ### Update the player position from the thread buffer ###
+        (self.mode, self.dir, self.rocket_dir, self.moving, self.rocket_on,
+            self.x, self.y, self.rocket_x, self.rocket_y,
+            self.hook_x, self.hook_y) = self._driven()
+
+    @micropython.native
+    def data(self):
+        ### Export all the key data points for drawing and interaction ###
+        return (self.mode, self.dir, self.rocket_dir, self.moving,
+            self.rocket_on, self.x, self.y, self.rocket_x, self.rocket_y,
+            self.hook_x, self.hook_y)
+
     @micropython.viper
     def draw(self, t: int):
         mode = int(self.mode)
@@ -586,7 +605,7 @@ class Player:
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self.aim_x), int(self.aim_y)
-        if not self.ai: # Only main player has aiming
+        if not self._auto: # Only main player has aiming
             # Rocket aim
             hx = x_pos+aim_x-1
             hy = y_pos+aim_y-6
@@ -601,6 +620,7 @@ class Player:
 
 
 # TODO: Some monster things
+# TODO: Optimise monsters (viper it all)
 
 # Skittle (bug horizontal move (no vert on ground, waving in air)
 bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
