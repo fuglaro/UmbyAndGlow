@@ -10,7 +10,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Spin off AI and Monster ticks into second thread (readying for comms in same thread)
+# TODO: Viper optimise main threads and actors. NEED SPEED.
 # TODO: Make 2 player (remote monsters out of range go to background)
 #          - Run all comms in a thread with thread locking on shared variables
 #          - half frame rate for each two way comms.
@@ -87,6 +87,7 @@ from tape import Tape, display_update
 from actors import Player, Bones, Monster, bU, bD, bL, bR, bB, bA
 from patterns import *
 
+_FPS = const(60)
 
 ## Game Play ##
 
@@ -244,9 +245,9 @@ def run_game():
         # Or flush display with speed and memory profiling
         pstat += ticks_ms() - pw
         display_update()
-        if t % 60 == 0:
+        if t % _FPS == 0:
             ptot += pstat
-            print(pstat, ptot*60//t, gc.mem_alloc(), gc.mem_free())
+            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free())
             pstat = 0
         pw = ticks_ms()
 

@@ -13,11 +13,11 @@
 
 ## Actors (Players and Monsters), and input ##
 
-_FPS = const(60)
-
 from machine import Pin
 from math import sin, cos, sqrt
 from patterns import *
+
+_FPS = const(60)
 
 # Button functions. Note they return the inverse pressed state
 bU = Pin(4, Pin.IN, Pin.PULL_UP).value
