@@ -10,10 +10,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Viper optimise main threads and actors. NEED SPEED.
+# TODO: debug viper progress (_y) @256 -> then do _x
+# TODO: Glow: Don't change aim when falling - not expected.
+# TODO: Why does AI Glow's rockets sometimes disapear?
+# TODO: Viper optimise main loops and actors. NEED SPEED.
 # TODO: Make 2 player (remote monsters out of range go to background)
-#          - Run all comms in a thread with thread locking on shared variables
-#          - half frame rate for each two way comms.
 # TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
 #       - Umby, try to jump high! But dont hit the roof too hard!"
 # TODO: Make script/story outline
@@ -84,7 +85,8 @@ from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
 from tape import Tape, display_update
-from actors import Player, Bones, Monster, bU, bD, bL, bR, bB, bA
+from player import Player, bU, bD, bL, bR, bB, bA
+from monsters import Bones, Monster
 from patterns import *
 
 _FPS = const(60)
@@ -222,7 +224,7 @@ def run_game():
                 p2.kill(t, mon)
         # If player is in play mode, check for monster collisions
         if (not p1.immune) and tape.check(p1.x-tape.x[0], p1.y, 224):
-            p1.die(240, "Umby became monster food!")
+            p1.die("Umby became monster food!")
 
         # Draw the players
         p1.draw(t)

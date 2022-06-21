@@ -409,7 +409,7 @@ class Tape:
         tape = ptr32(self._tape)
         l = 3 if layer == 2 else layer
         p = ptr32(self._tape_scroll)[l]
-        if 0 <= x - p < 72:
+        if -72 <= x - p < 144:
             offX = l*432 + x%216*2
             tape[offX] &= int(pattern(x, 0))
             tape[offX+1] &= int(pattern(x, 32))
@@ -508,6 +508,7 @@ class Tape:
                 tape[p+mask] |= img1
                 tape[p+mask+1] |= img2
 
+    @micropython.native
     def message(self, position, text):
         ### Write a message to the top (left), center (middle), or
         # bottom (right) of the screen in the overlay layer.
