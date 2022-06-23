@@ -256,14 +256,14 @@ class Tape:
         y_pos = scroll[4]
         # Loop through each column of pixels
         for x in range(72):
-            # Create a modifier for dimming background layer pixels.
-            # The magic number here is repeating on and off bits, which is
-            # alternated horizontally and in time. Someone say "time crystal".
-            dim = int(1431655765) << (scroll[2]+x)%2
             # Compose the first 32 bits vertically.
             p0 = (x+scroll[0])%216*2
             p1 = (x+scroll[1])%216*2
             p3 = (x+scroll[3])%216*2
+            # Create a modifier for dimming background layer pixels.
+            # The magic number here is repeating on and off bits, which is
+            # alternated horizontally and in time. Someone say "time crystal".
+            dim = int(1431655765) << (scroll[2]+x+y_pos+p1)%2
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
