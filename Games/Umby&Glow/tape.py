@@ -264,6 +264,8 @@ class Tape:
             # The magic number here is repeating on and off bits, which is
             # alternated horizontally and in time. Someone say "time crystal".
             dim = int(1431655765) << (scroll[2]+x+y_pos+p1)%2
+            # Create dimmer for the overlay layer mask
+            xdim = 0 if (scroll[2]+x)%3 else uint(0xFFFFFFFF)
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
@@ -278,7 +280,7 @@ class Tape:
                     # Foreground (with monster mask and fill)
                     | (tape[p3+1296] & stg[x2+144] & tape[p3+1728]))
                 # Now apply the overlay mask and draw layers.
-                & (tape[x2+2160] << y_pos)
+                & ((tape[x2+2160] << y_pos) | xdim)
                 | (tape[x2+2304] << y_pos))
             # Now compose the second 32 bits vertically.
             b = uint(((
@@ -294,7 +296,8 @@ class Tape:
                     # Foreground (with monster mask and fill)
                     | (tape[p3+1297] & stg[x2+145] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
-                & ((uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos))
+                & (((uint(tape[x2+2160]) >> 32-y_pos)
+                    | (tape[x2+2161] << y_pos)) | xdim)
                 | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
