@@ -10,9 +10,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Monster types ##
+## Monster types including their AI ##
 
-from math import sin, cos
+from array import array
 
 _FPS = const(60)
 
@@ -45,8 +45,9 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 
 ### Bones is a monster that flyes about then charges the player.
 # Bones looks a bit like a skull.
-# It will fly in a random direction until it hits a wall in which case
-# it will change direction again. There is a very small chance that
+# It will fly in a random direction, in a jaggard manner,
+# until it hits a wall in which case
+# it will change direction again. There is a small chance that
 # Bones will fly over walls and ground and Bones will continue until
 # surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
 # offscreen to the top or bottom plus 10, it will change direction.
@@ -54,89 +55,132 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 # When the player is within a short range, Bones will charge the player
 # and will not stop.
 ###
-_Bones = const(1)
+_Bones = const(1) # Random flying about
+_ChargingBones = const(2) # Charging player
+_ChargingBonesFriend = const(3) # Charging other player
 Bones = _Bones
+ChargingBones = _ChargingBones
 
-class _MonsterPainter:
-    ### Draws the different monsters ###
+
+class Monsters:
     # BITMAP: width: 7, height: 8, frames: 3
     _bones = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,
         242,139,222,139,242,28])
     # BITMAP: width: 9, height: 8
     _bones_m = bytearray([28,62,247,243,239,243,247,62,28])
 
-    @micropython.viper
-    def draw(self, tape, tid: int, mode: int, x: int, y: int, t: int):
-        ### Draw Monster to the draw buffers ###
-        if tid == _Bones:
-            # Select animation frame
-            f = 2 if mode == 1 else 0 if t*16//_FPS % 16 else 1
-            # Draw Bones' layers and masks
-            tape.draw(1, x-3, y-4, self._bones, 7, f) # Bones
-            tape.mask(1, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
-            tape.mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
-_painter = _MonsterPainter()
-
-
-class Monster:
-
     @micropython.native
-    def __init__(self, tape, tid, x, y):
+    def __init__(self, tape):
         ### Engine for all the different monsters ###
-        # Modes:
-        #     0 - Random flying, prefering space, and ready to charge player
-        #     1 - Charging player 1 (this device's player)
-        #     2 - Charging player 2 (other device's player)
-        self.mode = 0
-        self._dx = self._dy = 0 # directional motion
-        self.tid = tid
         self._tp = tape
-        self.x, self.y = int(x), int(y) # Middle of Bones
-        self._x, self._y = x, y # floating point precision
+        self.mons = []
 
-        # Set the bahavior for each monster type.
-        if tid == _Bones:
-            self.mode = 0
 
     @micropython.native
-    def tick(self, t):
-        ### Update Monster dynamics, based on mode, for one game tick ###
-        tape = self._tp
-        x, y = self.x, self.y
-        mode = self.mode
+    def add(self, mon_type, x, y):
+        ### Add a monster of the given type ###
+        if len(self.mons) < 10: # Limit to maximum 10 monsters at once
+            self.mons.append(array('I', [mon_type, x, y, 0, 0, 0, 0]))
 
-        # Flying
-        if mode == 0:
-            nx, ny = self._x+self._dx, self._y+self._dy
-            # Change direction if needed
-            if ((self._dx == 0 and self._dy == 0)
-            or ny < -10 or ny > 74 or t%128==0
-            or (tape.check_tape(int(nx), int(ny)) and t%12 and not (
-                tape.check_tape(x, y) or y < 0 or y >= 64))):
-                self._dx, self._dy = sin(t+nx)/4.0, cos(t+nx)/4.0
-            else: # Continue moving
-                self._x, self._y = nx, ny
-            # Check for charging condition
-            for pi, plyr in enumerate(tape.players):
-                px, py = plyr.x-x, plyr.y-y
-                if px*px + py*py < 300:
-                    self.mode = pi+1
-
-        # Charging player 1 or 2
-        elif 1 <= mode <=2:
-            if t%4==0: # Charge rate
-                t = tape.players[mode-1]
-                self._x += 1 if x < t.x else -1 if x > t.x else 0
-                self._y += 1 if y < t.y else -1 if y > t.y else 0
-
-        # Update the viper friendly variables
-        self.x, self.y = int(self._x), int(self._y)
-        # Check for standard death conditions
-        if self.x < tape.x[0] - 72: # Too far left, destroy monster
-            tape.mons.remove(self)
+    @micropython.native
+    def clear(self):
+        self.mons = []
 
     @micropython.viper
-    def draw(self, t: int):
-        _painter.draw(self._tp, self.tid, int(self.mode),
-            self.x-self._tp.x[0], self.y, t)
+    def tick(self, t: int):
+        ### Update Monster dynamics one game tick for all monsters ###
+        tape = self._tp
+        tpx = int(tape.x[0])
+        ch = tape.check_tape
+        plyrs = tape.players
+        p1 = int(len(plyrs)) > 0
+        if p1:
+            p1x = int(plyrs[0].x)
+            p1y = int(plyrs[0].y)
+        p2 = int(len(plyrs)) > 1
+        if p2:
+            p2x = int(plyrs[1].x)
+            p2y = int(plyrs[1].y)
+
+        # Loop through all the monsters, updating ticks
+        for mon in self.mons:
+            monp = ptr32(mon)
+            typ, x, y = monp[0], monp[1], monp[2]
+
+            # Check for standard death conditions
+            if x < tpx - 72: # Too far left, destroy monster
+                self.mons.remove(mon)
+
+            # Bones
+            if typ == _Bones:
+                if t%3:
+                    continue
+                t = t//2
+                dx, dy = monp[3], monp[4]
+                # Find the next position
+                nx = x + (monp[5] if t%20>dx else 0)
+                ny = y + (monp[6] if t%20>dy else 0)
+                # Change direction if needed
+                if (dx | dy == 0 or ny < -4 or ny > 68 or t%129==0
+                    or ((ch(nx, ny) and t%13
+                        and not (ch(x, y) or y < 0 or y >= 64)))):
+                    monp[3], monp[4] = t%20, 20-(t%20)
+                    monp[5] = -1 if t%2 else 1
+                    monp[6] = -1 if t%4>1 else 1
+                else: # Otherwise continue moving
+                    monp[1], monp[2] = nx, ny
+                # Check for charging conditions
+                if p1 and (p1x-x)*(p1x-x) + (p1y-y)*(p1y-y) < 300:
+                    monp[0] = 2 # Charge player
+                if p2 and (p2x-x)*(p2x-x) + (p2y-y)*(p2y-y) < 300:
+                    monp[0] = 3 # Charge friend
+
+            # Charging Bones
+            elif _ChargingBones <= typ <= _ChargingBonesFriend:
+                if t%4==0: # Charge rate
+                    p = tape.players[typ-2]
+                    monp[1] += 1 if x < p1x else -1 if x > p1x else 0
+                    monp[2] += 1 if y < p1y else -1 if y > p1y else 0
+
+    @micropython.viper
+    def draw_and_check_death(self, t: int, p1, p2):
+        ### Draw all the monsters checking for collisions ###
+        tape = self._tp
+        ch = tape.check
+        draw = tape.draw
+        mask = tape.mask
+        tpx = int(tape.x[0])
+        mons = self.mons
+        # Extract the states and positions of the rockets
+        r1, r2 = 0, 0
+        if p1:
+            r1 = int(p1.rocket_on)
+            r1x, r1y = int(p1.rocket_x)-tpx, int(p1.rocket_y)
+        if p2:
+            r2 = int(p2.rocket_on)
+            r2x, r2y = int(p2.rocket_x)-tpx, int(p2.rocket_y)
+
+        # Draw and check for monster death
+        for mon in mons:
+            ### Draw Monster to the draw buffers ###
+            monp = ptr32(mon)
+            typeid, x, y = monp[0], monp[1]-tpx, monp[2]
+
+            # Bones class types
+            if _Bones <= typeid <= _ChargingBonesFriend:
+                # Select animation frame
+                f = 2 if typeid != _Bones else 0 if t*16//_FPS % 16 else 1
+                # Draw Bones' layers and masks
+                draw(1, x-3, y-4, self._bones, 7, f) # Bones
+                mask(1, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
+                mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
+
+            # Check if a rocket hits this monster
+            if r1 and ch(r1x, r1y, 224):
+                mons.remove(mon)
+                p1.kill(t, mon)
+            # Check if ai helper's rocket hits the monster
+            elif r2 and ch(r2x, r2y, 224):
+                mons.remove(mon)
+                p2.kill(t, mon)
 

@@ -15,6 +15,7 @@
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
+from monsters import *
 
 _FPS = const(60)
 
@@ -77,7 +78,7 @@ class Tape:
     # and collision detection of players and monsters.
     ###
 
-    def __init__(self, mon_class):
+    def __init__(self):
         # Scrolling tape with each render layer being a section,
         # one after the other.
         # Each section is a buffer that cycles (via the tape_scroll positions)
@@ -160,17 +161,16 @@ class Tape:
         self.rates = bytearray([])
         # How far along the tape spawning has completed
         self._x = array('I', [0])
-        self.mons = [] # Active monsters (set mon to the monster class to use)
-        self.players = [] # Player register for monsters to interact with
+        self.mons = Monsters(self) # Monsters
+        self.players = [] # Player register for interactions
         self.clear_overlay()
-        self.mon = mon_class
 
     @micropython.viper
     def reset(self, p: int):
-        ### Remove all monsters and set a new spawn starting position,
-        # and reset the tape.
+        ### Set a new spawn starting position and reset the tape.
+        # Also empties out all monsters.
         ###
-        mons = []
+        self.mons.clear()
         self._x[0] = p
         # Reset the tape buffers for all layers to the
         # given position and fill with the current feed.
@@ -180,11 +180,6 @@ class Tape:
             tapePos = scroll[layer] = (p if layer == 3 else 0)
             for x in range(tapePos-72, tapePos+144):
                 self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
-
-    def add(self, mon_type, x, y):
-        ### Add a monster of the given type ###
-        if len(self.mons) < 10: # Limit to maximum 10 monsters at once
-            self.mons.append(self.mon(self, mon_type, x, y))
 
     @micropython.viper
     def check(self, x: int, y: int, b: int) -> bool:
@@ -340,6 +335,7 @@ class Tape:
         ###
         tape = ptr32(self._tape)
         scroll = ptr32(self._tape_scroll)
+        feed = self.feed
         for i in range(3):
             layer = 3 if i == 2 else i
             move = fore_move if i == 2 else mid_move if i == 1 else back_move
@@ -353,11 +349,11 @@ class Tape:
             offX = layer*432 + x%216*2
             # Update 2 words of vertical pattern for the tape
             # (the top 32 bits, then the bottom 32 bits)
-            pattern = self.feed[layer]
+            pattern = feed[layer]
             tape[offX] = int(pattern(x, 0))
             tape[offX+1] = int(pattern(x, 32))
             if layer != 0:
-                fill_pattern = self.feed[layer + 1]
+                fill_pattern = feed[layer + 1]
                 tape[offX+432] = int(fill_pattern(x, 0))
                 tape[offX+433] = int(fill_pattern(x, 32))
         # Spawn new monsters as needed
@@ -367,12 +363,14 @@ class Tape:
         if xp[0] >= p:
             return
         rates = ptr8(self.rates)
+        types = ptr8(self.types)
+        add = self.mons.add
         r = int(uint(ihash(p)))
         # Loop through each monster type randomly spawning
         # at the configured rate.
         for i in range(0, int(len(self.types))):
             if rates[i] and r%(256-rates[i]) == 0:
-                self.add(self.types[i], p+72+36, r%64)
+                add(types[i], p+72+36, r%64)
             r = r >> 1 # Fast reuse of random number
         xp[0] = p 
 

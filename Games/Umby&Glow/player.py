@@ -10,7 +10,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Actors (Players and Monsters), and input ##
+## Players and input ##
 
 from machine import Pin
 from math import sqrt, floor
@@ -209,7 +209,7 @@ class Player:
                 "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
             # Tag the wall with a death message
             if monster:
-                tape.tag("[RIP]", monster.x, monster.y)
+                tape.tag("[RIP]", monster[1], monster[2])
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
@@ -229,7 +229,7 @@ class Player:
         x, y = int(self.x), int(self.y)
         d = int(self.dir) * 10
         p = int(self._tp.x[0]) + 36 # Horizontal middle
-        m = int(bool(self._tp.mons))
+        m = int(bool(self._tp.mons.mons))
         # Horizontal super powers
         if x < p-50:
             self._x = (p-50)*256 <<1|1
@@ -471,13 +471,15 @@ class Player:
                 # CONTROLS: swing
                 + (40 if r else -40 if l else 0))
             # CONTROLS: climb/extend rope
-            leng += -128 if u and leng > 0 else 128 if d else 0
+            leng += -128 if u and leng > 0 else 128 if d and not cu else 0
             # Check land interaction conditions
             if not (falling or a): # Stick to ceiling if touched
                 self.mode = 12 <<1|1
+                self._x_vel = self._y_vel = 0 <<1|1
             elif cu or (not falling and vel*ang > 0):
                 # Rebound off ceiling
                 vel = 0-vel
+                ang += vel*2
             # Release grappling hook with button or within a second
             # when not connected to solid roof.
             elif (hold==0 and a or (hy < 0 and t%_FPS==0)):
@@ -558,7 +560,8 @@ class Player:
         if (u | d | b) or (not b and a_pow > 256):
             # CONTROLS: Aim rocket
             a_ang = int(self._aim_ang)
-            if (u | d) and int(self.mode) != 11: # aiming (while not grappling)
+            # aiming (while not grappling)
+            if (u | d) and int(self.mode) != 11 and not falling:
                 a_ang += 1310 if u else -1310
                 # Cap the aim angle
                 a_ang = (-131072 if a_ang < -131072 else

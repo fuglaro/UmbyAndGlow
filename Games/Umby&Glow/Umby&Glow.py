@@ -10,10 +10,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: debug viper progress (_y) @256 -> then do _x
-# TODO: Glow: Don't change aim when falling - not expected.
-# TODO: Why does AI Glow's rockets sometimes disapear?
-# TODO: Viper optimise main loops and actors. NEED SPEED.
 # TODO: Make 2 player (remote monsters out of range go to background)
 # TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
 #       - Umby, try to jump high! But dont hit the roof too hard!"
@@ -84,16 +80,15 @@ import gc
 from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
-from tape import Tape, display_update
+from tape import Tape, display_update, Bones
 from player import Player, bU, bD, bL, bR, bB, bA
-from monsters import Bones, Monster
 from patterns import *
 
 _FPS = const(60)
 
 ## Game Play ##
 
-tape = Tape(Monster)
+tape = Tape()
 
 def set_level(start):
     ### Prepare everything for a level of gameplay including
@@ -106,7 +101,7 @@ def set_level(start):
         pattern_stalagmites, pattern_stalagmites_fill,
         pattern_cave, pattern_cave_fill]
     # Reset monster spawner to the new level
-    tape.types = [Bones]
+    tape.types = bytearray([Bones])
     tape.rates = bytearray([200])
     tape.reset(start)
     if start > -9999:
@@ -127,8 +122,8 @@ def run_menu():
     ###
     t = 0
     set_level(-9999)
-    tape.add(Bones, -9960, 25)
-    m = tape.mons[0]
+    mons = tape.mons
+    mons.add(Bones, -9960, 25)
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     h = s = 0
     while(bA()):
@@ -150,16 +145,15 @@ def run_menu():
         elif bU() and bD() and bL() and bR():
             h = 0
         # Make the camera follow the monster
-        m.tick(t)
-        m.draw(t)
-        tape.auto_camera_parallax(m.x, m.y, 1, t)
+        mons.tick(t)
+        mons.draw_and_check_death(t, None, None)
+        tape.auto_camera_parallax(mons.mons[0][1], mons.mons[0][2], 1, t)
         # Composite everything together to the render buffer
         tape.comp()
         # Flush to the display, waiting on the next frame interval
         display_update()
         t += 1
     tape.clear_overlay()
-    tape.mons.remove(m)
     return ch[0], ch[1], ch[2]
 
 def load_save(sav, load):
@@ -191,6 +185,7 @@ def run_game():
     prof = not bR() # Activate profiling by holding Right direction
     p1 = Player(tape, name, start+10, 20)
     p2 = Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True)
+    p2r = p2 if not p2.ai else None
     tape.players.append(p1)
 
     # Force memory cleanup before entering game loop
@@ -198,37 +193,28 @@ def run_game():
 
     # Main gameplay loop
     pstat, ptot, pw = 0, 0, ticks_ms()
+    mons = tape.mons
+    ch = tape.check
     while(1):
         # Update the game engine by a tick
         p1.tick(t)
         p2.tick(t)
-        for mon in tape.mons:
-            mon.tick(t)
-
+        mons.tick(t)
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, p1.dir, t)
 
-        # Update the display buffer new frame data
-        # Add all the monsters, and check for collisions along the way
-        for mon in tape.mons:
-            mon.draw(t)
-            # Check if a rocket hits this monster
-            if p1.rocket_on and tape.check(
-                    p1.rocket_x-tape.x[0], p1.rocket_y+1, 224):
-                tape.mons.remove(mon)
-                p1.kill(t, mon)
-            # Check if ai helper's rocket hits the monster
-            elif p2.ai and p2.rocket_on and tape.check(
-                    p2.rocket_x-tape.x[0], p2.rocket_y+1, 224):
-                tape.mons.remove(mon)
-                p2.kill(t, mon)
-        # If player is in play mode, check for monster collisions
-        if (not p1.immune) and tape.check(p1.x-tape.x[0], p1.y, 224):
+        # Drawing and collisions
+        # Draw all the monsters, and check for collisions along the way
+        mons.draw_and_check_death(t, p1, p2r)
+        # Check for death by monster
+        if ch(p1.x-tape.x[0], p1.y, 224):
             p1.die("Umby became monster food!")
-
         # Draw the players
         p1.draw(t)
         p2.draw(t)
+
+        # Composite everything together to the render buffer
+        tape.comp()
         t += 1
 
         # Save game every 30 seconds
@@ -236,9 +222,6 @@ def run_game():
             f = open(sav, "w")
             f.write(str(tape.x[0]))
             f.close()
-
-        # Composite everything together to the render buffer
-        tape.comp()
 
         # Flush to the display, waiting on the next frame interval
         if not prof:
