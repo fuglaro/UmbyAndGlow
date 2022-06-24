@@ -23,7 +23,9 @@ _FPS = const(60)
 from ssd1306 import SSD1306_SPI
 display = SSD1306_SPI(72, 40,
     SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
-if "rate" not in dir(display): # Load the emulator display if using the IDE API
+EMULATED = "rate" not in dir(display)
+_REFRESH = _FPS if EMULATED else _FPS*2 
+if EMULATED: # Load the emulator display if using the IDE API
     from thumby import display as emu_dpy
     emu_dpy.setFPS(_FPS)
     display_update = emu_dpy.update
@@ -38,7 +40,7 @@ else: # Otherwise use the raw one if on the thumby device
         display.show()
         t = ticks_ms()
         sleep_ms(timer - t)
-        timer = t + 1000//_FPS
+        timer = t + 1000//_REFRESH
 
 @micropython.viper
 def ihash(x: uint) -> int:
@@ -306,8 +308,12 @@ class Tape:
             frame[144+x] = (a >> 16 >> y_pos) | (b << (32 - y_pos) >> 16)
             frame[216+x] = (a >> 24 >> y_pos) | (b << (32 - y_pos) >> 24)
             frame[288+x] = b >> y_pos
-        # Clear the stage buffers now that we have pulled the render
+
+    @micropython.viper
+    def clear_stage(self):
+        ### Clear the stage buffers ready for the next frame ###
         # Reset the render and mask laters to their default blank state
+        stg = ptr32(self._stage)
         for i in range(288, 696):
             stg[i] = 0
         mask = uint(0xFFFFFFFF)

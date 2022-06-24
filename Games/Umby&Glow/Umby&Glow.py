@@ -80,7 +80,7 @@ import gc
 from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
-from tape import Tape, display_update, Bones
+from tape import Tape, display_update, Bones, EMULATED
 from player import Player, bU, bD, bL, bR, bB, bA
 from patterns import *
 
@@ -152,6 +152,13 @@ def run_menu():
         tape.comp()
         # Flush to the display, waiting on the next frame interval
         display_update()
+        if not EMULATED:
+            # Composite everything together to the render buffer
+            # for the half-frame to achieve twice the frame rate as
+            # engine tick to help smooth dimming pixels
+            tape.comp()
+            display_update()
+        tape.clear_stage()
         t += 1
     tape.clear_overlay()
     return ch[0], ch[1], ch[2]
@@ -190,9 +197,12 @@ def run_game():
 
     # Force memory cleanup before entering game loop
     gc.collect()
+    # Speed up the CPU for the main gameplay
+    machine.freq(125000000)
 
     # Main gameplay loop
-    pstat, ptot, pw = 0, 0, ticks_ms()
+    pstat = pstat2 = ptot = 0
+    pw = pw2 = ticks_ms()
     mons = tape.mons
     ch = tape.check
     while(1):
@@ -203,7 +213,24 @@ def run_game():
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, p1.dir, t)
 
+
+        if not EMULATED:
+            # Composite everything together to the render buffer
+            # for the half-frame to achieve twice the frame rate as
+            # engine tick to help smooth dimming pixels
+            if not prof:
+                tape.comp()
+                display_update()
+            else:
+                tape.comp()
+                pw2 = ticks_ms()
+                display_update()
+                pstat2 += ticks_ms() - pw2
+                
+
+
         # Drawing and collisions
+        tape.clear_stage()
         # Draw all the monsters, and check for collisions along the way
         mons.draw_and_check_death(t, p1, p2r)
         # Check for death by monster
@@ -232,8 +259,8 @@ def run_game():
         display_update()
         if t % _FPS == 0:
             ptot += pstat
-            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free())
-            pstat = 0
+            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free(), pstat2)
+            pstat = pstat2 = 0
         pw = ticks_ms()
 
 run_game()
