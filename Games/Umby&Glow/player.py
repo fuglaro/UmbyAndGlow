@@ -473,13 +473,13 @@ class Player:
             # CONTROLS: climb/extend rope
             leng += -128 if u and leng > 0 else 128 if d and not cu else 0
             # Check land interaction conditions
-            if not (falling or a): # Stick to ceiling if touched
-                self.mode = 12 <<1|1
-                self._x_vel = self._y_vel = 0 <<1|1
-            elif cu or (not falling and vel*ang > 0):
+            if cu or (not falling and vel*ang > 0):
                 # Rebound off ceiling
                 vel = 0-vel
                 ang += vel*2
+            elif not (falling or a): # Stick to ceiling if touched
+                self.mode = 12 <<1|1
+                self._x_vel = self._y_vel = 0 <<1|1
             # Release grappling hook with button or within a second
             # when not connected to solid roof.
             elif (hold==0 and a or (hy < 0 and t%_FPS==0)):
