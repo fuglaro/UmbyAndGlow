@@ -265,9 +265,10 @@ class Tape:
             # Create a modifier for dimming background layer pixels.
             # The magic number here is repeating on and off bits, which is
             # alternated horizontally and in time. Someone say "time crystal".
-            dim = int(1431655765) << (scroll[2]+x+y_pos+p1)%2
+            dimshift = (scroll[2]+x+y_pos+p1)%2
+            dim = int(1431655765) << dimshift
             # Create dimmer for the overlay layer mask
-            xdim = 0 if (scroll[2]+x)%3 else uint(0xFFFFFFFF)
+            xdim = 0 if scroll[2]%3 else int(1431655765) << 1-dimshift
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
