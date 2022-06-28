@@ -10,13 +10,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: Make 2 player (remote monsters out of range go to background)
 # TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
 #       - Umby, try to jump high! But dont hit the roof too hard!"
 # TODO: Make script/story outline
 # TODO: Write script / story
 # TODO: Add 8 more levels, extended game dynamics, and more monsters!
-# TODO: Remove unused functions
+# TODO: Add audio effects
 # TODO: Full game description and overview (for arcade_description.txt file)
 # TODO: Make demo video
 # TODO: Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
@@ -82,9 +81,24 @@ import gc
 from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
-from tape import Tape, display_update, Bones, EMULATED
+from comms import comms, inbuf, outbuf
+from tape import Tape, display_update, Monsters, Bones, EMULATED
 from player import Player, bU, bD, bL, bR, bB, bA
 from patterns import *
+
+##
+# COMMS TESTING: (test 2 player coop comms in WebIDE emulayer or with 1 device)
+#@micropython.native
+#def comms():
+#    ### Fakes 2 play comms (relays p1 data, offset horizontally) ###
+#    inbuf[:] = outbuf[:]
+#    px = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
+#    px -= 10
+#    inbuf[0] = px>>24
+#    inbuf[1] = px>>16
+#    inbuf[2] = px>>8
+#    inbuf[3] = px
+#    return 1
 
 _FPS = const(60)
 
@@ -114,57 +128,6 @@ def set_level(start):
         tape.write(1, "THAT WAY!", start+19, 26)
         tape.write(1, "------>", start+37, 32)
 
-
-def run_menu():
-    ### Loads a starting menu and returns the selections.
-    # @returns: a tuple of the following values:
-    #     * Umby (0), Glow (1)
-    #     * 1P (0), 2P (1)
-    #     * New (0), Load (1)
-    ###
-    t = 0
-    set_level(-9999)
-    mons = tape.mons
-    mons.add(Bones, -9960, 25)
-    ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
-    h = s = 0
-    while(bA()):
-        # Update the menu text
-        if h == 0 and (t == 0 or not (bU() and bD() and bL() and bR())):
-            s = (s + (1 if not bD() else -1 if not bU() else 0)) % 3
-            ch[s] = (ch[s] + (1 if not bR() else -1 if not bL() else 0)) % 2
-            @micropython.native
-            def sel(i):
-                return (("  " if ch[i] else "<<")
-                    + ("----" if i == s else "    ")
-                    + (">>" if ch[i] else "  "))
-            tape.clear_overlay()
-            msg = "UMBY "+sel(0)+" GLOW "
-            msg += "1P   "+sel(1)+"   2P "
-            msg += "NEW  "+sel(2)+" LOAD"
-            tape.message(0, msg)
-            h = 1
-        elif bU() and bD() and bL() and bR():
-            h = 0
-        # Make the camera follow the monster
-        mons.tick(t)
-        mons.draw_and_check_death(t, None, None)
-        tape.auto_camera_parallax(mons.mons[0][1], mons.mons[0][2], 1, t)
-        # Composite everything together to the render buffer
-        tape.comp()
-        # Flush to the display, waiting on the next frame interval
-        display_update()
-        if not EMULATED:
-            # Composite everything together to the render buffer
-            # for the half-frame to achieve twice the frame rate as
-            # engine tick to help smooth dimming pixels
-            tape.comp()
-            display_update()
-        tape.clear_stage()
-        t += 1
-    tape.clear_overlay()
-    return ch[0], ch[1], ch[2]
-
 def load_save(sav, load):
     ### Load the progress from the file "sav" if "load" is True ###
     start = 3
@@ -178,32 +141,116 @@ def load_save(sav, load):
     return start
 
 @micropython.native
+def run_menu():
+    ### Loads a starting menu and returns the selections.
+    # @returns: a tuple of the following values:
+    #     * Umby (0), Glow (1)
+    #     * 1P (0), 2P (1)
+    #     * Player start location
+    ###
+    t = 0
+    set_level(-99999)
+    mons = tape.mons
+    mons.add(Bones, -99960, 25)
+    ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
+    stage = h = s = 0
+
+    @micropython.native
+    def sel(i):
+        ### Menu selection arrows ###
+        return (("  " if ch[i] else "<<")
+            + ("----" if i == s else "    ")
+            + (">>" if ch[i] else "  "))
+
+    while stage < 240:
+        # Update the menu text
+        if stage == 0:
+            if h == 0 and (t == 0 or not (bU() and bD() and bL() and bR())):
+                s = (s + (1 if not bD() else -1 if not bU() else 0)) % 3
+                ch[s] = (ch[s] + (1 if not bR() else -1 if not bL() else 0)) % 2
+                tape.clear_overlay()
+                msg = "UMBY "+sel(0)+" GLOW "
+                msg += "1P   "+sel(1)+"   2P "
+                msg += "NEW  "+sel(2)+" LOAD"
+                tape.message(0, msg)
+                h = 1
+            elif bU() and bD() and bL() and bR():
+                h = 0
+            if not bA():
+                tape.clear_overlay()
+                stage = 1
+                if ch[1]: # Waiting for other player...
+                    tape.message(0, "WAITING...")
+                # Find the starting position (of this player)
+                sav = "/Games/Umby&Glow/"+("glow" if ch[0] else "umby")+".sav"
+                start = load_save(sav, ch[2])
+        elif 1 <= stage < 240 :
+            if ch[1]:
+                # Get ready to send starting location information
+                outbuf[0] = start>>24
+                outbuf[1] = start>>16
+                outbuf[2] = start>>8
+                outbuf[3] = start
+                # Communicate with other player on start position
+                if comms():
+                    stage += 60
+                    p2start = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
+                    if p2start > start:
+                        start = p2start
+                elif stage > 1:
+                    stage += 1 # If comms get stuck time out
+            else:
+                stage = 240
+
+        # Make the camera follow the monster
+        mons.tick(t)
+        mons.draw_and_check_death(t, None, None)
+        tape.auto_camera_parallax(mons.x[0], mons.y[0]-64, 1, t)
+        # Composite everything together to the render buffer
+        tape.comp()
+        # Flush to the display, waiting on the next frame interval
+        display_update()
+        if not EMULATED:
+            # Composite everything together to the render buffer
+            # for the half-frame to achieve twice the frame rate as
+            # engine tick to help smooth dimming pixels
+            tape.comp()
+            display_update()
+        tape.clear_stage()
+        t += 1
+    tape.clear_overlay()
+    return ch[0], ch[1], start, sav
+
+
+@micropython.native
 def run_game():
     ### Initialise the game and run the game loop ###
     # Basic setup
     # Start menu
-    glow, coop, load = run_menu()
+    glow, coop, start, sav = run_menu()
 
     # Ready the level for playing
-    sav = "/Games/Umby&Glow/" + ("glow" if glow else "umby") + ".sav"
-    start = load_save(sav, load)
     t = 1;
     set_level(start)
     # Select character, or testing mode by holding Right+B+A (release R last)
     name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
+    p2name = "Umby" if glow else "Glow"
     prof = not bR() # Activate profiling by holding Right direction
     p1 = Player(tape, name, start+10, 20)
-    p2 = Player(tape, "Umby" if glow else "Glow", start+10, 20, ai=True)
+    p2 = Player(tape, p2name, start+10, 20, ai=not coop, coop=coop)
     p2r = p2 if not p2.ai else None
     tape.players.append(p1)
+    # Initialise coop send data
+    p1.port_out(outbuf)
 
     # Force memory cleanup before entering game loop
     gc.collect()
 
     # Main gameplay loop
-    pstat = pstat2 = ptot = 0
-    pw = pw2 = ticks_ms()
+    pstat = pstat2 = ptot = pfps1 = pfps2 = 0
+    pw = pw2 = pfpst = ticks_ms()
     mons = tape.mons
+    mons2 = Monsters(tape)
     ch = tape.check
     while(1):
         # Update the game engine by a tick
@@ -213,7 +260,17 @@ def run_game():
         # Make the camera follow the action
         tape.auto_camera_parallax(p1.x, p1.y, p1.dir, t)
 
+        # Update coop networking
+        if coop:
+            if comms():
+                # Update player 2 data (and also monsters)
+                p2.port_in(inbuf)
+                mons2.port_in(inbuf)
+                # Send player 1 data (and also monsters)
+                p1.port_out(outbuf)
+                mons.port_out(outbuf)
 
+        # Half frame render
         if not EMULATED:
             # Composite everything together to the render buffer
             # for the half-frame to achieve twice the frame rate as
@@ -226,13 +283,14 @@ def run_game():
                 pw2 = ticks_ms()
                 display_update()
                 pstat2 += ticks_ms() - pw2
-                
-
+                pfps2 += 1
 
         # Drawing and collisions
         tape.clear_stage()
         # Draw all the monsters, and check for collisions along the way
         mons.draw_and_check_death(t, p1, p2r)
+        mons2.draw_and_check_death(t, None, None)
+
         # Check for death by monster
         if ch(p1.x-tape.x[0], p1.y, 224):
             p1.die("Umby became monster food!")
@@ -256,11 +314,15 @@ def run_game():
             continue
         # Or flush display with speed and memory profiling
         pstat += ticks_ms() - pw
+        pfps1 += 1
         display_update()
         if t % _FPS == 0:
+            fpst = ticks_ms() - pfpst
             ptot += pstat
-            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free(), pstat2)
-            pstat = pstat2 = 0
+            print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free(), pstat2,
+                pfps1*1000//fpst, pfps2*1000//fpst)
+            pstat = pstat2 = pfps1 = pfps2 = 0
+            pfpst = ticks_ms()
         pw = ticks_ms()
 
 run_game()

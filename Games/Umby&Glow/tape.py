@@ -39,8 +39,8 @@ else: # Otherwise use the raw one if on the thumby device
         global timer
         display.show()
         t = ticks_ms()
-        sleep_ms(timer - t)
-        timer = t + 1000//_REFRESH
+        sleep_ms(timer - ticks_ms())
+        timer = ticks_ms() + 1000//_REFRESH
 
 @micropython.viper
 def ihash(x: uint) -> int:
@@ -113,19 +113,21 @@ class Tape:
         # Care must be taken to NOT modify this externally.
         self.x = memoryview(self._tape_scroll)[3:5]
         self.midx = memoryview(self._tape_scroll)[1:2]
-        
         # Alphabet for writing text - 3x5 text size (4x6 with spacing)
         # @ = Umby and ^ = Glow
-        # BITMAP: width: 123, height: 8
-        self.abc = bytearray([248,40,248,248,168,80,248,136,216,248,136,112,
+            # BITMAP: width: 117, height: 8
+        self.abc = (bytearray([240,40,240,248,168,80,248,136,216,248,136,112,
             248,168,136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,
             248,248,32,216,248,128,128,248,16,248,248,8,240,248,136,248,248,40,
             56,120,200,184,248,40,216,184,168,232,8,248,8,248,128,248,120,128,
             120,248,64,248,216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,
             128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,80,32,8,168,56,
-            248,136,136,136,136,248,128,240,48,8,120,96,16,248,0,144,200,176])
+            248,136,136,136,136,248,128,240,48,8,120,96])
+            # BITMAP: width: 30, height: 8 (numbers)
+            + bytearray([16,248,0,144,200,176,136,168,248,56,32,248,184,168,
+            72,240,168,232,8,232,24,248,168,248,56,40,248,248,136,248]))
         self.abc_i = dict((v, i) for i, v in enumerate(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^12"))
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^1234567890"))
     
         # The patterns to feed into each tape section
         self.feed = [None, None, None, None, None]
@@ -268,7 +270,7 @@ class Tape:
             dimshift = (scroll[2]+x+y_pos+p1)%2
             dim = int(1431655765) << dimshift
             # Create dimmer for the overlay layer mask
-            xdim = 0 if scroll[2]%3 else int(1431655765) << 1-dimshift
+            xdim = (int(1431655765) << scroll[2]//2%2) & (int(1431655765) << 1-dimshift)
             x2 = x*2
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
@@ -506,7 +508,7 @@ class Tape:
         for i in range(int(len(text))):
             for o in range(3):
                 p = (x+o+i*4)%216*2
-                b = abc_b[int(abc_i[text[i]])*3+o]
+                b = abc_b[int(abc_i.get(text[i], 26))*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
                 img2 = b >> 32-h if h-32 < 0 else b << h-32
                 # Draw to the draw layer

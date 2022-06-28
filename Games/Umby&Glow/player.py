@@ -134,7 +134,7 @@ class Player:
     # transform into Umby or Glow (name will stay as "Clip")
     # Activate by creating object with name == "Clip"
 
-    def __init__(self, tape, name, x, y, ai=False):
+    def __init__(self, tape, name, x, y, ai=False, coop=False):
         # Modes:
         #     199: Testing (Clip)
         #     200: Frozen (immune)
@@ -148,6 +148,7 @@ class Player:
         self.mode = 0
         self.name = name # Umby, Glow, or Clip
         self.ai = ai
+        self._coop = coop
         self.dir = 1
         self.x, self.y = x, y # Unit is 1 pixel
         self.rocket_on = 0
@@ -176,12 +177,72 @@ class Player:
             self.mode = 199
         self._aim_x = (_sinco[(self._aim_ang//1024+200)%400]-128)*10//128
         self._aim_y = (_sinco[(self._aim_ang//1024-100)%400]-128)*10//128
+        self._boom_x = self._boom_y = 0 # recent explosion
+        self._trail = 0 # Currently making platform from rocket trail
+
+    @micropython.viper
+    def port_out(self, buf: ptr8):
+        ### Dump player data to the output buffer for sending to player 2 ###
+        px = int(self._tp.x[0]) - 72
+        buf[0] = px>>24
+        buf[1] = px>>16
+        buf[2] = px>>8
+        buf[3] = px
+        buf[4] = int(self.mode)
+        buf[5] = int(self.x) - px
+        buf[6] = int(self.y)
+        buf[7] = int(self.rocket_x) - px
+        buf[8] = int(self.rocket_y)
+        buf[9] = int(self._hx) - px
+        buf[10] = int(self._hy)
+        boom = 1 if self._boom_x or self._boom_y else 0
+        buf[11] = (# dir, rocket_on, rdir, moving, boom (0,1,2,3,4))
+            (1 if int(self.dir) > 0 else 0)
+            | int(self.rocket_on)*2
+            | (4 if int(self._rdir) > 0 else 0)
+            | int(self._moving)*8
+            | boom*16
+            | int(self._trail)*32)
+        buf[12] = int(self._boom_x) - px
+        buf[13] = int(self._boom_y)
+        self._boom_x = self._boom_y = 0 <<1|1 # reset last explosion (consumed)
+
+    @micropython.viper
+    def port_in(self, buf: ptr8):
+        ### Unpack player data from input buffer recieved from player 2 ###
+        px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]
+        m = buf[11]
+        if m&16:
+            self.rocket_x = buf[12] + px <<1|1
+            self.rocket_y = buf[13] <<1|1
+            self.kill(buf[12], None)
+        self.mode = buf[4] <<1|1
+        self.x = buf[5] + px <<1|1
+        self.y = buf[6] <<1|1
+        rx = buf[7] + px
+        ry = buf[8]
+        self.rocket_x = rx <<1|1
+        self.rocket_y = ry <<1|1
+        self._hx = buf[9] + px <<1|1
+        self._hy = buf[10] <<1|1
+        self.dir = (1 if m&1 else -1) <<1|1
+        self.rocket_on = (m&2) <<1|1
+        rdir = 1 if m&4 else -1
+        self._rdir = rdir <<1|1
+        self._moving = (m&8) <<1|1
+        if m&32: # Leave rocket trail
+            drwtp = self._tp.draw_tape
+            trail = pattern_bang(rx-rdir, ry, 2, 1)
+            for rxp in range(rx-rdir*2, rx, rdir):
+                drwtp(2, rxp, trail, None)
 
     @property
     @micropython.viper
     def immune(self) -> int:
-        ### Returns if Umby is in a mode that can't be killed ###
-        return 1 if 199 <= int(self.mode) <= 202 or self.ai else 0
+        ### Returns if Umby is in a mode that can't be killed,
+        # or killed by this engine.
+        ###
+        return 1 if 199 <= int(self.mode) <= 202 or self.ai or self._coop else 0
 
     @micropython.native
     def die(self, death_message):
@@ -202,6 +263,7 @@ class Player:
         tape = self._tp
         scratch = tape.scratch_tape
         rx, ry = self.rocket_x, self.rocket_y
+        self._boom_x, self._boom_y = rx, ry
         # Tag the wall with an explostion mark
         tag = t%4
         if -40 < rx-tape.x[0] < 112:
@@ -209,7 +271,7 @@ class Player:
                 "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
             # Tag the wall with a death message
             if monster:
-                tape.tag("[RIP]", monster[1], monster[2])
+                tape.tag("[RIP]", monster[0], monster[1])
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
@@ -229,7 +291,7 @@ class Player:
         x, y = int(self.x), int(self.y)
         d = int(self.dir) * 10
         p = int(self._tp.x[0]) + 36 # Horizontal middle
-        m = int(bool(self._tp.mons.mons))
+        m = int(bool(self._tp.mons.num))
         # Horizontal super powers
         if x < p-50:
             self._x = (p-50)*256 <<1|1
@@ -277,6 +339,9 @@ class Player:
         ###
         mode = int(self.mode)
         y = int(self._y)
+        # If repesentation of coop Thumby, skip tick
+        if self._coop:
+            return
         # Update button press states
         if self.ai:
             c = int(self._ai(t))
@@ -345,7 +410,11 @@ class Player:
             self._y_vel = -52428 <<1|1
         # DEATH: Check for head smacking
         if ch(x, y-4) and yv < -26214:
-            self.die(self.name + " face-planted the roof!")
+            # Only actually die if the platform hit is largish
+            if (ch(x, y-5) and
+                (ch(x-1, y-4) and ch(x-2, y-4))
+                    or(ch(x+1, y-4) and ch(x+2, y-4))):
+                self.die(self.name + " face-planted the roof!")
 
         # Umby's rocket.
         ron = int(self.rocket_on)
@@ -369,6 +438,7 @@ class Player:
                 trail = pattern_bang(rx-rdir, ry, 2, 1)
                 for rxp in range(rx-rdir*2, rx, rdir):
                     drwtp(2, rxp, trail, None)
+            self._trail = (1 if b else 0)<<1|1
             if ry >= 80: # Defuse if fallen through ground
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground
@@ -609,6 +679,8 @@ class Player:
                 # Draw the starting platform
                 tape.redraw_tape(2, (xf>>8)-5, pattern_room, pattern_fill)
         else:
+            # Cancel any rocket powering
+            self._aim_pow = 256 <<1|1
             # Hide any death message
             tape.clear_overlay()
             # Return to normal play modes
@@ -683,7 +755,7 @@ class Player:
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self._aim_x), int(self._aim_y)
-        if not self.ai: # Only main player has aiming
+        if not self.ai and not self._coop: # Only main player has aiming
             # Rocket aim
             hx = x_pos+aim_x-1
             hy = y_pos+aim_y-6
