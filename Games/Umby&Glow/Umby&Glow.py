@@ -47,8 +47,20 @@
 ###
 
 # Speed up the CPU speed
-import machine
-machine.freq(125000000)
+from machine import freq
+freq(125000000)
+
+
+
+
+
+
+#from machine import PWM
+#speaker = PWM(Pin(28))
+
+
+
+
 
 ##
 # Script - the story through the dialog of the characters.

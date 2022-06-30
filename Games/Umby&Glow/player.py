@@ -28,17 +28,14 @@ bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
 ## Umby and Glow artwork ##
 # BITMAP: width: 3, height: 8, frames: 6
-_u_art = bytearray([16,96,0,0,112,0,0,96,16,0,112,0,48,112,64,64,112,48])
+_u_art = bytearray([1,6,0,0,7,0,0,6,1,0,7,0,3,7,4,4,7,3])
 # Umby's shadow
-_u_sdw = bytearray([48,240,0,0,240,0,0,240,48,0,240,0,48,240,192,192,240,48])
-# BITMAP: width: 3, height: 8, frames: 3.
-_u_fore_mask = bytearray([112,240,112,112,240,240,240,240,112])
+_u_sdw = bytearray([51,127,0,0,255,0,0,127,51,0,255,0,35,127,28,28,127,35])
+_u_sdw_air = bytearray([3,15,0,0,15,0,0,15,3,0,15,0,3,15,12,12,15,3]) # When falling
 # BITMAP: width: 3, height: 8, frames: 6
-_g_art = bytearray([8,6,0,0,14,0,0,6,8,0,14,0,12,14,2,2,14,12])
+_g_art = bytearray([16,76,0,0,92,0,0,76,16,0,92,0,24,92,4,4,92,24])
 # Umby's shadow
-_g_sdw = bytearray([12,15,0,0,15,0,0,15,12,0,15,0,12,15,3,3,15,12])
-# BITMAP: width: 3, height: 8, frames: 3
-_g_fore_mask = bytearray([14,15,14,14,15,15,15,15,14])
+_g_sdw = bytearray([89,159,64,64,159,64,64,159,89,64,159,64,89,159,70,70,159,89])
 # BITMAP: width: 9, height: 8
 _ug_back_mask = bytearray([120,254,254,255,255,255,254,254,120])
 # BITMAP: width: 3, height: 8
@@ -166,7 +163,6 @@ class Player:
         self._hook_len = 0 # Unit is 256th of a pixel
         self._c = 0 # Button bits: up(1)|down(2)|left(4)|right(8)|b(16)|a(32)
         self._hold = 0
-        self._falling = 0
         self._aim_ang = 163840 # Unit is 65536th of a radian
         self._aim_pow = 256
         if name == "Glow": # Glow's starting behaviors
@@ -179,6 +175,7 @@ class Player:
         self._aim_y = (_sinco[(self._aim_ang//1024-100)%400]-128)*10//128
         self._boom_x = self._boom_y = 0 # recent explosion
         self._trail = 0 # Currently making platform from rocket trail
+        self._air = 0 # Currently in jump
 
     @micropython.viper
     def port_out(self, buf: ptr8):
@@ -202,7 +199,8 @@ class Player:
             | (4 if int(self._rdir) > 0 else 0)
             | int(self._moving)*8
             | boom*16
-            | int(self._trail)*32)
+            | int(self._trail)*32
+            | int(self._air)*64)
         buf[12] = int(self._boom_x) - px
         buf[13] = int(self._boom_y)
         self._boom_x = self._boom_y = 0 <<1|1 # reset last explosion (consumed)
@@ -230,6 +228,7 @@ class Player:
         rdir = 1 if m&4 else -1
         self._rdir = rdir <<1|1
         self._moving = (m&8) <<1|1
+        self._air = (m&64) <<1|1
         if m&32: # Leave rocket trail
             drwtp = self._tp.draw_tape
             trail = pattern_bang(rx-rdir, ry, 2, 1)
@@ -254,6 +253,7 @@ class Player:
         self.mode = 201 if 0 <= self.mode <= 9 else 202
         self._respawn_x = self._x - 90000
         self._tp.message(0, death_message)
+        self._air = 1
 
     @micropython.native
     def kill(self, t, monster):
@@ -317,7 +317,7 @@ class Player:
             # Horizongal roof walking, rocket, and fall/grapple.
             return ((4 if x > p+d else 0) | (8 if x < p+d else 0)
                 | (16 if m and t%256<5 else 0)
-                | (32 if (t%16 and int(self._falling) or t%512<8) else 0))
+                | (32 if (t%16 and int(self._air) or t%512<8) else 0))
         else: # Glow (grappling swing)
             self._aim_ang = -52428 <<1|1
             if y < 0:
@@ -390,6 +390,7 @@ class Player:
         cl = int(ch(x-1, y))
         cr = int(ch(x+1, y))
         grounded = int(ch(x, y+1)) | cl | cr
+        self._air = (0 if grounded else 1) <<1|1
         lwall = int(ch(x-1, y-3)) | cl
         rwall = int(ch(x+1, y-3)) | cr
         # Apply gravity and ground check
@@ -521,7 +522,7 @@ class Player:
         cr = int(ch(x+1, y))
         cu = int(ch(x, y+3))
         falling = 0 if (cd | cld | crd | cl | cr) else 1
-        self._falling = falling <<1|1
+        self._air = falling <<1|1
         if falling and not a:
             self._hold = 0 <<1|1
         hold = int(self._hold)
@@ -713,13 +714,12 @@ class Player:
         x_pos, y_pos = int(self.x) - p, int(self.y)
         m = int(self._moving)
         d = int(self.dir)
+        air = int(self._air)
         # Get animation frame
         # Steps through 0,1,2,3 every half second for animation
         # of looking left and right, and changes to movement art of
         # 4 when moving left and 5 when moving right.
         f = t*2//_FPS%4 if not m else 4 if d < 0 else 5
-        # 0 when still, 1 when left moving, 2 when right
-        fm = 0 if not m else 1 if d < 0 else 2
         abl = t*6//_FPS%2 # aim blinker
         # Draw rocket, if active
         if self.rocket_on:
@@ -736,15 +736,15 @@ class Player:
             return
         # Select the character specifics
         umby = mode == 0 or mode == 201
-        sdw = _u_sdw if umby else _g_sdw
+        sdw = (_u_sdw if not air else _u_sdw_air) if umby else _g_sdw
         art = _u_art if umby else _g_art
-        msk = _u_fore_mask if umby else _g_fore_mask
-        hy = y_pos-6 if umby else y_pos-1
+        hy = y_pos-2
+        by = y_pos-6 if umby else y_pos-1
         # Draw Umby's or Glow's layers and masks
         tape.draw(0, x_pos-1, hy, sdw, 3, f) # Shadow
         tape.draw(1, x_pos-1, hy, art, 3, f) # Umby
-        tape.mask(1, x_pos-1, hy, msk, 3, fm)
-        tape.mask(0, x_pos-4, hy, _ug_back_mask, 9, 0)
+        tape.mask(1, x_pos-1, hy, sdw, 3, f)
+        tape.mask(0, x_pos-4, by, _ug_back_mask, 9, 0)
         # Aims and hooks
         if mode == 11: # Activated grappling hook rope
             hook_x, hook_y = int(self._hx), int(self._hy)
