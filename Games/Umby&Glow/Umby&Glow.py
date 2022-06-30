@@ -50,18 +50,6 @@
 from machine import freq
 freq(125000000)
 
-
-
-
-
-
-#from machine import PWM
-#speaker = PWM(Pin(28))
-
-
-
-
-
 ##
 # Script - the story through the dialog of the characters.
 script = [ # TODO: apply as tape scrolls - displaying each message for half a second and then until some input is down.
@@ -97,6 +85,18 @@ from comms import comms, inbuf, outbuf
 from tape import Tape, display_update, Monsters, Bones, EMULATED
 from player import Player, bU, bD, bL, bR, bB, bA
 from patterns import *
+from audio import audio_tick
+
+##
+# AUDIO TESTING: (set the audio to play then quit)
+#from audio import *
+#from time import sleep_ms
+#play(rocket_bang, 40, True)
+#for i in range(250):
+#    audio_tick()
+#    sleep_ms(1000//60)
+#raise Exception("STOP")
+##
 
 ##
 # COMMS TESTING: (test 2 player coop comms in WebIDE emulayer or with 1 device)
@@ -312,6 +312,7 @@ def run_game():
 
         # Composite everything together to the render buffer
         tape.comp()
+        audio_tick()
         t += 1
 
         # Save game every 30 seconds

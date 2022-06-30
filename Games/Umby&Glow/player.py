@@ -15,6 +15,7 @@
 from machine import Pin
 from math import sqrt, floor
 from patterns import *
+from audio import *
 
 _FPS = const(60)
 
@@ -254,6 +255,7 @@ class Player:
         self._respawn_x = self._x - 90000
         self._tp.message(0, death_message)
         self._air = 1
+        play(death, 240, True)
 
     @micropython.native
     def kill(self, t, monster):
@@ -264,6 +266,7 @@ class Player:
         scratch = tape.scratch_tape
         rx, ry = self.rocket_x, self.rocket_y
         self._boom_x, self._boom_y = rx, ry
+        play(rocket_bang, 40)
         # Tag the wall with an explostion mark
         tag = t%4
         if -40 < rx-tape.x[0] < 112:
@@ -272,6 +275,7 @@ class Player:
             # Tag the wall with a death message
             if monster:
                 tape.tag("[RIP]", monster[0], monster[1])
+                play(rocket_kill, 30)
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
@@ -408,6 +412,7 @@ class Player:
         if c&32 and (yv < 0 or grounded):
             if grounded: # detatch from ground grip
                 self._y = (yf-256) <<1|1
+                play(worm_jump, 15)
             self._y_vel = -52428 <<1|1
         # DEATH: Check for head smacking
         if ch(x, y-4) and yv < -26214:
@@ -460,6 +465,7 @@ class Player:
                 a_pow += 10
             # CONTROLS: Launch the rocket when button is released
             elif b==0 and ron==0 and a_pow > 256:
+                play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
                 self._rocket_x, self._rocket_y = xf <<1|1, yf-256 <<1|1
                 self._rocket_x_vel = (
@@ -502,6 +508,7 @@ class Player:
         # Start normal grappling hook mode
         self.mode = 11 <<1|1
         self._hold = 1 <<1|1
+        play(grapple_launch, 15)
 
     @micropython.viper
     def _tick_play_roof(self, t: int):
@@ -642,6 +649,7 @@ class Player:
                 a_pow += 8
             # CONTROLS: Launch the rocket when button is released
             elif not b and a_pow > 256:
+                play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
                 self._rocket_x, self._rocket_y = xf <<1|1, yf+256 <<1|1
                 self._rocket_x_vel = (
