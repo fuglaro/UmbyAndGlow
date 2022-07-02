@@ -123,7 +123,7 @@ class Monsters:
         ys = ptr8(self.y)
         d = ptr32(_data)
         for i in range(48):
-            if tids[i] == 0:
+            if tids[i] == 0 or i == 47:
                 # Create the new monster
                 tids[i] = mon_type
                 xs[i] = x

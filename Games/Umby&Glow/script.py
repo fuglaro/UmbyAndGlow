@@ -40,14 +40,15 @@ _DIALOG_DISPLAY_FRAMES = const(120)
 #     # Reset monster spawner to the new level
 #     (bytearray([Bones]), bytearray([200])))
 script = [
-
-
     # Cave with bones
-    (0, ([pattern_toplit_wall,
+    (-101, ([pattern_toplit_wall,
             pattern_stalagmites, pattern_stalagmites_fill,
             pattern_cave, pattern_cave_fill],
             (bytearray([Bones]), bytearray([200])))),
-    (72,  "Chapter 1: The Cave"),
+    (1, Bones),
+
+
+    (172,  "Chapter 1: The Cave"),
 
     (20,  "@:Hi Glow!"),
     (0,   "^:Hi Umby!"),
@@ -60,7 +61,7 @@ script = [
 
 
 
-
+# TODO: Create bosses for levels
 
 # TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
 #       - Umby, try to jump high! But dont hit the roof too hard!"
@@ -200,15 +201,14 @@ def story_events(tape):
         _dialog_c = _DIALOG_DISPLAY_FRAMES
 
     # Check for, and potentially action, the next event
-    at = int(_next_at) + int(script[_next_event][0])
-    if int(tape.x[0]) >= at:
+    if int(tape.x[0]) >= int(_next_at):
         event = script[_next_event][1]
         # Handle level type changes
         if isinstance(event, tuple):
             tape.feed = event[0]
             tape.spawner = event[1]
         # Handle script dialog and naration
-        else:
+        elif isinstance(event, str):
             char = event[0]
             pos = 1 if char == '^' else 2 if char == '@' else 0
             # Handle worm dialog
@@ -229,6 +229,9 @@ def story_events(tape):
             # Handle naration
             else:
                 tape.message(0, event, 1)
+        # Handle specific monster spawns like bosses.
+        else:
+            tape.mons.add(event, int(tape.x[0])+144, 32)
         _next_event = int(_next_event) + 1
-        _next_at = at
+        _next_at = int(_next_at) + int(script[_next_event][0])
 

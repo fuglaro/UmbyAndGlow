@@ -27,7 +27,7 @@ from time import ticks_ms
 from sys import path
 path.append("/Games/Umby&Glow")
 from comms import comms, inbuf, outbuf
-from tape import Tape, display_update, Monsters, Bones, EMULATED
+from tape import Tape, display_update, Monsters, EMULATED
 from player import Player, bU, bD, bL, bR, bB, bA
 from audio import audio_tick
 from script import story_events, story_reset
@@ -84,9 +84,10 @@ def run_menu():
     #     * Player start location
     ###
     t = 0
-    story_reset(tape, 0, False)
-    mons = tape.mons
-    mons.add(Bones, 30, 25)
+    story_reset(tape, -101, False)
+    # Scroll in the menu's Bones monster
+    tape.scroll_tape(0, 0, 1)
+    story_events(tape)
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     stage = h = s = 0
 
@@ -97,6 +98,7 @@ def run_menu():
             + ("----" if i == s else "    ")
             + (">>" if ch[i] else "  "))
 
+    mons = tape.mons
     while stage < 240:
         # Update the menu text
         if stage == 0:
