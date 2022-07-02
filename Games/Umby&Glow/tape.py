@@ -158,11 +158,9 @@ class Tape:
         # - 288: Non-interactive background monsters.
         # - 432: Foreground monsters.
         self._stage = array('I', (0 for i in range(72*2*3+132*2)))
-        # Monster classes to spawn
-        self.types = []
-        # Likelihood of each monster class spawning (out of 255),
-        # for every 5 steps
-        self.rates = bytearray([])
+        # Monster classes to spawn, with likelihood of each monster class
+        # spawning (out of 255), for every 5 steps
+        self.spawner = (bytearray([]), bytearray([]))
         # How far along the tape spawning has completed
         self._x = array('I', [0])
         self.mons = Monsters(self) # Monsters
@@ -175,7 +173,11 @@ class Tape:
         # Also empties out all monsters.
         ###
         self.mons.clear()
-        self._x[0] = p
+        # Scroll each layer
+        scroll = ptr32(self._tape_scroll)
+        scroll[0] = p//4
+        scroll[1] = p//2
+        scroll[3] = p
         # Reset the tape buffers for all layers to the
         # given position and fill with the current feed.
         scroll = ptr32(self._tape_scroll)
@@ -374,13 +376,14 @@ class Tape:
         # Only spawn when scrolling into unseen land
         if xp[0] >= p:
             return
-        rates = ptr8(self.rates)
-        types = ptr8(self.types)
+        spawner = self.spawner
+        rates = ptr8(spawner[1])
+        types = ptr8(spawner[0])
         add = self.mons.add
         r = int(uint(ihash(p)))
         # Loop through each monster type randomly spawning
         # at the configured rate.
-        for i in range(0, int(len(self.types))):
+        for i in range(0, int(len(spawner[0]))):
             if rates[i] and r%(256-rates[i]) == 0:
                 add(types[i], p+72+36, r%64)
             r = r >> 1 # Fast reuse of random number
@@ -498,13 +501,13 @@ class Tape:
         # Select the relevant layers
         mask = 864 if layer == 1 else 2160
         draw = 432 if layer == 1 else 2304
-        # Clear space on background mask layer
+        # Clear space on the mask layer
         b = 0xFE
         for i in range(int(len(text))*4+1):
             p = (x-1+i)%216*2+mask
             tape[p] ^= tape[p] & (b >> -1-h if h+1 < 0 else b << h+1)
             tape[p+1] ^= tape[p+1] & (b >> 31-h if h-31 < 0 else b << h-31)
-        # Draw to the mid background layer
+        # Draw to the draw layer
         for i in range(int(len(text))):
             for o in range(3):
                 p = (x+o+i*4)%216*2
@@ -518,35 +521,40 @@ class Tape:
                 tape[p+mask] |= img1
                 tape[p+mask+1] |= img2
 
-    @micropython.native
-    def message(self, position, text):
+    @micropython.viper
+    def message(self, position: int, text, layer: int):
         ### Write a message to the top (left), center (middle), or
-        # bottom (right) of the screen in the overlay layer.
-        # @param position: (int) 0 - center, 1 - top, 2 - bottom.
+        # bottom (right) of the screen to a specified layer.
+        # @position: (int) 0 - center, 1 - top, 2 - bottom.
+        # @layer: (int) 1 - mid-background, 3 - overlay
         ###
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in text.split(' '):
-            if (len(lines[-1]) + len(word) + 1)*4 > 72:
+            if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72:
                 lines.append("")
             lines[-1] += (" " if lines[-1] else "") + word
         # Draw centered (if applicable)
+        leng = int(len(lines))
         if position == 0:
-            x = 25-len(lines)*3
-            while (lines):
-                line = lines.pop(0)
-                self.write(3, line, 36-(len(line)*2), x)
-                x += 6
+            x = 36
+            if layer == 1:
+                x += ptr32(self._tape_scroll)[1] + 36
+            y = 25-leng*3
+            for i in range(leng):
+                line = lines[i]
+                self.write(layer, line, x-(int(len(line))*2), y)
+                y += 6
         else:
             # Draw top (if applicable)
             if position == 1:
-                x = 5
+                y = 5
             # Draw bottom (if applicable)
             if position == 2:
-                x = 46 - 6*len(lines)
-            while (lines):
-                self.write(2, lines.pop(0), 0, x)
-                x += 6
+                y = 46 - 6*leng
+            for i in range(leng):
+                self.write(layer, lines[i], 0, y)
+                y += 6
 
     @micropython.viper
     def tag(self, text, x: int, y: int):

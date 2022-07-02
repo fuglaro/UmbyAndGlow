@@ -253,7 +253,7 @@ class Player:
         self._y_vel = 0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
         self._respawn_x = self._x - 90000
-        self._tp.message(0, death_message)
+        self._tp.message(0, death_message, 3)
         self._air = 1
         play(death, 240, True)
 
