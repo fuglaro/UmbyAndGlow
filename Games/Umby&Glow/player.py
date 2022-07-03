@@ -207,8 +207,10 @@ class Player:
         self._boom_x = self._boom_y = 0 <<1|1 # reset last explosion (consumed)
 
     @micropython.viper
-    def port_in(self, buf: ptr8):
-        ### Unpack player data from input buffer recieved from player 2 ###
+    def port_in(self, buf: ptr8) -> int:
+        ### Unpack player data from input buffer recieved from player 2,
+        # returning the other player's tape position
+        ###
         px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]
         m = buf[11]
         if m&16:
@@ -235,6 +237,7 @@ class Player:
             trail = pattern_bang(rx-rdir, ry, 2, 1)
             for rxp in range(rx-rdir*2, rx, rdir):
                 drwtp(2, rxp, trail, None)
+        return px + 72
 
     @property
     @micropython.viper

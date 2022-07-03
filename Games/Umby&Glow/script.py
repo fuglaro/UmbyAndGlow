@@ -48,7 +48,7 @@ script = [
     (1, Bones),
 
 
-    (220,  "Chapter 1: The Cave"),
+    (220, "Chapter 1: The Cave"),
 
     (300, "@:Hi Glow!"),
     (0,   "^:Hi Umby!"),
@@ -59,7 +59,9 @@ script = [
     (0,   "@:Maybe..."),
     (0,   "@:But this isnt like his usual tricks."),
 
-    (400, "---->"),
+    (200, "Aim rockets up and down carefully."),
+
+    (200, "---->"),
     (0,   "^:Hey Umby..."),
     (0,   "@:Yes, Glow?"),
     (0,   "^:They seem to be coming from outside."),
@@ -71,24 +73,32 @@ script = [
     (60,  "---->"),
     (60,  "---->"),
 
-    (300, "^:What are you thinking, Umby?"),
+    (200, "Umbys rocket trail can make platforms to jump on."),
+    (200, "Glow can dig through walls."),
+    (200, "Shoot each other to escape traps, but dont shoot yourself!"),
+    (200, "Umby can jump high, but dont hit your head too hard!"),
+    (200, "Avoid the fathomless abyss!"),
+
+    (200, "^:What are you thinking, Umby?"),
     (0,   "@:I think something is seriously wrong..."),
     (0,   "@:These monsters..."),
     (0,   "@:Ive never seen anything like them before."),
     (0,   "@:They seem really..."),
     (0,   "^:Alien?"),
-    (0,   "@:Yes! They have... green blood!"),
+    (0,   "@:Yes! They have, green blood!"),
     (0,   "^:Well, the cave entrance is just up ahead."),
     (60,  "---->"),
 
+    (200, "Glow can aim and swing the grappling hook."),
 
 
 
 
 # TODO: Create bosses for levels
 
-# TODO: Incorporate help into script (e.g: ^:Umby, use your rocket trail to make platforms!)
-#       - Umby, try to jump high! But dont hit the roof too hard!"
+
+
+
 # TODO IDEAS
 ###
 ### # TODO turn story into script
@@ -136,34 +146,34 @@ script = [
     # TODO: Level good for seeing credits
 
     ## Credits ##
-    (216, ([pattern_toplit_wall,
+    (200, ([pattern_toplit_wall,
             pattern_none, pattern_fill,
             pattern_room, pattern_fill],
             (bytearray([]), bytearray([])))),
-    (180, "Credits"),
-    (160,  "A convex.cc game by John VL"),
-    (160,  "For my Mum, who taught me how to tinker."),
-    (160,  "Hardware, Reference, and Dev Platform: ------------------"),
-    (160,  "TinyCircuits"),
-    (160,  "Special Thanks: ------------------"),
-    (160,  "TinyCircuits"),
-    (160,  "TinyCircuits Thumby Discord Channel"),
-    (160,  "Xyvir"),
-    (160,  "AyreGuitar"),
-    (160,  "Timendus"),
-    (160,  "Game Development: ------------------"),
-    (160,  "John VL"),
-    (160,  "Graphics: ------------------"),
-    (160,  "John VL"),
-    (160,  "Lily VL"),
-    (160,  "Play Testers: ------------------"),
-    (160,  "John VL"),
-    (160,  "Lily VL"),
-    (160,  "Mevlan S"),
-    (160,  "Paul K"),
-    (160,  "Andy N"),
-    (160,  "Vince B"),
-    (160,  "Thank you for playing!"),
+    (200, "Credits"),
+    (160, "A convex.cc game by John VL"),
+    (160, "For my Mum, who taught me how to tinker."),
+    (160, "Hardware, Reference, and Dev Platform: ------------------"),
+    (160, "TinyCircuits"),
+    (160, "Special Thanks: ------------------"),
+    (160, "TinyCircuits"),
+    (160, "TinyCircuits Thumby Discord Channel"),
+    (160, "Xyvir"),
+    (160, "AyreGuitar"),
+    (160, "Timendus"),
+    (160, "Game Development: ------------------"),
+    (160, "John VL"),
+    (160, "Graphics: ------------------"),
+    (160, "John VL"),
+    (160, "Lily VL"),
+    (160, "Play Testers: ------------------"),
+    (160, "John VL"),
+    (160, "Lily VL"),
+    (160, "Mevlan S"),
+    (160, "Paul K"),
+    (160, "Andy N"),
+    (160, "Vince B"),
+    (160, "Thank you for playing!"),
 
     # TODO: encore level with randomisation of all previous content
 
@@ -211,7 +221,7 @@ _dialog_queue = []
 _dialog_c = 0 # Next line counter
 
 @micropython.viper
-def story_events(tape):
+def story_events(tape, coop_px: int):
     ### Update story events including dialog and level type changes ###
     global _dialog_c, _next_event, _next_at
     # Update current dialog queue, if needed.
@@ -228,7 +238,9 @@ def story_events(tape):
         _dialog_c = _DIALOG_DISPLAY_FRAMES
 
     # Check for, and potentially action, the next event
-    if int(tape.x[0]) >= int(_next_at):
+    pos = int(tape.x[0])
+    pos = pos if pos > coop_px else coop_px # Furthest of both players
+    if pos >= int(_next_at):
         event = script[_next_event][1]
         # Handle level type changes
         if isinstance(event, tuple):
@@ -258,7 +270,7 @@ def story_events(tape):
                 tape.message(0, event, 1)
         # Handle specific monster spawns like bosses.
         else:
-            tape.mons.add(event, int(tape.x[0])+144, 32)
+            tape.mons.add(event, pos+144, 32)
         _next_event = int(_next_event) + 1
         _next_at = int(_next_at) + int(script[_next_event][0])
 

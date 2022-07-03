@@ -50,7 +50,7 @@ from script import story_events, story_reset
 #    ### Fakes 2 play comms (relays p1 data, offset horizontally) ###
 #    inbuf[:] = outbuf[:]
 #    px = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
-#    px -= 10
+#    px += 10
 #    inbuf[0] = px>>24
 #    inbuf[1] = px>>16
 #    inbuf[2] = px>>8
@@ -69,7 +69,8 @@ def load_save(sav, load):
     if load:
         try:
             f = open(sav, "r")
-            start = int(f.read())
+            # Subtract 300 from last save position to not skip boss battles
+            start = int(f.read()) - 300
             f.close()
         except:
             pass
@@ -87,7 +88,7 @@ def run_menu():
     story_reset(tape, -101, False)
     # Scroll in the menu's Bones monster
     tape.scroll_tape(0, 0, 1)
-    story_events(tape)
+    story_events(tape, 0)
     ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
     stage = h = s = 0
 
@@ -188,8 +189,9 @@ def run_game():
     mons = tape.mons
     mons2 = Monsters(tape)
     ch = tape.check
+    coop_px = 0
     while(1):
-        story_events(tape)
+        story_events(tape, coop_px)
         # Update the game engine by a tick
         p1.tick(t)
         p2.tick(t)
@@ -201,7 +203,7 @@ def run_game():
         if coop:
             if comms():
                 # Update player 2 data (and also monsters)
-                p2.port_in(inbuf)
+                coop_px = p2.port_in(inbuf)
                 mons2.port_in(inbuf)
                 # Send player 1 data (and also monsters)
                 p1.port_out(outbuf)
