@@ -122,7 +122,7 @@ class Tape:
             56,120,200,184,248,40,216,184,168,232,8,248,8,248,128,248,120,128,
             120,248,64,248,216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,
             128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,80,32,8,168,56,
-            248,136,136,136,136,248,128,240,48,8,120,96])
+            248,136,136,136,136,248,128,240,48,0,248,192])
             # BITMAP: width: 30, height: 8 (numbers)
             + bytearray([16,248,0,144,200,176,136,168,248,56,32,248,184,168,
             72,240,168,232,8,232,24,248,168,248,56,40,248,248,136,248]))
@@ -272,8 +272,10 @@ class Tape:
             dimshift = (scroll[2]+x+y_pos+p1)%2
             dim = int(1431655765) << dimshift
             # Create dimmer for the overlay layer mask
-            xdim = (int(1431655765) << scroll[2]//2%2) & (int(1431655765) << 1-dimshift)
+            xdim = (0 if scroll[2]%2 else
+                (int(1431655765) << (scroll[2]//2+x+y_pos+p1)%2))
             x2 = x*2
+            overlay_mask = uint(tape[x2+2160] << y_pos)
             a = uint(((
                         # Back/mid layer (with monster mask and fill)
                         ((tape[p0] | tape[p1+432]) & stg[x2]
@@ -281,15 +283,17 @@ class Tape:
                         # Background (non-interactive) monsters
                         | stg[x2+288])
                     # Dim all mid and background layers
-                    & dim
+                    & dim & overlay_mask
                     # Foreground monsters (and players)
                     | stg[x2+492]
                     # Foreground (with monster mask and fill)
                     | (tape[p3+1296] & stg[x2+144] & tape[p3+1728]))
                 # Now apply the overlay mask and draw layers.
-                & ((tape[x2+2160] << y_pos) | xdim)
+                & (overlay_mask | xdim)
                 | (tape[x2+2304] << y_pos))
             # Now compose the second 32 bits vertically.
+            overlay_mask = uint((uint(tape[x2+2160]) >> 32-y_pos)
+                    | (tape[x2+2161] << y_pos))
             b = uint(((
                         # Back/mid layer (with monster mask and fill)
                         ((tape[p0+1] | tape[p1+433]) & stg[x2+1]
@@ -297,14 +301,13 @@ class Tape:
                         # Background (non-interactive) monsters
                         | stg[x2+289])
                     # Dim all mid and background layers
-                    & dim
+                    & dim & overlay_mask
                     # Foreground monsters (and players)
                     | stg[x2+493]
                     # Foreground (with monster mask and fill)
                     | (tape[p3+1297] & stg[x2+145] & tape[p3+1729]))
                 # Now apply the overlay mask and draw layers.
-                & (((uint(tape[x2+2160]) >> 32-y_pos)
-                    | (tape[x2+2161] << y_pos)) | xdim)
+                & (overlay_mask | xdim)
                 | (uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos))
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
@@ -538,9 +541,10 @@ class Tape:
         leng = int(len(lines))
         if position == 0:
             x = 36
+            y = 25-leng*3
             if layer == 1:
                 x += ptr32(self._tape_scroll)[1] + 36
-            y = 25-leng*3
+                y += 10
             for i in range(leng):
                 line = lines[i]
                 self.write(layer, line, x-(int(len(line))*2), y)

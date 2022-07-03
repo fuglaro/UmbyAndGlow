@@ -130,7 +130,7 @@ def pattern_room(x: int, oY: int) -> int:
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            1 if y < 3 else 1 if y > 37 else 0
+            1 if y < 3 else 1 if y > 38 else 0
         ) << (y-oY)
     return v
 

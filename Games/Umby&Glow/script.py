@@ -15,7 +15,7 @@
 from monsters import *
 from patterns import *
 
-_DIALOG_DISPLAY_FRAMES = const(120)
+_DIALOG_DISPLAY_FRAMES = const(180)
 
 ##
 # Script - the story through the dialog of the characters.
@@ -48,14 +48,38 @@ script = [
     (1, Bones),
 
 
-    (172,  "Chapter 1: The Cave"),
+    (220,  "Chapter 1: The Cave"),
 
-    (20,  "@:Hi Glow!"),
+    (300, "@:Hi Glow!"),
     (0,   "^:Hi Umby!"),
+    (0,   "@:These monsters are destroying our cave!"),
+    (0,   "^:Where did they come from?"),
+    (0,   "@:I dont know..."),
+    (0,   "^:Do you think it was Lung?"),
+    (0,   "@:Maybe..."),
+    (0,   "@:But this isnt like his usual tricks."),
 
+    (400, "---->"),
+    (0,   "^:Hey Umby..."),
+    (0,   "@:Yes, Glow?"),
+    (0,   "^:They seem to be coming from outside."),
+    (0,   "@:Indeed."),
+    (0,   "@:Lets head to the entrance."),
+    (60,  "---->"),
+    (60,  "---->"),
+    (60,  "---->"),
+    (60,  "---->"),
+    (60,  "---->"),
 
-
-
+    (300, "^:What are you thinking, Umby?"),
+    (0,   "@:I think something is seriously wrong..."),
+    (0,   "@:These monsters..."),
+    (0,   "@:Ive never seen anything like them before."),
+    (0,   "@:They seem really..."),
+    (0,   "^:Alien?"),
+    (0,   "@:Yes! They have... green blood!"),
+    (0,   "^:Well, the cave entrance is just up ahead."),
+    (60,  "---->"),
 
 
 
@@ -83,10 +107,13 @@ script = [
 #Lung gives info as sacrifice (he will be flooded out - no time to save)
 #Flood spaceship mainframe
 #Go back home
-#Cave -> forest -> air -> rocket -> space -> spaceship ->
+#Cave -> forest -> plains -> space y -> rocket -> space -> spaceship ->
 #    spaceship computer mainframe -> dolphin aquarium ->
 #    flooded spaceship -> forrest -> cave
 ###
+#
+# Take your time, you don't want to be the early worm.
+#
 #"""
 #The dolphins sold our planet? What for?!
 #Mock tuna.
@@ -113,12 +140,12 @@ script = [
             pattern_none, pattern_fill,
             pattern_room, pattern_fill],
             (bytearray([]), bytearray([])))),
-    (108, "Credits"),
+    (180, "Credits"),
     (160,  "A convex.cc game by John VL"),
     (160,  "For my Mum, who taught me how to tinker."),
     (160,  "Hardware, Reference, and Dev Platform: ------------------"),
     (160,  "TinyCircuits"),
-    (160,  "Special Thanks ------------------"),
+    (160,  "Special Thanks: ------------------"),
     (160,  "TinyCircuits"),
     (160,  "TinyCircuits Thumby Discord Channel"),
     (160,  "Xyvir"),
@@ -126,10 +153,10 @@ script = [
     (160,  "Timendus"),
     (160,  "Game Development: ------------------"),
     (160,  "John VL"),
-    (160,  "Graphics ------------------"),
+    (160,  "Graphics: ------------------"),
     (160,  "John VL"),
     (160,  "Lily VL"),
-    (160,  "Play Testers ------------------"),
+    (160,  "Play Testers: ------------------"),
     (160,  "John VL"),
     (160,  "Lily VL"),
     (160,  "Mevlan S"),
