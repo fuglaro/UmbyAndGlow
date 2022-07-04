@@ -145,7 +145,7 @@ class Player:
         #      12: Clinging (from ceiling)
         self.mode = 0
         self.name = name # Umby, Glow, or Clip
-        self.ai = ai
+        self._ai = ai
         self._coop = coop
         self.dir = 1
         self.x, self.y = x, y # Unit is 1 pixel
@@ -245,7 +245,7 @@ class Player:
         ### Returns if Umby is in a mode that can't be killed,
         # or killed by this engine.
         ###
-        return 1 if 199 <= int(self.mode) <= 202 or self.ai or self._coop else 0
+        return 1 if 199 <= int(self.mode) <= 202 or self._ai or self._coop else 0
 
     @micropython.native
     def die(self, death_message):
@@ -292,7 +292,7 @@ class Player:
         self.rocket_on = 0
 
     @micropython.viper
-    def _ai(self, t: int) -> int:
+    def _tick_ai(self, t: int) -> int:
         ### Consult with the digital oracle for button presses ###
         mode = int(self.mode)
         x, y = int(self.x), int(self.y)
@@ -350,8 +350,8 @@ class Player:
         if self._coop:
             return
         # Update button press states
-        if self.ai:
-            c = int(self._ai(t))
+        if self._ai:
+            c = int(self._tick_ai(t))
         else:
             c = 63^(int(bU()) | int(bD())<<1 | int(bL())<<2 | int(bR())<<3
                 | int(bB())<<4 | int(bA())<<5)
@@ -470,7 +470,8 @@ class Player:
             elif b==0 and ron==0 and a_pow > 256:
                 play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
-                self._rocket_x, self._rocket_y = xf <<1|1, yf-256 <<1|1
+                self._rocket_x, self._rocket_y = xf <<1|1, yf-512 <<1|1
+                self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
                     (_snco[((a_ang>>10)+200)%400]-128)*a_pow>>8) <<1|1
                 self._rocket_y_vel = (
@@ -654,7 +655,8 @@ class Player:
             elif not b and a_pow > 256:
                 play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
-                self._rocket_x, self._rocket_y = xf <<1|1, yf+256 <<1|1
+                self._rocket_x, self._rocket_y = xf <<1|1, yf+512 <<1|1
+                self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
                     (_snco[((a_ang>>10)+200)%400]-128)*a_pow>>8)*dr <<1|1
                 self._rocket_y_vel = (
@@ -713,8 +715,11 @@ class Player:
         self._y += -256 if self._c&1 else 256 if self._c&2 else 0
         self._x += -256 if self._c&4 else 256 if self._c&8 else 0
         # Switch to characters if buttons are pressed
-        if not self._c&8:
-            self.mode = 0 if self._c&16 else 10 if self._c&32 else 199
+        if not self._c&4:
+            self.mode = 0 if self._c&16 else 12 if self._c&32 else 199
+            if self.mode == 12:
+                self._aim_ang = -32768
+                self._launch_hook(0)
 
     @micropython.viper
     def draw(self, t: int):
@@ -766,7 +771,7 @@ class Player:
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self._aim_x), int(self._aim_y)
-        if not self.ai and not self._coop: # Only main player has aiming
+        if not self._ai and not self._coop: # Only main player has aiming
             # Rocket aim
             hx = x_pos+aim_x-1
             hy = y_pos+aim_y-6

@@ -238,6 +238,23 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
+@micropython.viper
+def pattern_tunnel(x: int, oY: int) -> int:
+    ### PATTERN [cave]:
+    # Cave system with ceiling and ground. Ceiling is never less
+    # than 5 deep. Both have a random terrain and can intersect.
+    ###
+    # buff: [ground-height]
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[0] = 10 + int(shash(x,32,24)) + int(shash(x,16,8)) + int(shash(x,4,))
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y > buff[0]) | int(y < buff[0]-10)
+         ) << (y-oY)
+    return v
+
 def pattern_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
     # position and size. Intended to be used for scratch_tape.

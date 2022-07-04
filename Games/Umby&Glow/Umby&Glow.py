@@ -170,12 +170,11 @@ def run_game():
     t = 1;
     story_reset(tape, start, True)
     # Select character, or testing mode by holding Right+B+A (release R last)
-    name = "Clip" if not (bR() or bA() or bB()) else "Glow" if glow else "Umby"
+    name = "Clip" if not (bL() or bA() or bB()) else "Glow" if glow else "Umby"
     p2name = "Umby" if glow else "Glow"
-    prof = not bR() # Activate profiling by holding Right direction
+    prof = not bL() # Activate profiling by holding Right direction
     p1 = Player(tape, name, start+10, 20)
     p2 = Player(tape, p2name, start+10, 20, ai=not coop, coop=coop)
-    p2r = p2 if not p2.ai else None
     tape.players.append(p1)
     # Initialise coop send data
     p1.port_out(outbuf)
@@ -227,7 +226,7 @@ def run_game():
         # Drawing and collisions
         tape.clear_stage()
         # Draw all the monsters, and check for collisions along the way
-        mons.draw_and_check_death(t, p1, p2r)
+        mons.draw_and_check_death(t, p1, p2)
         mons2.draw_and_check_death(t, None, None)
 
         # Check for death by monster

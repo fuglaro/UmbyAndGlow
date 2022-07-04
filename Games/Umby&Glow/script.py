@@ -47,7 +47,6 @@ script = [
             (bytearray([Bones]), bytearray([200])))),
     (1, Bones),
 
-
     (220, "Chapter 1: The Cave"),
 
     (300, "@:Hi Glow!"),
@@ -59,7 +58,7 @@ script = [
     (0,   "@:Maybe..."),
     (0,   "@:But this isnt like his usual tricks."),
 
-    (200, "Aim rockets up and down carefully."),
+    (200, "Aim rockets."),
 
     (200, "---->"),
     (0,   "^:Hey Umby..."),
@@ -68,18 +67,14 @@ script = [
     (0,   "@:Indeed."),
     (0,   "@:Lets head to the entrance."),
     (60,  "---->"),
-    (60,  "---->"),
-    (60,  "---->"),
-    (60,  "---->"),
-    (60,  "---->"),
+    (120,  "---->"),
+    (120,  "---->"),
 
-    (200, "Umbys rocket trail can make platforms to jump on."),
-    (200, "Glow can dig through walls."),
-    (200, "Shoot each other to escape traps, but dont shoot yourself!"),
-    (200, "Umby can jump high, but dont hit your head too hard!"),
-    (200, "Avoid the fathomless abyss!"),
+    (200, "Umbys rocket trail makes platforms."),
+    (200, "Glow crawls through walls."),
+    (200, "Shoot each other, not yourself!"),
 
-    (200, "^:What are you thinking, Umby?"),
+    (600, "^:What are you thinking, Umby?"),
     (0,   "@:I think something is seriously wrong..."),
     (0,   "@:These monsters..."),
     (0,   "@:Ive never seen anything like them before."),
@@ -89,16 +84,36 @@ script = [
     (0,   "^:Well, the cave entrance is just up ahead."),
     (60,  "---->"),
 
-    (200, "Glow can aim and swing the grappling hook."),
+    (200, ([pattern_toplit_wall,
+            pattern_stalagmites, pattern_stalagmites_fill,
+            pattern_cave, pattern_cave_fill],
+            (bytearray([]), bytearray([])))),
 
+    (200, "^:Ummm... Umby?..."),
+    (0,   "@:Yes Glow?..."),
+    (0,   "^:Whats that rumbling?"),
+    (0,   "@:Whatever it is, its big..."),
+    (0,   "@:and its invaded the wrong cave!"),
+    (0,   "^:Right. Lets rumble!"),
 
+    (200, "Get ready!"),
+    (0, BonesBoss),
+
+    (600, "@:Nice work, Glow!"),
+    (0,   "^:Back at ya, Umby!"),
+    (0,   "@:I think we cleared the whole swarm."),
+    (0,   "^:Is that all of them?"),
+    (0,   "@:Lets head outside and find out..."),
+
+    (80, ([pattern_toplit_wall,
+            pattern_none, pattern_fill,
+            pattern_tunnel, pattern_fill],
+            (bytearray([]), bytearray([])))),
+
+# TODO: Bones Boss (swirling mass of Bones that releases Bones every now and then)
 
 
 # TODO: Create bosses for levels
-
-
-
-
 # TODO IDEAS
 ###
 ### # TODO turn story into script

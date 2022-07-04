@@ -56,13 +56,15 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 # and will not stop.
 ###
 _Bones = const(1) # Random flying about
-_ChargingBones = const(2) # Charging player
-_ChargingBonesFriend = const(3) # Charging other player
+_BonesBoss = const(2) # Main monster of the Boss Bones swarm
+_ChargingBones = const(3) # Charging player
+_ChargingBonesFriend = const(4) # Charging other player
 Bones = _Bones
 ChargingBones = _ChargingBones
+BonesBoss = _BonesBoss
 
 # Additional hidden bahaviour data
-_data = array('I', 0 for i in range(48*4))
+_data = array('I', 0 for i in range(48*5))
 
 class Monsters:
     # BITMAP: width: 7, height: 8, frames: 3
@@ -122,19 +124,25 @@ class Monsters:
         xs = ptr32(self.x)
         ys = ptr8(self.y)
         d = ptr32(_data)
+        # Find the next monster slot
         for i in range(48):
-            if tids[i] == 0 or i == 47:
-                # Create the new monster
-                tids[i] = mon_type
-                xs[i] = x
-                ys[i] = y+64
-                d[i*4] = 0
-                d[i*4+1] = 0
-                d[i*4+2] = 0
-                d[i*4+3] = 0
-                # Increment the counter
-                self.num = int(self.num) + 1 <<1|1
+            if tids[i] == 0:
                 break
+        # Create the new monster
+        tids[i] = mon_type
+        xs[i] = x
+        ys[i] = y+64
+        ii = i*5
+        d[ii] = 0
+        d[ii+1] = 0
+        d[ii+2] = 0
+        d[ii+3] = 0
+        d[ii+4] = 0
+        # Set any monster specifics
+        if mon_type == _BonesBoss:
+            d[ii+4] = 20 # Starting numbr of monsters in the swarm
+        # Increment the counter
+        self.num = int(self.num) + 1 <<1|1
 
     @micropython.viper
     def clear(self):
@@ -150,64 +158,134 @@ class Monsters:
         tape = self._tp
         tpx = int(tape.x[0])
         self._px = tpx <<1|1
-        ch = tape.check_tape
-        plyrs = tape.players
-        p1 = int(len(plyrs)) > 0
-        p1x = int(plyrs[0].x) if p1 else 0
-        p1y = int(plyrs[0].y) if p1 else 0
-        p2 = int(len(plyrs)) > 1
-        p2x = int(plyrs[1].x) if p2 else 0
-        p2y = int(plyrs[1].y) if p2 else 0
 
         # Loop through all the monsters, updating ticks
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
-        ys = ptr8(self.y)
-        data = ptr32(_data)
         for i in range(48):
             if tids[i] == 0:
                 continue
-            i4 = i*4
-            typ = tids[i]
-            x = xs[i]
-            y = ys[i]-64
-
             # Check for standard death conditions
-            if x < tpx - 72: # Too far left, destroy monster
+            if xs[i] < tpx - 72: # Too far left, destroy monster
                 tids[i] = 0
                 self.num = int(self.num) - 1 <<1|1
 
-            # Bones
+            ## Handle each monster type ##
+            typ = tids[i]
+            # Bones and BonesBoss
             if typ == _Bones:
-                if t%2:
-                    continue
-                t = t//2
-                dx, dy = data[i4], data[i4+1]
-                # Find the next position
-                nx = x + (data[i4+2] if t%20>dx else 0)
-                ny = y + (data[i4+3] if t%20>dy else 0)
-                # Change direction if needed
-                if (dx | dy == 0 or ny < -4 or ny > 68 or t%129==0
-                    or ((ch(nx, ny) and t%13
-                        and not (ch(x, y) or y < 0 or y >= 64)))):
-                    data[i4], data[i4+1] = t%20, 20-(t%20)
-                    data[i4+2] = -1 if t%2 else 1
-                    data[i4+3] = -1 if t%4>1 else 1
-                else: # Otherwise continue moving
-                    xs[i], ys[i] = nx, ny+64
-                # Check for charging conditions
-                if p1 and (p1x-x)*(p1x-x) + (p1y-y)*(p1y-y) < 300:
-                    tids[i] = 2 # Charge player
-                if p2 and (p2x-x)*(p2x-x) + (p2y-y)*(p2y-y) < 300:
-                    tids[i] = 3 # Charge friend
-
-            # Charging Bones
+                if t%2==0:
+                    self._tick_bones(t, i)
+            elif typ == _BonesBoss:
+                self._tick_bones_boss(t, i)
+            ## Charging Bones
             elif _ChargingBones <= typ <= _ChargingBonesFriend:
-                if t%4==0: # Charge rate
-                    px = p1x if typ == _ChargingBones else p2x
-                    py = p1y if typ == _ChargingBones else p2y
-                    xs[i] += 1 if x < px else -1 if x > px else 0
-                    ys[i] += 1 if y < py else -1 if y > py else 0
+                if t%4==1:
+                    self._tick_bones_charging(t, i)
+
+    @micropython.viper
+    def _tick_bones(self, t: int, i: int):
+        ### Bones behavior
+        # * janky movement mostly avoiding walls,
+        # * switching to charging behavior when player in range
+        ###
+        xs, ys = ptr32(self.x), ptr8(self.y)
+        x, y = xs[i], ys[i]-64
+        data = ptr32(_data)
+        ii = i*5
+        th = t//2
+        thi = th-i%10
+        dx, dy = data[ii], data[ii+1]
+        # Find the next position
+        nx = x + (data[ii+2] if thi%20>dx else 0)
+        ny = y + (data[ii+3] if thi%20>dy else 0)
+        # Change direction if needed
+        tape = self._tp
+        ch = tape.check_tape
+        if (dx | dy == 0 or ny < 0 or ny > 63 or thi%129==0
+            or ((ch(nx, ny) and th%13 and not (ch(x, y))))):
+            data[ii], data[ii+1] = th%20, 20-(th%20)
+            data[ii+2] = -1 if th%2 else 1
+            data[ii+3] = -1 if th%4>1 else 1
+        # Otherwise continue moving
+        else:
+            xs[i], ys[i] = nx, ny+64
+        # Check for charging conditions
+        if (th+i)%20==0:
+            tids = ptr8(self._tids)
+            plyrs = tape.players
+            p1 = int(len(plyrs)) > 0
+            p1x = int(plyrs[0].x) if p1 else 0
+            p1y = int(plyrs[0].y) if p1 else 0
+            p2 = int(len(plyrs)) > 1
+            p2x = int(plyrs[1].x) if p2 else 0
+            p2y = int(plyrs[1].y) if p2 else 0
+            if p1 and (p1x-x)*(p1x-x) + (p1y-y)*(p1y-y) < 300:
+                tids[i] = _ChargingBones
+            if p2 and (p2x-x)*(p2x-x) + (p2y-y)*(p2y-y) < 300:
+                tids[i] = _ChargingBonesFriend
+
+    @micropython.viper
+    def _tick_bones_boss(self, t: int, i: int):
+        ### BonesBoss behavior
+        # * Moves slowly towards 10px to the left of the last Bones
+        # * Spawns 20 Bones quickly
+        # * Spawns up to 10 Bones slowly
+        # * Rallies all Bones in the 30 pixel range to the left
+        ###
+        tids = ptr8(self._tids)
+        xs = ptr32(self.x)
+        ys = ptr8(self.y)
+        typ = tids[i]
+        x = xs[i]
+        y = ys[i]-64
+        data = ptr32(_data)
+        ii = i*5
+        xj, yj = x, y
+        if t%2:
+            ci = 0
+            # Swarm minions around boss
+            for j in range(48):
+                if tids[j] != _Bones:
+                    continue
+                ci += 1
+                dx = data[j*5+2]
+                xj, yj = xs[j], ys[j]-64
+                if xj < x-30 and dx == -1:
+                    data[j*5+2] = 1
+                elif xj > x and dx == 1:
+                    data[j*5+2] = -1
+            # Movement of central boss brain itself.
+            if t%20==1:
+                xs[i] += -1 if xj < x-10 else 1
+                ys[i] += -1 if yj < y else 1
+            # Spawn starting minions and slowly spawn in fresh monsters
+            if (ci < 10 and t%180==1) or (t%15==0 and data[ii+4] > 0):
+                data[ii+4] -= 1
+                self.add(_Bones, x, y)
+
+    @micropython.viper
+    def _tick_bones_charging(self, t: int, i: int):
+        ### Charging Bones behavior ###
+        # Find the player position to charge
+        plyrs = self._tp.players
+        tids = ptr8(self._tids)
+        typ = tids[i]
+        if typ == _ChargingBones:
+            px = int(plyrs[0].x)
+            py = int(plyrs[0].y)
+        elif int(len(plyrs)) > 1:
+            px = int(plyrs[1].x)
+            py = int(plyrs[1].y)
+        else:
+            return
+        xs = ptr32(self.x)
+        ys = ptr8(self.y)
+        x = xs[i]
+        y = ys[i]-64
+        # Slowlyish charge the player position
+        xs[i] += 1 if x < px else -1 if x > px else 0
+        ys[i] += 1 if y < py else -1 if y > py else 0
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
