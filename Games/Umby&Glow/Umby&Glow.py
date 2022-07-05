@@ -11,6 +11,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+# TODO: Remove top left pixel from the 'S' so it looks less like a 5.
+# TODO: Create title screen and display while loading game (inspired by Doogle)
 # TODO: Write script / story
 # TODO: Add 8 more levels, extended game dynamics, and more monsters!
 # TODO: Full game description and overview (for arcade_description.txt file)
