@@ -58,7 +58,7 @@ script = [
     (0,   "@:Maybe..."),
     (0,   "@:But this isnt like his usual tricks."),
 
-    (200, "Aim rockets."),
+    (200, "Aim rockets: [UP/DOWN]"),
 
     (200, "---->"),
     (0,   "^:Hey Umby..."),
@@ -70,8 +70,8 @@ script = [
     (120,  "---->"),
     (120,  "---->"),
 
-    (200, "Umbys rocket trail makes platforms."),
-    (200, "Glow crawls through walls."),
+    (200, "Umbys platforms: B*2"),
+    (200, "Glows tunnelling: [RIGHT/LEFT]+B [TAPPING:B]"),
     (200, "Shoot each other, not yourself!"),
 
     (600, "^:What are you thinking, Umby?"),
