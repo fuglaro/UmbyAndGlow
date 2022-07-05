@@ -25,7 +25,7 @@ from array import array
 # should not store data across columns.
 _buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
 
-# Utility functions
+## Utility functions ##
 
 @micropython.viper
 def abs(v: int) -> int:
@@ -60,11 +60,21 @@ def shash(x: int, step: int, size: int) -> int:
     return a + (b-a) * (x%step) // step
 
 
-# Pattern Library
+## Pattern Library ##
 
 
+@micropython.viper
+def pattern_template(x: int, oY: int) -> int:
+    ### PATTERN [template]: Template for patterns. Not intended for use. ###
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 # pattern (1=lit pixel, for fill layer, 0=clear pixel)
+        ) << (y-oY)
+    return v
 
-# Interesting pattern library for future considerations ## 
+################################################################
+# Interesting pattern example library
 @micropython.viper
 def pattern_toothsaw(x: int, y: int) -> int:
     ### PATTERN [toothsaw]: TODO use and update for word ###
@@ -83,27 +93,15 @@ def pattern_fallentree(x: int, y: int) -> int:
     return int(y > (32423421^(x+y)) % 64)
 @micropython.viper
 def pattern_panelsv(x: int, oY: int) -> int:
-    ### PATTERN [panels]: TODO ###
+    ### PATTERN [panels]: TODO use ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
             1 if (x*y)%100 == 0 else 0
         ) << (y-oY)
     return v
+################################################################
 
-
-
-
-
-@micropython.viper
-def pattern_template(x: int, oY: int) -> int:
-    ### PATTERN [template]: Template for patterns. Not intended for use. ###
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            1 # pattern (1=lit pixel, for fill layer, 0=clear pixel)
-        ) << (y-oY)
-    return v
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
     ### PATTERN [none]: empty ###

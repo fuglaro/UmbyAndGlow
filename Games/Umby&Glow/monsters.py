@@ -16,32 +16,27 @@ from array import array
 
 _FPS = const(60)
 
-
-# TODO: Some monster ideas
-
+################################################################
+# Monster ideas and examples
 # Skittle (bug horizontal move (no vert on ground, waving in air)
 bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
 # BITMAP: width: 9, height: 8
 bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
-
 # Scout (slow wanderer on the ground, slow mover)
 bitmap6 = bytearray([2,62,228,124,228,62,2])
 # BITMAP: width: 7, height: 8
 bitmap7 = bytearray([63,255,255,254,255,255,63])
-
 # Stomper (swings up and down vertically)
 # BITMAP: width: 7, height: 8
 bitmap8 = bytearray([36,110,247,124,247,110,36])
 # BITMAP: width: 7, height: 8
 bitmap9 = bytearray([239,255,255,254,255,255,239])
-
 # TODO: One the crawls along the ground and digs in to then pounce
 # TODO: make a monster that spawns other monsters! (HARD)
 # TODO: Do a monster that flys into the background
 # TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
 # TODO: catepillar monster that is a chain of monsters.
-
-
+################################################################
 
 ### Bones is a monster that flyes about then charges the player.
 # Bones looks a bit like a skull.

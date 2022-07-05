@@ -110,13 +110,12 @@ script = [
             pattern_tunnel, pattern_fill],
             (bytearray([]), bytearray([])))),
 
-# TODO: Bones Boss (swirling mass of Bones that releases Bones every now and then)
-
-
-# TODO: Create bosses for levels
-# TODO IDEAS
+################################################################
+# Story WIP and Ideas
+#
 ###
 ### # TODO turn story into script
+# TODO: Create bosses for all levels
 ###
 #Umby and Glow save their cave.
 #
@@ -156,9 +155,7 @@ script = [
 #Eat the frog? - Do you mean: Try to do something impossible but by never giving up, eventually succeed?
 #Yes. Eventually the worm eats all.
 #"""
-
-
-    # TODO: Level good for seeing credits
+################################################################
 
     ## Credits ##
     (200, ([pattern_toplit_wall,
