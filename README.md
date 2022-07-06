@@ -1,6 +1,7 @@
 # Umby&Glow - save their cave
 
 ![Umby & Glow](/UmbyAndGlow.png)
+
 Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
 
 ## TODO
