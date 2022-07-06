@@ -277,7 +277,7 @@ class Player:
                 "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
             # Tag the wall with a death message
             if monster:
-                tape.tag("[RIP]", monster[0], monster[1])
+                tape.tag("RIP", monster[0], monster[1])
                 play(rocket_kill, 30)
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
