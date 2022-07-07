@@ -110,6 +110,20 @@ script = [
             pattern_tunnel, pattern_fill],
             (bytearray([]), bytearray([])))),
 
+
+    (200, ([pattern_toplit_wall,
+            pattern_none, pattern_fill,
+            pattern_room, pattern_fill],
+            (bytearray([]), bytearray([])))),
+
+
+    (220, "Chapter 2: The Forest"),
+
+    (200, ([pattern_toplit_wall,
+            pattern_none, pattern_fill,
+            pattern_room, pattern_fill],
+            (bytearray([]), bytearray([])))),
+
 ################################################################
 # Story WIP and Ideas
 #
@@ -236,8 +250,8 @@ def story_reset(tape, start, lobby):
         for i in range(start, start+72):
             tape.redraw_tape(2, i, pattern_room, pattern_fill)
         # Draw starting instructions
-        tape.write(1, "THAT WAY!", start+19, 26)
-        tape.write(1, "------>", start+37, 32)
+        tape.write(1, "THAT WAY!", start//2+19, 26)
+        tape.write(1, "------>", start//2+37, 32)
 
 _dialog_queue = []
 _dialog_c = 0 # Next line counter
