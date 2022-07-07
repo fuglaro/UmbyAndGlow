@@ -181,8 +181,6 @@ def run_menu():
                 p2start = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
                 if p2start > start:
                     start = p2start
-            else:
-                handshake += 1 # If comms get stuck time out
             # Update background
             background_update()
             t += 1
