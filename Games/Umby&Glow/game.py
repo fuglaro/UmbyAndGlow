@@ -20,7 +20,7 @@ from comms import comms, inbuf, outbuf
 from tape import Tape, display_update, Monsters, EMULATED
 from player import Player, bU, bD, bL, bR, bB, bA
 from audio import audio_tick
-from script import story_events, story_reset
+from script import script, story_events, story_reset
 
 ##
 # AUDIO TESTING: (set the audio to play then quit)
@@ -66,7 +66,6 @@ def load_save(sav, load):
             pass
     return start if start > 3 else 3
 
-@micropython.native
 def run_menu():
     ### Loads a starting menu and returns the selections.
     # @returns: a tuple of the following values:
@@ -74,63 +73,17 @@ def run_menu():
     #     * 1P (0), 2P (1)
     #     * Player start location
     ###
-    t = 0
+    handshake = held = t = 0
+    ch = [0, 0, 1, 0, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_reset(tape, -101, False)
     # Scroll in the menu's Bones monster
     tape.scroll_tape(0, 0, 1)
     story_events(tape, 0)
-    ch = [0, 0, 1] # Umby/Glow, 1P/2P, New/Load
-    stage = h = s = 0
 
-    @micropython.native
-    def sel(i):
-        ### Menu selection arrows ###
-        return (("  " if ch[i] else "<<")
-            + ("----" if i == s else "    ")
-            + (">>" if ch[i] else "  "))
-
-    mons = tape.mons
-    while stage < 240:
-        # Update the menu text
-        if stage == 0:
-            if h == 0 and (t == 0 or not (bU() and bD() and bL() and bR())):
-                s = (s + (1 if not bD() else -1 if not bU() else 0)) % 3
-                ch[s] = (ch[s] + (1 if not bR() else -1 if not bL() else 0)) % 2
-                tape.clear_overlay()
-                msg = "UMBY "+sel(0)+" GLOW "
-                msg += "1P   "+sel(1)+"   2P "
-                msg += "NEW  "+sel(2)+" LOAD"
-                tape.message(0, msg, 3)
-                h = 1
-            elif bU() and bD() and bL() and bR():
-                h = 0
-            if not bA():
-                tape.clear_overlay()
-                stage = 1
-                if ch[1]: # Waiting for other player...
-                    tape.message(0, "WAITING...", 3)
-                # Find the starting position (of this player)
-                sav = "/Games/Umby&Glow/"+("glow" if ch[0] else "umby")+".sav"
-                start = load_save(sav, ch[2])
-        elif 1 <= stage < 240 :
-            if ch[1]:
-                # Get ready to send starting location information
-                outbuf[0] = start>>24
-                outbuf[1] = start>>16
-                outbuf[2] = start>>8
-                outbuf[3] = start
-                # Communicate with other player on start position
-                if comms():
-                    stage += 60
-                    p2start = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
-                    if p2start > start:
-                        start = p2start
-                elif stage > 1:
-                    stage += 1 # If comms get stuck time out
-            else:
-                stage = 240
-
+    def background_update():
+        ### Update the menu's background landscape ###
         # Make the camera follow the monster
+        mons = tape.mons
         mons.tick(t)
         mons.draw_and_check_death(t, None, None)
         tape.auto_camera_parallax(mons.x[0], mons.y[0]-64, 1, t)
@@ -145,7 +98,95 @@ def run_menu():
             tape.comp()
             display_update()
         tape.clear_stage()
+
+    ## Main menu ##
+
+    def sel(i):
+        ### Menu arrows for a particular selection ###
+        return (("  " if ch[i] else "<<")
+            + ("----" if i == ch[4] else "    ")
+            + (">>" if ch[i] else "  "))
+    def update_main_menu():
+        ### Draw the main selection menu ###
+        ch[4] = (ch[4] + (1 if not bD() else -1 if not bU() else 0)) % 3
+        if not (bL() and bR()):
+            ch[ch[4]] = 0 if not bL() else 1
+        msg = "UMBY "+sel(0)+" GLOW "
+        msg += "1P   "+sel(1)+"   2P "
+        msg += "NEW  "+sel(2)+" LOAD"
+        tape.clear_overlay()
+        tape.message(0, msg, 3)
+
+    def update_chapter_menu():
+        ### Draw the (secret) character selection menu ###
+        if bU() and bD():
+            return
+        d = -1 if not bU() else 1
+        # Find the next chapter
+        while True:
+            ch[3] = (ch[3] + d) % len(script)
+            entry = script[ch[3]][1]
+            if isinstance(entry, str) and entry.startswith("Chapter "):
+                chapter = entry[8:].split(':')[0]
+                break
+        # Display the selected chapter
+        msg = "Chapter " + chapter
+        tape.clear_overlay()
+        tape.message(0, msg, 3)
+
+    menu = update_main_menu
+    menu()
+    while menu:
+        # Update menu selection (U/D/L/R)
+        if held == 0 and not (bU() and bD() and bL() and bR()):
+            menu()
+            held = 1
+        elif bU() and bD() and bL() and bR() and bB() and bA():
+            held = 0
+        # Check for accepting for next stage (A)
+        if not bA() and held != 2:
+            # Secret chapter menu (DOWN+B+A)
+            if not (bD() or bA() or bB()):
+                menu = update_chapter_menu
+                menu()
+                held = 2
+            else:
+                # Find the starting position (of this player)
+                sav = "/Games/Umby&Glow/"+("glow" if ch[0] else "umby")+".sav"
+                if ch[3] == 0:
+                    start = load_save(sav, ch[2])
+                else: # Start at selected chapter
+                    start = -1
+                    for i in range(0, ch[3]+1):
+                        start += script[i][0] - 1
+                menu = None
+        # Update background
+        background_update()
         t += 1
+
+    ## Negotiate 2 player communication and starting position (if needed)
+    if ch[1]:
+        tape.clear_overlay()
+        # Waiting for other player...
+        tape.message(0, "WAITING...", 3)
+        while handshake < 240:
+            # Get ready to send starting location information
+            outbuf[0] = start>>24
+            outbuf[1] = start>>16
+            outbuf[2] = start>>8
+            outbuf[3] = start
+            # Communicate with other player on start position
+            if comms():
+                handshake += 60
+                p2start = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
+                if p2start > start:
+                    start = p2start
+            else:
+                handshake += 1 # If comms get stuck time out
+            # Update background
+            background_update()
+            t += 1
+
     tape.clear_overlay()
     return ch[0], ch[1], start, sav
 
