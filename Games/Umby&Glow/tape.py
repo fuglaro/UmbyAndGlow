@@ -184,7 +184,7 @@ class Tape:
         scroll = ptr32(self._tape_scroll)
         for i in range(3):
             layer = 3 if i == 2 else i
-            tapePos = scroll[layer] = (p if layer == 3 else 0)
+            tapePos = scroll[layer]
             for x in range(tapePos-72, tapePos+144):
                 self.redraw_tape(i, x, self.feed[layer], self.feed[layer+1])
 
