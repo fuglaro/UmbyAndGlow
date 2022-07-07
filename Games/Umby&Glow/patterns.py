@@ -245,7 +245,7 @@ def pattern_tunnel(x: int, oY: int) -> int:
     # buff: [ground-height]
     buff = ptr32(_buf)
     if oY == 0:
-        buff[0] = 10 + int(shash(x,32,24)) + int(shash(x,16,8)) + int(shash(x,4,))
+        buff[0] = 10 + int(shash(x,32,24))+int(shash(x,24,8))+int(shash(x,7,2))
     v = 0
     for y in range(oY, oY+32):
         v |= (
