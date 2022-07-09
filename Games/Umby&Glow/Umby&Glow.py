@@ -11,7 +11,61 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-## Game loading screen ##
+## Game loading screen and setup ##
+
+# Speed up the CPU speed
+from machine import freq
+freq(125000000) # Safe to up to 133000000, if needed.
+
+# Prepare for loading the game libraries
+from sys import path
+path.append("/Games/Umby&Glow")
+
+
+##
+# PATTERN TESTING: view patterns easily for quick iteration of level design
+#from patterns import *
+#from tape import Tape, display_update
+#tape = Tape()
+#tape.feed = [pattern_none,
+#            pattern_none, pattern_fill,
+#            pattern_testing, pattern_fill]
+#tape.reset(0)
+#t = 0
+#while True:
+#    t += 1
+#    tape.scroll_tape(1 if t%4==0 else 0, 1 if t%2==0 else 0, 1)
+#    tape.offset_vertically(t//10%23)
+#    tape.comp()
+#    display_update()
+
+##
+# COMMS TESTING: (test 2 player coop comms in WebIDE emulayer or with 1 device)
+#@micropython.native
+#def _comms():
+#    ### Fakes 2 play comms (relays p1 data, offset horizontally) ###
+#    inbuf[:] = outbuf[:]
+#    px = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
+#    px += 10
+#    inbuf[0] = px>>24
+#    inbuf[1] = px>>16
+#    inbuf[2] = px>>8
+#    inbuf[3] = px
+#    return 1
+#import comms
+#comms.comms = _comms
+
+##
+# AUDIO TESTING: (set the audio to play then quit)
+#from audio import *
+#from time import sleep_ms
+#play(rocket_bang, 40, True)
+#for i in range(250):
+#    audio_tick()
+#    sleep_ms(1000//60)
+#raise Exception("STOP")
+##
+
 
 from machine import Pin, SPI
 from ssd1306 import SSD1306_SPI
@@ -52,6 +106,4 @@ _load_title_screen()
 
 # Launch the game
 # (loads while title screen is displayed - thanks to Doogle!)
-from sys import path
-path.append("/Games/Umby&Glow")
 import game

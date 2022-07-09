@@ -15,7 +15,6 @@
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
-from monsters import *
 
 _FPS = const(60)
 
@@ -161,19 +160,24 @@ class Tape:
         self._stage = array('I', (0 for i in range(72*2*3+132*2)))
         # Monster classes to spawn, with likelihood of each monster class
         # spawning (out of 255), for every 5 steps
+        # Set mons_clear and mons_add to set the hooks to the monster manager.
         self.spawner = (bytearray([]), bytearray([]))
+        def _pass(*arg):
+            pass
+        self.mons_clear = _pass
+        self.mons_add = _pass
         # How far along the tape spawning has completed
         self._x = array('I', [0])
-        self.mons = Monsters(self) # Monsters
         self.players = [] # Player register for interactions
         self.clear_overlay()
+        self.clear_stage()
 
     @micropython.viper
     def reset(self, p: int):
         ### Set a new spawn starting position and reset the tape.
         # Also empties out all monsters.
         ###
-        self.mons.clear()
+        self.mons_clear()
         # Scroll each layer
         scroll = ptr32(self._tape_scroll)
         scroll[0] = p//4
@@ -383,13 +387,12 @@ class Tape:
         spawner = self.spawner
         rates = ptr8(spawner[1])
         types = ptr8(spawner[0])
-        add = self.mons.add
         r = int(uint(ihash(p)))
         # Loop through each monster type randomly spawning
         # at the configured rate.
         for i in range(0, int(len(spawner[0]))):
             if rates[i] and r%(256-rates[i]) == 0:
-                add(types[i], p+72+36, r%64)
+                self.mons_add(types[i], p+72+36, r%64)
             r = r >> 1 # Fast reuse of random number
         xp[0] = p 
 

@@ -40,14 +40,16 @@ _DIALOG_DISPLAY_FRAMES = const(180)
 #     # Reset monster spawner to the new level
 #     (bytearray([Bones]), bytearray([200])))
 script = [
+    #================================================
+    # Chapter 1
     # Cave with bones
-    (-101, ([pattern_toplit_wall,
+    (-999, ([pattern_toplit_wall,
             pattern_stalagmites, pattern_stalagmites_fill,
             pattern_cave, pattern_cave_fill],
-            (bytearray([Bones]), bytearray([200])))),
+        (bytearray([Bones]), bytearray([200])))),
     (1, Bones),
 
-    (220, "Chapter 1: The Cave"),
+    (1120, "Chapter 1: The Cave"),
 
     (300, "@:Hi Glow!"),
     (0,   "^:Hi Umby!"),
@@ -84,10 +86,11 @@ script = [
     (0,   "^:Well, the cave entrance is just up ahead."),
     (60,  "---->"),
 
+    # Stop monster spawning
     (200, ([pattern_toplit_wall,
             pattern_stalagmites, pattern_stalagmites_fill,
             pattern_cave, pattern_cave_fill],
-            (bytearray([]), bytearray([])))),
+        (bytearray([]), bytearray([])))),
 
     (200, "^:Ummm... Umby?..."),
     (0,   "@:Yes Glow?..."),
@@ -99,30 +102,48 @@ script = [
     (200, "Get ready!"),
     (0, BonesBoss),
 
-    (600, "@:Nice work, Glow!"),
+    # Background stops near entrance
+    (300, ([pattern_none,
+            pattern_stalagmites, pattern_stalagmites_fill,
+            pattern_cave, pattern_cave_fill],
+        (bytearray([]), bytearray([])))),
+
+    (300, "@:Nice work, Glow!"),
     (0,   "^:Back at ya, Umby!"),
     (0,   "@:I think we cleared the whole swarm."),
     (0,   "^:Is that all of them?"),
     (0,   "@:Lets head outside and find out..."),
 
-    (80, ([pattern_toplit_wall,
+    # Snowy mountain background starts, and tunnel
+    (80, ([pattern_snowy_mountains,
             pattern_none, pattern_fill,
             pattern_tunnel, pattern_fill],
-            (bytearray([]), bytearray([])))),
+        (bytearray([]), bytearray([])))),
 
-
-    (200, ([pattern_toplit_wall,
-            pattern_none, pattern_fill,
-            pattern_room, pattern_fill],
-            (bytearray([]), bytearray([])))),
-
+    #================================================
+    # Chapter 2
+    # Exit tunnel into plains
+    (200, ([pattern_snowy_mountains,
+            pattern_ferns, pattern_ferns_fill,
+            pattern_none, pattern_fill],
+        (bytearray([]), bytearray([])))),
 
     (220, "Chapter 2: The Forest"),
 
-    (200, ([pattern_toplit_wall,
+
+
+
+
+
+
+    #(220, "Chapter TEST: TODO"),
+
+    (88200, ([pattern_toplit_wall,
             pattern_none, pattern_fill,
-            pattern_room, pattern_fill],
-            (bytearray([]), bytearray([])))),
+            pattern_none, pattern_fill],
+        (bytearray([]), bytearray([])))),
+
+    (200, "Ask fuglaro for more chapters"),
 
 ################################################################
 # Story WIP and Ideas
@@ -257,8 +278,10 @@ _dialog_queue = []
 _dialog_c = 0 # Next line counter
 
 @micropython.viper
-def story_events(tape, coop_px: int):
-    ### Update story events including dialog and level type changes ###
+def story_events(tape, mons, coop_px: int):
+    ### Update story events including dialog and level type changes.
+    # Update to the new px tape position: coop (furthest tape scroll of both players)
+    ###
     global _dialog_c, _next_event, _next_at
     # Update current dialog queue, if needed.
     dc = int(_dialog_c)
@@ -306,7 +329,7 @@ def story_events(tape, coop_px: int):
                 tape.message(0, event, 1)
         # Handle specific monster spawns like bosses.
         else:
-            tape.mons.add(event, pos+144, 32)
+            mons.add(event, pos+144, 32)
         _next_event = int(_next_event) + 1
         _next_at = int(_next_at) + int(script[_next_event][0])
 

@@ -10,48 +10,24 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Speed up the CPU speed
-from machine import freq
-freq(125000000) # Safe to up to 133000000, if needed.
-
 import gc
 from time import ticks_ms
-from comms import comms, inbuf, outbuf
-from tape import Tape, display_update, Monsters, EMULATED
-from player import Player, bU, bD, bL, bR, bB, bA
 from audio import audio_tick
+from comms import comms, inbuf, outbuf
+from monsters import Monsters
+from player import Player, bU, bD, bL, bR, bB, bA
+gc.collect() # Memory fragmentation needs clearing up before importing script
 from script import script, story_events, story_reset
-
-##
-# AUDIO TESTING: (set the audio to play then quit)
-#from audio import *
-#from time import sleep_ms
-#play(rocket_bang, 40, True)
-#for i in range(250):
-#    audio_tick()
-#    sleep_ms(1000//60)
-#raise Exception("STOP")
-##
-
-##
-# COMMS TESTING: (test 2 player coop comms in WebIDE emulayer or with 1 device)
-#@micropython.native
-#def comms():
-#    ### Fakes 2 play comms (relays p1 data, offset horizontally) ###
-#    inbuf[:] = outbuf[:]
-#    px = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
-#    px += 10
-#    inbuf[0] = px>>24
-#    inbuf[1] = px>>16
-#    inbuf[2] = px>>8
-#    inbuf[3] = px
-#    return 1
+from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
 
 ## Game Play ##
 
 tape = Tape()
+mons = Monsters(tape)
+tape.mons_clear = mons.clear
+tape.mons_add = mons.add
 
 def load_save(sav, load):
     ### Load the progress from the file "sav" if "load" is True ###
@@ -75,15 +51,13 @@ def run_menu():
     ###
     handshake = held = t = 0
     ch = [0, 0, 1, 0, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
-    story_reset(tape, -101, False)
+    story_reset(tape, -999, False)
     # Scroll in the menu's Bones monster
-    tape.scroll_tape(0, 0, 1)
-    story_events(tape, 0)
+    story_events(tape, mons, -950)
 
     def background_update():
         ### Update the menu's background landscape ###
         # Make the camera follow the monster
-        mons = tape.mons
         mons.tick(t)
         mons.draw_and_check_death(t, None, None)
         tape.auto_camera_parallax(mons.x[0], mons.y[0]-64, 1, t)
@@ -202,8 +176,8 @@ def run_game():
     name = "Clip" if not (bL() or bA() or bB()) else "Glow" if glow else "Umby"
     p2name = "Umby" if glow else "Glow"
     prof = not bL() # Activate profiling by holding Right direction
-    p1 = Player(tape, name, start+10, 20)
-    p2 = Player(tape, p2name, start+10, 20, ai=not coop, coop=coop)
+    p1 = Player(tape, mons, name, start+10, 20)
+    p2 = Player(tape, mons, p2name, start+10, 20, ai=not coop, coop=coop)
     tape.players.append(p1)
     # Initialise coop send data
     p1.port_out(outbuf)
@@ -214,12 +188,11 @@ def run_game():
     # Main gameplay loop
     pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
-    mons = tape.mons
     mons2 = Monsters(tape)
     ch = tape.check
     coop_px = 0
     while(1):
-        story_events(tape, coop_px)
+        story_events(tape, mons, coop_px)
         # Update the game engine by a tick
         p1.tick(t)
         p2.tick(t)
