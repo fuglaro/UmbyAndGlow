@@ -113,7 +113,7 @@ class Monsters:
 
     @micropython.viper
     def add(self, mon_type: int, x: int, y: int):
-        ### Add a monster of the given type ###
+        ### Add a monster of the given type. ###
         # Find an empty monster slot
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -136,8 +136,10 @@ class Monsters:
         # Set any monster specifics
         if mon_type == _BonesBoss:
             d[ii+4] = 20 # Starting numbr of monsters in the swarm
+        if mon_type == _Bones:
+            d[ii+4] = int(self._tp.x[0]) # Movement rate type
         # Increment the counter
-        self.num = int(self.num) + 1 <<1|1
+        self.num = (int(self.num)+1) <<1|1
 
     @micropython.viper
     def clear(self):
@@ -163,7 +165,7 @@ class Monsters:
             # Check for standard death conditions
             if xs[i] < tpx - 72: # Too far left, destroy monster
                 tids[i] = 0
-                self.num = int(self.num) - 1 <<1|1
+                self.num = (int(self.num)-1) <<1|1
 
             ## Handle each monster type ##
             typ = tids[i]
@@ -182,6 +184,7 @@ class Monsters:
     def _tick_bones(self, t: int, i: int):
         ### Bones behavior
         # * janky movement mostly avoiding walls,
+        # * some move faster than others, some with no movement (until in range)
         # * switching to charging behavior when player in range
         ###
         xs, ys = ptr32(self.x), ptr8(self.y)
@@ -203,7 +206,7 @@ class Monsters:
             data[ii+2] = -1 if th%2 else 1
             data[ii+3] = -1 if th%4>1 else 1
         # Otherwise continue moving
-        else:
+        elif th%(data[ii+4]%5+1):
             xs[i], ys[i] = nx, ny+64
         # Check for charging conditions
         if (th+i)%20==0:
@@ -250,10 +253,14 @@ class Monsters:
                     data[j*5+2] = 1
                 elif xj > x and dx == 1:
                     data[j*5+2] = -1
-            # Movement of central boss brain itself.
-            if t%20==1:
-                xs[i] += -1 if xj < x-10 else 1
-                ys[i] += -1 if yj < y else 1
+
+                # Movement of central boss brain itself.
+                if t//20%20==ci:
+                    # Make sure the minion moves a little
+                    data[j*5+4] += 1
+                    # Move towards position just behind minion
+                    xs[i] += -1 if xj < x-10 else 1
+                    ys[i] += -1 if yj < y else 1
             # Spawn starting minions and slowly spawn in fresh monsters
             if (ci < 10 and t%180==1) or (t%15==0 and data[ii+4] > 0):
                 data[ii+4] -= 1
@@ -326,13 +333,13 @@ class Monsters:
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):
                 tids[i] = 0
-                self.num = int(self.num) - 1 <<1|1
+                self.num = (int(self.num)-1) <<1|1
                 p1.kill(t, (xs[i], y))
                 r1 = 0 # Done with this rocket
             # Check if ai helper's rocket hits the monster
             elif r2 and ch(r2x, r2y, 224):
                 tids[i] = 0
-                self.num = int(self.num) - 1 <<1|1
+                self.num = (int(self.num)-1) <<1|1
                 p2.kill(t, (xs[i], y))
                 r2 = 0 # Done with this rocket
 
