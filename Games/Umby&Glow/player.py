@@ -132,7 +132,7 @@ class Player:
     # transform into Umby or Glow (name will stay as "Clip")
     # Activate by creating object with name == "Clip"
 
-    def __init__(self, tape, name, x, y, ai=False, coop=False):
+    def __init__(self, tape, mons, name, x, y, ai=False, coop=False):
         # Modes:
         #     199: Testing (Clip)
         #     200: Frozen (immune)
@@ -153,6 +153,7 @@ class Player:
         self.rocket_x, self.rocket_y = 0, 0 # Unit is 1 pixel
         # Internal properties
         self._tp = tape
+        self._mons = mons
         self._x, self._y = x*256, y*256 # Unit is 256th of a pixel
         self._rdir = 0
         self._moving = 0
@@ -298,7 +299,7 @@ class Player:
         x, y = int(self.x), int(self.y)
         d = int(self.dir) * 10
         p = int(self._tp.x[0]) + 36 # Horizontal middle
-        m = int(bool(self._tp.mons.num))
+        m = int(bool(self._mons.num))
         # Horizontal super powers
         if x < p-50:
             self._x = (p-50)*256 <<1|1
@@ -412,13 +413,16 @@ class Player:
         if t%3==0 and not ch(x, y-3) and ((c&4 and lwall) or (c&8 and rwall)):
             self._y = (yf-256) <<1|1 # Climbing
         # CONTROLS: Apply jump - allow continual jump until falling begins
-        if c&32 and (yv < 0 or grounded):
+        if y < 1:
+            self._y = 256 <<1|1
+            self._y_vel = 0 <<1|1
+        elif c&32 and (yv < 0 or grounded):
             if grounded: # detatch from ground grip
                 self._y = (yf-256) <<1|1
                 play(worm_jump, 15)
             self._y_vel = -52428 <<1|1
         # DEATH: Check for head smacking
-        if ch(x, y-4) and yv < -26214:
+        if ch(x, y-4) and c&32:
             # Only actually die if the platform hit is largish
             if (ch(x, y-5) and
                 (ch(x-1, y-4) and ch(x-2, y-4))
