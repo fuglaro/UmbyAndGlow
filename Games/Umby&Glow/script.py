@@ -102,6 +102,8 @@ script = [
     (200, "Get ready!"),
     (0, BonesBoss),
 
+    #(220, "Chapter TEST: TODO"),
+
     # Background stops near entrance
     (300, ([pattern_none,
             pattern_stalagmites, pattern_stalagmites_fill,
@@ -123,27 +125,41 @@ script = [
     #================================================
     # Chapter 2
     # Exit tunnel into plains
-    (200, ([pattern_snowy_mountains,
+    (200, ([pattern_cloudy_snowy_mountains,
             pattern_ferns, pattern_ferns_fill,
-            pattern_none, pattern_fill],
+            pattern_cloudy_plains, pattern_fill],
+        (bytearray([Bones]), bytearray([230])))),
+
+    (130, "@:WOAH!"),
+    (0,   "^:SQUIRM!"),
+    (0,   "@:They are everywhere!"),
+    (0,   "^:What are we going to do?"),
+    (0,   "@:Keep blasting and get moving!"),
+    (0,   "@:Theres a forest up ahead we can use for cover."),
+    (0,   "^:Ok. Ive got your back."),
+    (0,   "@:Lets roll..."),
+
+    (220, "Chapter 2: To The Forest"),
+
+    (800, "^:Doing well there, Umby!"),
+    (0,   "@:You too, Glow!"),
+    (0,   "@:The forest is just up ahead!"),
+    (0,   "^:NICE!"),
+
+
+
+
+
+    # Enter forest
+    (400, ([pattern_tree_wall,
+            pattern_mid_forest, pattern_mid_forest_fill,
+            pattern_forest, pattern_forest_fill],
         (bytearray([]), bytearray([])))),
 
-    (220, "Chapter 2: The Forest"),
+    (220, "Chapter TEST: TODO"),
 
 
-
-
-
-
-
-    #(220, "Chapter TEST: TODO"),
-
-    (88200, ([pattern_toplit_wall,
-            pattern_none, pattern_fill,
-            pattern_none, pattern_fill],
-        (bytearray([]), bytearray([])))),
-
-    (200, "Ask fuglaro for more chapters"),
+    (88200, "Ask fuglaro for more chapters"),
 
 ################################################################
 # Story WIP and Ideas
@@ -160,6 +176,7 @@ script = [
 #1.4) They decide to find out where they have come from.
 #1.5) They leave their cave.
 #
+# Worm loves worm (referenced and credited)
 #Suspect bad worm
 #Follow monsters to alien spaceship
 #Find Lung held hostage

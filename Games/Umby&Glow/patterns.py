@@ -73,71 +73,6 @@ def pattern_template(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
-################################################################
-# Interesting pattern example library and testing
-@micropython.viper
-def pattern_toothsaw(x: int, y: int) -> int:
-    ### PATTERN [toothsaw]: TODO use and update for word ###
-    return int(y > (113111^x+11) % 64 // 2 + 24)
-@micropython.viper
-def pattern_revtoothsaw(x: int, y: int) -> int:
-    ### PATTERN [revtoothsaw]: TODO use and update for word ###
-    return int(y > (11313321^x) % 64)
-@micropython.viper
-def pattern_diamondsaw(x: int, y: int) -> int:
-    ### PATTERN [diamondsaw]: TODO use and update for word ###
-    return int(y > (32423421^x) % 64)
-
-
-
-@micropython.viper
-def pattern_zebra_hills(x: int, oY: int) -> int:
-    ### PATTERN [zebra_hills]: Hills with internal zebra pattern ###
-    buff = ptr32(_buf)
-    if oY == 0:
-        buff[0] = int(shash(x,128,40)) + int(shash(x,16,16)) + int(shash(x,4,4))
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            (int(y > (32423421^(x*(y-buff[0])))%32) if y > buff[0] + 4
-                else 1 if y > buff[0] else 0)
-         ) << (y-oY)
-    return v
-
-
-
-@micropython.viper
-def pattern_fallen_tree(x: int, oY: int) -> int:
-    ### PATTERN [fallentree]: TODO use  ###
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            int(y > (32423421^(x+y)) % 64)
-        ) << (y-oY)
-    return v
-
-
-
-@micropython.viper
-def pattern_panels(x: int, oY: int) -> int:
-    ### PATTERN [panels]: TODO use ###
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            1 if (x*y)%100 == 0 else 0
-        ) << (y-oY)
-    return v
-
-
-
-
-
-
-
-
-
-################################################################
-
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
     ### PATTERN [none]: empty ###
@@ -199,7 +134,7 @@ def pattern_cave(x: int, oY: int) -> int:
     if oY == 0:
         buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
         buff[1] = int(abs(int(shash(x,8,32)) - (buff[0] >> 2)))
-        buff[2] = int(x % (buff[0]//8) == 0)
+        buff[2] = int(x % (buff[0]>>3) == 0)
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -217,9 +152,9 @@ def pattern_cave_fill(x: int, oY: int) -> int:
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            ((int(y < buff[0]//2*3) | buff[2]) # ground fill
+            ((int(y < (buff[0]>>1)*3) | buff[2]) # ground fill
             # ceiling fill
-            & (int(y > 10-buff[1]) | int(y > 5) | int(y == 5) | buff[1]%y))
+            & (int(y > 10-buff[1]) | int(y > 5) | int(y == 5) | buff[1]%(y+1)))
         ) << (y-oY)
     return v
 
@@ -236,7 +171,7 @@ def pattern_stalagmites(x: int, oY: int) -> int:
         t1 = (x%256)-128
         t2 = (x%18)-9
         t3 = (x%4)-2
-        buff[0] = 50 - t1*t1//256 - t2*t2//4 - t3*t3*4
+        buff[0] = 50 - (t1*t1>>8) - (t2*t2>>2) - t3*t3*4
         buff[1] = 15*(x%4)
     v = 0
     for y in range(oY, oY+32):
@@ -268,7 +203,7 @@ def pattern_toplit_wall(x: int, oY: int) -> int:
     p = x-500
     for y in range(oY, oY+32):
         v |= (
-            1 if (p*p)%y == 0 else 0
+            1 if (p*p)%(y+1) == 0 else 0
         ) << (y-oY)
     return v
 
@@ -356,12 +291,58 @@ def pattern_snowy_mountains(x: int, oY: int) -> int:
     if oY == 0:
         u = int(shash(x,32,16))
         buff[0] = int(shash(x,128,40))+u+int(shash(x,4,4))
-        buff[1] = u//2
+        buff[1] = u>>1
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            (int(y > (113111^(x*(y-buff[0])))//128%386) if y+8 > buff[0]+(16-buff[1])
-                 else 1 if y > buff[0] else 0)
+            (int(y > ((113111^(x*(y-buff[0])))>>7)%386)
+                if y+8 > buff[0]+(16-buff[1])
+                else 1 if y > buff[0] else 0)
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_clouds(x: int, oY: int) -> int:
+    ### PATTERN [clouds]:
+    # Background atmospheric of puffy clouds with flat base
+    ###
+    # buff: [cloud-height, cloud-level]
+    buff = ptr32(_buf)
+    if oY == 0:
+        e = (x+10)%72-10
+        e = 10+e if e < 0 else 10-e if e<10 else 0
+        buff[0] = (int(shash(x,16,32)) + (int(shash(x,8,16))-20-e*e)>>1)
+        buff[1] = int(ihash(x//72))%40
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(buff[1] > y > buff[1]-buff[0])
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_cloudy_snowy_mountains(x: int, oY: int) -> int:
+    ### PATTERN [cloudy_snowy_mountains]:
+    # Distant snowy mountains background with clouds
+    ###
+    # buff: [ripple-modifier, snow-capping, cloud-height, cloud-level]
+    buff = ptr32(_buf)
+    xa = x*8
+    if oY == 0:
+        u = int(shash(xa,32,16))
+        buff[0] = int(shash(xa,128,40))+u+int(shash(xa,4,4))
+        buff[1] = u>>1
+        # cloud parameters
+        e = (x+10)%64-10
+        e = 10+e if e < 0 else 10-e if e<10 else 0
+        buff[2] = (int(shash(x,16,32)) + int(shash(x,8,16))-20-e*e)//3+5
+        buff[3] = int(ihash(x>>6))%40
+    v = 0
+    for y in range(oY, oY+32):
+        cloud = int(buff[3] > y > buff[3]-buff[2])
+        v |= (
+            (int(y > (113111^(xa*(y-buff[0])))>>7%386) if y+8 > buff[0]+(16-buff[1])
+                 else 1 if y > buff[0] else 0 if y+3 > buff[0] else cloud)
          ) << (y-oY)
     return v
 
@@ -374,8 +355,7 @@ def pattern_ferns(x: int, oY: int) -> int:
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            (int(y > (32423421^(x*(y-buff[0])))%128) if y > buff[0] + 5
-                else 0)
+            (int(y > (32423421^(x*(y-buff[0])))%128) if y > buff[0] + 5 else 0)
          ) << (y-oY)
     return v
 @micropython.viper
@@ -384,15 +364,162 @@ def pattern_ferns_fill(x: int, oY: int) -> int:
     # Just has thicker leaves
     ###
     buff = ptr32(_buf)
-    if oY == 0:
-        buff[0] = int(shash(x,64,40))+int(shash(x,32,48))+int(shash(x,4,8))-10
     v = 0
     for y in range(oY, oY+32):
         v |= (
-            (int(y > (32423421^(x*(y-buff[0])))%64) if y > buff[0] + 5
-                else 0)
+            (int(y > (32423421^(x*(y-buff[0])))%64) if y > buff[0] + 5 else 1)
          ) << (y-oY)
     return v
+
+@micropython.viper
+def pattern_cloudy_plains(x: int, oY: int) -> int:
+    ### PATTERN [cloudy_plains]:
+    # Background atmospheric of puffy clouds with flat base
+    ###
+    # buff: [cloud-height, cloud-level, ground height]
+    buff = ptr32(_buf)
+    if oY == 0:
+        e = (x+10)%64-10
+        e = 10+e if e < 0 else 10-e if e<10 else 0
+        u = int(shash(x,8,16))
+        buff[0] = ((int(shash(x,16,8)) + u-20-e*e)>>1)+10
+        buff[1] = int(ihash(x>>6))%12+1
+        buff[2] = u>>1
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(buff[1] > y > buff[1]-buff[0]) | int(y>58-buff[2])
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_tree_wall(x: int, oY: int) -> int:
+    ### PATTERN [panels]: TODO use ###
+    xa = x*x*40//((x%40+20)+1)
+    return ((
+            int(0x00000FFF)<<((xa+oY)%64-16) |
+            uint(0xFFF00000)>>(32-(xa)%32) |
+            int(1431655765)<<(x%2)
+        ) if xa%12 > 4 # Tree middle
+        else int(0xFFFFFFFF) if (xa-1)%12 > 2 # Tree edges
+        else 0 # Tree gaps
+    )
+
+@micropython.viper
+def pattern_forest_ferns(x: int, oY: int) -> int:
+    ### PATTERN [ferns]: Midbackground jungle-fern ground cover ###
+    buff = ptr32(_buf)
+    if oY < 32:
+        buff[2] = int(shash(x,40,30))+int(shash(x,16,24))+10 # Fern pattern
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            (int(y > (32423421^(x*(y-buff[2])))%56) if y > buff[2] + 10 else 0)
+         ) << (y-oY)
+    return v
+@micropython.viper
+def pattern_forest_ferns_fill(x: int, oY: int) -> int:
+    ### PATTERN [ferns_fill]: Associated fill layer for ferns.
+    # Just has thicker leaves
+    ###
+    buff = ptr32(_buf)
+    v = 0
+    oY -= 15
+    for y in range(oY, oY+32):
+        v |= (
+            (int(y > (32423421^(x*(y-buff[2])))%64) if y > buff[2] else 1)
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_tree_branches(x: int, oY: int) -> int:
+    ### PATTERN [tree_branches]: Forest tree top branches (foreground closed ceiling) ###
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[3] = int(shash(x,32,30)) + int(shash(x,5,6)) - 10
+    br = buff[3]
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int((y%(br%20+5) < br-y//6-5 and y < 30) or y == 0)
+        ) << (y-oY)
+    return v
+@micropython.viper
+def pattern_tree_branches_fill(x: int, oY: int) -> int:
+    ### PATTERN [tree_branches_fill]:
+    # Associated fill pattern for forest tree tops
+    ###
+    buff = ptr32(_buf)
+    br = buff[3]
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+           int((y*y)%((y+br+x)%10) < 1) if y%(br%20+5) < br-y//6-8 and y < 30 else 1
+        ) << (y-oY)
+    return v | int(1431655765)<<(x%2)
+
+@micropython.viper
+def pattern_forest(x: int, oY: int) -> int:
+    ### PATTERN [forest]: Forest foreground ###
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[0] = x+int(shash(x,50,80)) # Tree width / gap variance
+        buff[1] = x*x*40//((x%40+20)+1) # Tree patterner
+    xb = buff[0]
+    return ((int(0xFFFFFFFF) if (xb-3)%120 > 94 # Trees
+        else 0) # Tree gaps
+        | int(pattern_forest_ferns(x, oY)) # Gaps and Ferms
+        | int(pattern_tree_branches(x, oY))) # Branches and vines
+@micropython.viper
+def pattern_forest_fill(x: int, oY: int) -> int:
+    ### PATTERN [forest_fill]: Associated fill pattern for forest. ###
+    buff = ptr32(_buf)
+    xb = buff[0]
+    xa = buff[1]
+    return (((
+            int(0x00000FFF)<<((xa+oY)%64-16) |
+            uint(0xFFF00000)>>(32-(xa)%32) |
+            int(1431655765)<<(x%2)
+        ) if xb%120 > 100 # Tree middle
+        else int(0xFFFFFFFF))
+        & int(pattern_forest_ferns_fill(x, oY))
+        & int(pattern_tree_branches_fill(x, oY)))
+
+@micropython.viper
+def pattern_mid_forest(x: int, oY: int) -> int:
+    ### PATTERN [mid_forest]: Dense trees and high ground fern cover.
+    # Intended for mid background layer.
+    ###
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[0] = x+int(shash(x,50,80)) # Tree width / gap variance
+        buff[1] = x*x*40//((x%40+20)+1) # Tree patterner
+    xb = buff[0]
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(32423421%((y+x-200)%5000+400)<300) # sunlight
+         ) << (y-oY)
+    return (int(0xFFFFFFFF) if (xb-3)%60 > 39 # Trees
+        else v
+        ) | int(pattern_forest_ferns(x, oY+10)) # Gaps and Ferms
+@micropython.viper
+def pattern_mid_forest_fill(x: int, oY: int) -> int:
+    ### PATTERN [mid_forest_fill]: Associated fill pattern to mid_forest.
+    # Cuts out trees and ferns and also gives trees shadows and
+    # adds shadow fern patterns.
+    ###
+    buff = ptr32(_buf)
+    xb = buff[0]
+    xa = buff[1]
+    return ((
+            int(0x00000FFF)<<((xa+oY)%64-16) |
+            uint(0xFFF00000)>>(32-(xa)%32) |
+            int(1431655765)<<(x%2)
+        ) if xb%60 > 45 # Tree middle
+        else int(0xFFFFFFFF) if (xb-3)%60 > 39 # Tree edge
+        else 0 if (xb-5)%60 > 35 # Tree shadow
+        else int(0xFFFFFFFF)) & int(pattern_forest_ferns_fill(x, oY+5))
 
 def pattern_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
@@ -418,5 +545,80 @@ def pattern_bang(blast_x, blast_y, blast_size, invert):
     return pattern
 
 
-pattern_testing = pattern_ferns
+################################################################
+# Interesting pattern example library and testing
+@micropython.viper
+def pattern_toothsaw(x: int, y: int) -> int:
+    ### PATTERN [toothsaw]: TODO use and update for word ###
+    return int(y > (113111^x+11) % 64 // 2 + 24)
+@micropython.viper
+def pattern_revtoothsaw(x: int, y: int) -> int:
+    ### PATTERN [revtoothsaw]: TODO use and update for word ###
+    return int(y > (11313321^x) % 64)
+@micropython.viper
+def pattern_diamondsaw(x: int, y: int) -> int:
+    ### PATTERN [diamondsaw]: TODO use and update for word ###
+    return int(y > (32423421^x) % 64)
+
+
+
+@micropython.viper
+def pattern_zebra_hills(x: int, oY: int) -> int:
+    ### PATTERN [zebra_hills]: Hills with internal zebra pattern ###
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[0] = int(shash(x,128,40)) + int(shash(x,16,16)) + int(shash(x,4,4))
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            (int(y > (32423421^(x*(y-buff[0])))%32) if y > buff[0] + 4
+                else 1 if y > buff[0] else 0)
+         ) << (y-oY)
+    return v
+
+
+
+@micropython.viper
+def pattern_fallen_tree(x: int, oY: int) -> int:
+    ### PATTERN [fallentree]: TODO use  ###
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y > (32423421^(x+y)) % 64)
+        ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_vine_hang(x: int, oY: int) -> int:
+    ### PATTERN [panels]: TODO use ###
+    u = int(shash(x,12,40)) + int(shash(x,5,8))
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if   (y)%((u)%10+5) < u//8-y//16 else 0
+        ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_panels(x: int, oY: int) -> int:
+    ### PATTERN [panels]: TODO use ###
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if (x*y)%100 == 0 else 0
+        ) << (y-oY)
+    return v
+
+
+
+
+
+pattern_testing_back = pattern_fill
+pattern_testing = pattern_forest
+pattern_testing_fill = pattern_forest_fill
+
+
+
+
+################################################################
 

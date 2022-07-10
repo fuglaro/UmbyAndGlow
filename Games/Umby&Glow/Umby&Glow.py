@@ -27,9 +27,9 @@ path.append("/Games/Umby&Glow")
 #from patterns import *
 #from tape import Tape, display_update
 #tape = Tape()
-#tape.feed = [pattern_none,
+#tape.feed = [pattern_testing_back,
 #            pattern_none, pattern_fill,
-#            pattern_testing, pattern_fill]
+#            pattern_testing, pattern_testing_fill]
 #tape.reset(0)
 #t = 0
 #while True:
