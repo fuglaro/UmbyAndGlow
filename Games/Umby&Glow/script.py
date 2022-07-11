@@ -275,13 +275,14 @@ def get_chapters():
         if isinstance(entry, str) and entry.startswith("CHAPTER~"):
             yield (entry[8:], pos)
 
-_next_event = 0 # Index into the script for the next expected event
-_next_at = _script[0][0] # Position next event occurs
+_line = iter(_script)
+_next_at, _next_event = next(_line)
 
-def story_reset(tape, start, lobby):
+def story_jump(tape, start, lobby):
     ### Prepare everything for the level of gameplay
     # at the given position including the story position,
     # the feed patterns for each layer, and the monster spawner.
+    # Note this can only jump forwards in the script.
     # @param tape: The tape to manipulate.
     # @param start: The starting x position of the tape.
     # @param lobby: Whether to draw the starting platform
@@ -289,18 +290,13 @@ def story_reset(tape, start, lobby):
     global _next_event, _next_at
     # Loop through the script finding the starting position, and setting
     # the level as needed.
-    ne = 0
-    at = _script[ne][0]
-    while at <= start:
-        event = _script[ne][1]
+    while _next_at <= start:
         # Handle level type changes
-        if isinstance(event, tuple):
-            tape.feed[:] = event[0]
-            tape.spawner = event[1]
-        ne += 1
-        at += _script[ne][0]
-    _next_event = ne
-    _next_at = at
+        if isinstance(_next_event, tuple):
+            tape.feed[:] = _next_event[0]
+            tape.spawner = _next_event[1]
+        dist, _next_event = next(_line)
+        _next_at += dist
     # Reset the tape data to match the new details, and potentially
     # clear the starting area.
     tape.reset(start)
@@ -339,7 +335,7 @@ def story_events(tape, mons, coop_px: int):
     pos = int(tape.x[0])
     pos = pos if pos > coop_px else coop_px # Furthest of both players
     if pos >= int(_next_at):
-        event = _script[_next_event][1]
+        event = _next_event
         # Handle level type changes
         if isinstance(event, tuple):
             tape.feed = event[0]
@@ -369,6 +365,6 @@ def story_events(tape, mons, coop_px: int):
         # Handle specific monster spawns like bosses.
         else:
             mons.add(event, pos+144, 32)
-        _next_event = int(_next_event) + 1
-        _next_at = int(_next_at) + int(_script[_next_event][0])
+        dist, _next_event = next(_line)
+        _next_at += dist
 
