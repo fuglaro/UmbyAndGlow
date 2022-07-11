@@ -33,13 +33,15 @@ else: # Otherwise use the raw one if on the thumby device
     # Load the nice memory-light display drivers
     _display_buffer = display.buffer
     timer = ticks_ms()
+    fwait = 1000//_REFRESH
     @micropython.native
     def display_update():
         global timer
-        display.show()
         t = ticks_ms()
-        sleep_ms(timer - ticks_ms())
-        timer = ticks_ms() + 1000//_REFRESH
+        nwait = timer - ticks_ms()
+        sleep_ms(0 if nwait <= 0 else nwait if nwait < fwait else fwait)
+        display.show()
+        timer = ticks_ms() + fwait
 
 @micropython.viper
 def ihash(x: uint) -> int:
