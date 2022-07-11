@@ -36,6 +36,7 @@ bitmap9 = bytearray([239,255,255,254,255,255,239])
 # TODO: Do a monster that flys into the background
 # TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
 # TODO: catepillar monster that is a chain of monsters.
+# TODO: forest - owl eyes. Blink twice * 3, then swoop to new location ()
 ################################################################
 
 ### Bones is a monster that flyes about then charges the player.

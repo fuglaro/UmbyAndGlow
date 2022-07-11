@@ -15,8 +15,6 @@
 from monsters import *
 from patterns import *
 
-_DIALOG_DISPLAY_FRAMES = const(180)
-
 ##
 # Script - the story through the dialog of the characters.
 # Script data includes the (additive) tape scroll amount for when
@@ -39,7 +37,7 @@ _DIALOG_DISPLAY_FRAMES = const(180)
 #      pattern_cave, pattern_cave_fill],
 #     # Reset monster spawner to the new level
 #     (bytearray([Bones]), bytearray([200])))
-script = [
+_script = [
     #================================================
     # Chapter 1
     # Cave with bones
@@ -49,7 +47,7 @@ script = [
         (bytearray([Bones]), bytearray([200])))),
     (1, Bones),
 
-    (1120, "Chapter 1: The Cave"),
+    (1120, "CHAPTER~1: The Cave"),
 
     (300, "@:Hi Glow!"),
     (0,   "^:Hi Umby!"),
@@ -102,8 +100,6 @@ script = [
     (200, "Get ready!"),
     (0, BonesBoss),
 
-    #(220, "Chapter TEST: TODO"),
-
     # Background stops near entrance
     (300, ([pattern_none,
             pattern_stalagmites, pattern_stalagmites_fill,
@@ -117,7 +113,7 @@ script = [
     (0,   "@:Lets head outside and find out..."),
 
     # Snowy mountain background starts, and tunnel
-    (80, ([pattern_snowy_mountains,
+    (80, ([pattern_cloudy_snowy_mountains,
             pattern_none, pattern_fill,
             pattern_tunnel, pattern_fill],
         (bytearray([]), bytearray([])))),
@@ -139,16 +135,12 @@ script = [
     (0,   "^:Ok. Ive got your back."),
     (0,   "@:Lets roll..."),
 
-    (220, "Chapter 2: To The Forest"),
+    (220, "CHAPTER~2: To The Forest"),
 
     (800, "^:Doing well there, Umby!"),
     (0,   "@:You too, Glow!"),
     (0,   "@:The forest is just up ahead!"),
     (0,   "^:NICE!"),
-
-
-
-
 
     # Enter forest
     (400, ([pattern_tree_wall,
@@ -156,7 +148,28 @@ script = [
             pattern_forest, pattern_forest_fill],
         (bytearray([]), bytearray([])))),
 
-    (220, "Chapter TEST: TODO"),
+    (360, "^:Phew! We made it!"),
+    (0,   "@:That, we did!"),
+    (0,   "@:Hopefully this provides some cover while we figure all this out."),
+    (0,   "^:Cool. Um... Umby..."),
+    (0,   "@:Yes, Glow?"),
+    (0,   "^:You didnt happen to look up by any chance?"),
+    (0,   "@:And see a giant alien mothership dominating the sky?"),
+    (0,   "^:Yeah. What should we do?"),
+    (0,   "@:Lets head further in for safety."),
+    (0,   "@:I need to come up with a plan."),
+    (0,   "^:Sweet! No need to rush anyway..."),
+    (0,   "^:Nobody wants to be the early worm."),
+
+    # TODO: Add forest monsters
+    (180, ([pattern_tree_wall,
+            pattern_mid_forest, pattern_mid_forest_fill,
+            pattern_forest, pattern_forest_fill],
+        (bytearray([]), bytearray([])))),
+
+
+
+    (220, "CHAPTER~TEST: TODO"),
 
 
     (88200, "Ask fuglaro for more chapters"),
@@ -254,8 +267,16 @@ script = [
     (4000000, "GOODBYE!")
 ]
 
+def get_chapters():
+    ### Return the chapters and their starting positions ###
+    pos = -1
+    for dist, entry in _script:
+        pos += dist
+        if isinstance(entry, str) and entry.startswith("CHAPTER~"):
+            yield (entry[8:], pos)
+
 _next_event = 0 # Index into the script for the next expected event
-_next_at = script[0][0] # Position next event occurs
+_next_at = _script[0][0] # Position next event occurs
 
 def story_reset(tape, start, lobby):
     ### Prepare everything for the level of gameplay
@@ -269,15 +290,15 @@ def story_reset(tape, start, lobby):
     # Loop through the script finding the starting position, and setting
     # the level as needed.
     ne = 0
-    at = script[ne][0]
+    at = _script[ne][0]
     while at <= start:
-        event = script[ne][1]
+        event = _script[ne][1]
         # Handle level type changes
         if isinstance(event, tuple):
             tape.feed[:] = event[0]
             tape.spawner = event[1]
         ne += 1
-        at += script[ne][0]
+        at += _script[ne][0]
     _next_event = ne
     _next_at = at
     # Reset the tape data to match the new details, and potentially
@@ -311,13 +332,14 @@ def story_events(tape, mons, coop_px: int):
         # "Say" next line
         position, text = _dialog_queue.pop(0)
         tape.message(position, text, 3)
-        _dialog_c = _DIALOG_DISPLAY_FRAMES
+        # Dialog display time (in ticks)
+        _dialog_c = 60 + 2*int(len(text))
 
     # Check for, and potentially action, the next event
     pos = int(tape.x[0])
     pos = pos if pos > coop_px else coop_px # Furthest of both players
     if pos >= int(_next_at):
-        event = script[_next_event][1]
+        event = _script[_next_event][1]
         # Handle level type changes
         if isinstance(event, tuple):
             tape.feed = event[0]
@@ -348,5 +370,5 @@ def story_events(tape, mons, coop_px: int):
         else:
             mons.add(event, pos+144, 32)
         _next_event = int(_next_event) + 1
-        _next_at = int(_next_at) + int(script[_next_event][0])
+        _next_at = int(_next_at) + int(_script[_next_event][0])
 

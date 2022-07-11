@@ -17,7 +17,7 @@ from comms import comms, inbuf, outbuf
 from monsters import Monsters
 from player import Player, bU, bD, bL, bR, bB, bA
 gc.collect() # Memory fragmentation needs clearing up before importing script
-from script import script, story_events, story_reset
+from script import get_chapters, story_events, story_reset
 from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
@@ -50,10 +50,11 @@ def run_menu():
     #     * Player start location
     ###
     handshake = held = t = 0
-    ch = [0, 0, 1, 0, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
+    ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_reset(tape, -999, False)
     # Scroll in the menu's Bones monster
     story_events(tape, mons, -950)
+    chapters = list(get_chapters())
 
     def background_update():
         ### Update the menu's background landscape ###
@@ -95,16 +96,10 @@ def run_menu():
         ### Draw the (secret) character selection menu ###
         if bU() and bD():
             return
-        d = -1 if not bU() else 1
         # Find the next chapter
-        while True:
-            ch[3] = (ch[3] + d) % len(script)
-            entry = script[ch[3]][1]
-            if isinstance(entry, str) and entry.startswith("Chapter "):
-                chapter = entry[8:].split(':')[0]
-                break
+        ch[3] = (ch[3] + (-1 if not bU() else 1)) % len(chapters)
         # Display the selected chapter
-        msg = "Chapter " + chapter
+        msg = "Chapter " + chapters[ch[3]][0]
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
@@ -130,9 +125,7 @@ def run_menu():
                 if ch[3] == 0:
                     start = load_save(sav, ch[2])
                 else: # Start at selected chapter
-                    start = -1
-                    for i in range(0, ch[3]+1):
-                        start += script[i][0] - 1
+                    start = chapters[ch[3]][1]
                 menu = None
         # Update background
         background_update()
@@ -173,7 +166,7 @@ def run_game():
     t = 1;
     story_reset(tape, start, True)
     # Select character, or testing mode by holding Right+B+A (release R last)
-    name = "Clip" if not (bL() or bA() or bB()) else "Glow" if glow else "Umby"
+    name = "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby"
     p2name = "Umby" if glow else "Glow"
     prof = not bL() # Activate profiling by holding Right direction
     p1 = Player(tape, mons, name, start+10, 20)
@@ -260,6 +253,7 @@ def run_game():
         if t % _FPS == 0:
             fpst = ticks_ms() - pfpst
             ptot += pstat
+            gc.collect() # Full garbage collect for good memory use reading.
             print(pstat, ptot*_FPS//t, gc.mem_alloc(), gc.mem_free(), pstat2,
                 pfps1*1000//fpst, pfps2*1000//fpst, tape.x[0])
             pstat = pstat2 = pfps1 = pfps2 = 0
