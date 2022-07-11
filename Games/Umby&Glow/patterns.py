@@ -398,8 +398,7 @@ def pattern_tree_wall(x: int, oY: int) -> int:
     xa = x*x*40//((x%40+20)+1)
     return ((
             int(0x00000FFF)<<((xa+oY)%64-16) |
-            uint(0xFFF00000)>>(32-(xa)%32) |
-            int(1431655765)<<(x%2)
+            uint(0xFFF00000)>>(32-(xa)%32)
         ) if xa%12 > 4 # Tree middle
         else int(0xFFFFFFFF) if (xa-1)%12 > 2 # Tree edges
         else 0 # Tree gaps
@@ -515,7 +514,7 @@ def pattern_mid_forest_fill(x: int, oY: int) -> int:
     return ((
             int(0x00000FFF)<<((xa+oY)%64-16) |
             uint(0xFFF00000)>>(32-(xa)%32) |
-            int(1431655765)<<(x%2)
+            int(1431655765)<<(x//2%2)
         ) if xb%60 > 45 # Tree middle
         else int(0xFFFFFFFF) if (xb-3)%60 > 39 # Tree edge
         else 0 if (xb-5)%60 > 35 # Tree shadow
