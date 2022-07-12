@@ -271,15 +271,16 @@ class Player:
         rx, ry = self.rocket_x, self.rocket_y
         self._boom_x, self._boom_y = rx, ry
         play(rocket_bang, 40)
-        # Tag the wall with an explostion mark
-        tag = t%4
         if -40 < rx-tape.x[0] < 112:
-            tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-                "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
-            # Tag the wall with a death message
+            # Tag the wall with a death message,
             if monster:
                 tape.tag("RIP", monster[0], monster[1])
                 play(rocket_kill, 30)
+            # Or tag the wall with an explostion mark
+            else:
+                tag = t%4
+                tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+                    "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
@@ -719,7 +720,7 @@ class Player:
         self._y += -256 if self._c&1 else 256 if self._c&2 else 0
         self._x += -256 if self._c&4 else 256 if self._c&8 else 0
         # Switch to characters if buttons are pressed
-        if not self._c&4:
+        if not self._c&1:
             self.mode = 0 if self._c&16 else 12 if self._c&32 else 199
             if self.mode == 12:
                 self._aim_ang = -32768

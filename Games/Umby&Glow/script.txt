@@ -93,10 +93,10 @@
 200, "Get ready!"
 0, BonesBoss
 
-# Background stops near entrance
-300, ([pattern_none,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
+# Background changes near tunnel
+500, ([pattern_cloudy_snowy_mountains,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
 
-300, "@:Nice work, Glow!"
+100, "@:Nice work, Glow!"
 0,   "^:Back at ya, Umby!"
 0,   "@:I think we cleared the whole swarm."
 0,   "^:Is that all of them?"

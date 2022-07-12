@@ -89,7 +89,7 @@ def story_events(tape, mons, coop_px: int):
         position, text = _dialog_queue.pop(0)
         tape.message(position, text, 3)
         # Dialog display time (in ticks)
-        _dialog_c = 60 + 2*int(len(text))
+        _dialog_c = 60 + int(len(text))*5//2
 
     # Check for, and potentially action, the next event
     pos = int(tape.x[0])
