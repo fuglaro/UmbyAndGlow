@@ -17,7 +17,7 @@ from comms import comms, inbuf, outbuf
 from monsters import Monsters
 from player import Player, bU, bD, bL, bR, bB, bA
 gc.collect() # Memory fragmentation needs clearing up before importing script
-from script import get_chapters, story_events, story_reset
+from script import get_chapters, story_events, story_jump
 from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
@@ -51,7 +51,7 @@ def run_menu():
     ###
     handshake = held = t = 0
     ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
-    story_reset(tape, -999, False)
+    story_jump(tape, -999, False)
     # Scroll in the menu's Bones monster
     story_events(tape, mons, -950)
     chapters = list(get_chapters())
@@ -122,7 +122,7 @@ def run_menu():
             else:
                 # Find the starting position (of this player)
                 sav = "/Games/Umby&Glow/"+("glow" if ch[0] else "umby")+".sav"
-                if ch[3] == 0:
+                if ch[3] == -1:
                     start = load_save(sav, ch[2])
                 else: # Start at selected chapter
                     start = chapters[ch[3]][1]
@@ -164,7 +164,7 @@ def run_game():
 
     # Ready the level for playing
     t = 1;
-    story_reset(tape, start, True)
+    story_jump(tape, start, True)
     # Select character, or testing mode by holding Right+B+A (release R last)
     name = "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby"
     p2name = "Umby" if glow else "Glow"
