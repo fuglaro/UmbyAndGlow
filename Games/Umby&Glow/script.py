@@ -29,7 +29,7 @@ def _script():
 
 def get_chapters():
     ### Return the chapters and their starting positions ###
-    pos = -1
+    pos = -300
     for dist, entry in _script():
         pos += dist
         if isinstance(entry, str) and entry.startswith("CHAPTER~"):

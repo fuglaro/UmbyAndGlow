@@ -159,6 +159,8 @@ def run_menu():
 def run_game():
     ### Initialise the game and run the game loop ###
     # Basic setup
+    # Force memory cleanup before entering menu
+    gc.collect()
     # Start menu
     glow, coop, start, sav = run_menu()
 

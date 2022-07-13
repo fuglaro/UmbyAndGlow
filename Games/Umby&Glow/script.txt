@@ -37,15 +37,15 @@
 # Or as a number, which will load the relevant monster directly.
 
 #### MENU ####
--999,([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones]), bytearray([200])))
+-999,([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
 1,Bones
 
 #================================================
 # Chapter 1
 # Cave with Bones
 1120,"CHAPTER~1: The Cave"
-# Test
-300, "@:Hi Glow!"
+50, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
+250, "@:Hi Glow!"
 0,   "^:Hi Umby!"
 0,   "@:These monsters are destroying our cave!"
 0,   "^:Where did they come from?"
@@ -108,7 +108,7 @@
 #================================================
 # Chapter 2
 # Exit tunnel into plains
-200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([230])))
+200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
 
 130, "@:WOAH!"
 0,   "^:SQUIRM!"
@@ -119,9 +119,11 @@
 0,   "^:Ok. Ive got your back."
 0,   "@:Lets roll..."
 
-220, "CHAPTER~2: To The Forest"
+70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+150, "CHAPTER~2: The Forest"
+50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
 
-800, "^:Doing well there, Umby!"
+750, "^:Doing well there, Umby!"
 0,   "@:You too, Glow!"
 0,   "@:The forest is just up ahead!"
 0,   "^:NICE!"

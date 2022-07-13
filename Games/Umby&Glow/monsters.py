@@ -18,10 +18,6 @@ _FPS = const(60)
 
 ################################################################
 # Monster ideas and examples
-# Skittle (bug horizontal move (no vert on ground, waving in air)
-bitmap3 = bytearray([0,56,84,56,124,56,124,56,16])
-# BITMAP: width: 9, height: 8
-bitmap4 = bytearray([56,124,254,124,254,124,254,124,56])
 # Scout (slow wanderer on the ground, slow mover)
 bitmap6 = bytearray([2,62,228,124,228,62,2])
 # BITMAP: width: 7, height: 8
@@ -32,7 +28,7 @@ bitmap8 = bytearray([36,110,247,124,247,110,36])
 # BITMAP: width: 7, height: 8
 bitmap9 = bytearray([239,255,255,254,255,255,239])
 # TODO: One the crawls along the ground and digs in to then pounce
-# TODO: make a monster that spawns other monsters! (HARD)
+# TODO: make a monster that shoots bullets (just other monsters really)
 # TODO: Do a monster that flys into the background
 # TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
 # TODO: catepillar monster that is a chain of monsters.
@@ -55,9 +51,11 @@ _Bones = const(1) # Random flying about
 _BonesBoss = const(2) # Main monster of the Boss Bones swarm
 _ChargingBones = const(3) # Charging player
 _ChargingBonesFriend = const(4) # Charging other player
+_Skittle = const(5) # Bug that just flies straight to the left
 Bones = _Bones
 ChargingBones = _ChargingBones
 BonesBoss = _BonesBoss
+Skittle = _Skittle
 
 # Additional hidden bahaviour data
 _data = array('I', 0 for i in range(48*5))
@@ -68,15 +66,23 @@ class Monsters:
         242,139,222,139,242,28])
     # BITMAP: width: 9, height: 8
     _bones_m = bytearray([28,62,247,243,239,243,247,62,28])
+    # BITMAP: width: 8, height: 8
+    _skittle = bytearray([56,84,56,124,56,124,56,16])
+    # BITMAP: width: 9, height: 8
+    _skittle_m = bytearray([56,124,254,124,254,124,254,124,56])
+
 
     def __init__(self, tape):
         ### Engine for all the different monsters ###
         self._tp = tape
         self._px = 0 # x pos for left edge of the active tape area
+        # Types of all the monsters
         self._tids = bytearray(0 for i in range(48))
+        # x positions of all the monsters
         self.x = array('I', 0 for i in range(48))
         # y positions start at 64 pixels above top of screen
         self.y = bytearray(0 for i in range(48))
+        # Number of monsters active
         self.num = 0 # Note this won't be updated if object driven by network
 
     @micropython.viper
@@ -137,8 +143,10 @@ class Monsters:
         # Set any monster specifics
         if mon_type == _BonesBoss:
             d[ii+4] = 20 # Starting numbr of monsters in the swarm
-        if mon_type == _Bones:
+        elif mon_type == _Bones:
             d[ii+4] = int(self._tp.x[0]) # Movement rate type
+        elif mon_type == _Skittle:
+            ys[i] = 64 + int(self._tp.players[0].y) # Target player 1
         # Increment the counter
         self.num = (int(self.num)+1) <<1|1
 
@@ -180,6 +188,9 @@ class Monsters:
             elif _ChargingBones <= typ <= _ChargingBonesFriend:
                 if t%4==1:
                     self._tick_bones_charging(t, i)
+            ## Skittle
+            elif typ == _Skittle and t%2:
+                xs[i] -= 1 # Just fly straight left
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -319,17 +330,21 @@ class Monsters:
             typeid = tids[i]
             x = xs[i]-tpx
             y = ys[i]-64
+            # Monsters in the distance get drawn to background layers
+            l = 1 if -36 <= x-px < 108 else 0
 
             # Bones class types
             if _Bones <= typeid <= _ChargingBonesFriend:
                 # Select animation frame
                 f = 2 if typeid != _Bones else 0 if t*16//_FPS % 16 else 1
-                # Monsters in the distance get drawn to background layers
-                l = 1 if -36 <= x-px < 108 else 0
                 # Draw Bones' layers and masks
                 draw(l, x-3, y-4, self._bones, 7, f) # Bones
                 mask(l, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
                 mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Backd
+            # Skittle type
+            elif typeid == _Skittle:
+                draw(l, x, y-4, self._skittle, 8, 0)
+                mask(l, x-1, y-4, self._skittle_m, 9, 0)
 
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):

@@ -161,7 +161,7 @@ class Tape:
         # - 432: Foreground monsters.
         self._stage = array('I', (0 for i in range(72*2*3+132*2)))
         # Monster classes to spawn, with likelihood of each monster class
-        # spawning (out of 255), for every 5 steps
+        # spawning (out of 255), for every 8 steps
         # Set mons_clear and mons_add to set the hooks to the monster manager.
         self.spawner = (bytearray([]), bytearray([]))
         def _pass(*arg):
@@ -251,8 +251,8 @@ class Tape:
         draw = ptr32(self._stage)
         for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
             b = uint(img[i-o])
-            draw[p+i*2] ^= (b << y) if y >= 0 else (b >> 0-y)
-            draw[p+i*2+1] ^= (b << y-32) if y >= 32 else (b >> 32-y)
+            draw[p+i*2] &= -1 ^ ((b<<y) if y >= 0 else (b>>0-y))
+            draw[p+i*2+1] &= -1 ^ ((b<<y-32) if y >= 32 else (b>>32-y))
 
     @micropython.viper
     def comp(self):
@@ -331,9 +331,8 @@ class Tape:
         stg = ptr32(self._stage)
         for i in range(288, 696):
             stg[i] = 0
-        mask = uint(0xFFFFFFFF)
         for i in range(288):
-            stg[i] = mask
+            stg[i] = -1
 
     @micropython.viper
     def check_tape(self, x: int, y: int) -> bool:
@@ -389,11 +388,11 @@ class Tape:
         spawner = self.spawner
         rates = ptr8(spawner[1])
         types = ptr8(spawner[0])
-        r = int(uint(ihash(p)))
+        r = int(uint(ihash(p))>>3)
         # Loop through each monster type randomly spawning
         # at the configured rate.
         for i in range(0, int(len(spawner[0]))):
-            if rates[i] and r%(256-rates[i]) == 0:
+            if r%2057 < rates[i]:
                 self.mons_add(types[i], p+72+36, r%64)
             r = r >> 1 # Fast reuse of random number
         xp[0] = p 
@@ -580,10 +579,8 @@ class Tape:
         ### Reset and clear the overlay layer and it's mask layer. ###
         tape = ptr32(self._tape)
         # Reset the overlay mask layer
-        mask = uint(0xFFFFFFFF)
         for i in range(2160, 2304):
-            tape[i] = mask
+            tape[i] = -1
         # Reset and clear the overlay layer
-        mask = uint(0xFFFFFFFF)
         for i in range(2304, 2448):
             tape[i] = 0

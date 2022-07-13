@@ -235,7 +235,7 @@ def pattern_none(x: int, oY: int) -> int:
 @micropython.viper
 def pattern_fill(x: int, oY: int) -> int:
     ### PATTERN [fill]: completely filled ###
-    return int(0xFFFFFFFF) # 1 for all bits
+    return -1 # 1 for all bits
 
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
@@ -403,7 +403,7 @@ def pattern_tree_wall(x: int, oY: int) -> int:
             int(0x00000FFF)<<((xa+oY)%64-16) |
             uint(0xFFF00000)>>(32-(xa)%32)
         ) if xa%12 > 4 # Tree middle
-        else int(0xFFFFFFFF) if (xa-1)%12 > 2 # Tree edges
+        else -1 if (xa-1)%12 > 2 # Tree edges
         else 0 # Tree gaps
     )
 
@@ -493,7 +493,7 @@ def pattern_forest(x: int, oY: int) -> int:
         buff[0] = x+int(shash(x,50,80)) # Tree width / gap variance
         buff[1] = x*x*40//((x%40+20)+1) # Tree patterner
     xb = buff[0]
-    return ((int(0xFFFFFFFF) if (xb-3)%120 > 94 # Trees
+    return ((-1 if (xb-3)%120 > 94 # Trees
         else 0) # Tree gaps
         | int(pattern_forest_ferns(x, oY)) # Gaps and Ferms
         | int(pattern_tree_branches(x, oY))) # Branches and vines
@@ -508,7 +508,7 @@ def pattern_forest_fill(x: int, oY: int) -> int:
             uint(0xFFF00000)>>(32-(xa)%32) |
             int(1431655765)<<(x%2)
         ) if xb%120 > 100 # Tree middle
-        else int(0xFFFFFFFF))
+        else -1)
         & int(pattern_forest_ferns_fill(x, oY))
         & int(pattern_tree_branches_fill(x, oY)))
 
@@ -527,7 +527,7 @@ def pattern_mid_forest(x: int, oY: int) -> int:
         v |= (
             int(32423421%((y+x-200)%5000+400)<300) # sunlight
          ) << (y-oY)
-    return (int(0xFFFFFFFF) if (xb-3)%60 > 39 # Trees
+    return (-1 if (xb-3)%60 > 39 # Trees
         else v
         ) | int(pattern_forest_ferns(x, oY+10)) # Gaps and Ferms
 @micropython.viper
@@ -544,9 +544,9 @@ def pattern_mid_forest_fill(x: int, oY: int) -> int:
             uint(0xFFF00000)>>(32-(xa)%32) |
             int(1431655765)<<(x//2%2)
         ) if xb%60 > 45 # Tree middle
-        else int(0xFFFFFFFF) if (xb-3)%60 > 39 # Tree edge
+        else -1 if (xb-3)%60 > 39 # Tree edge
         else 0 if (xb-5)%60 > 35 # Tree shadow
-        else int(0xFFFFFFFF)) & int(pattern_forest_ferns_fill(x, oY+5))
+        else -1) & int(pattern_forest_ferns_fill(x, oY+5))
 
 def pattern_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
