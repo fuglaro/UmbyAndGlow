@@ -278,9 +278,12 @@ class Tape:
             # alternated horizontally and in time. Someone say "time crystal".
             dimshift = (scroll[2]+x+y_pos+p1)%2
             dim = int(1431655765) << dimshift
-            # Create dimmer for the overlay layer mask
-            xdim = (0 if scroll[2]%2 else
-                (int(1431655765) << (scroll[2]//2+x+y_pos+p1)%2))
+            # Create darker dimmer for the overlay layer mask
+            xdimshift = (scroll[2]+x+y_pos+p1)%8
+            xdim = (int(-2004318072) if xdimshift == 0 else
+                int(1145324612) if xdimshift == 4 else
+                int(572662306) if xdimshift == 2 else
+                int(286331153) if xdimshift == 6 else 0)
             x2 = x*2
             overlay_mask = uint(tape[x2+2160] << y_pos)
             a = uint(((
