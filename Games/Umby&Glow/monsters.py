@@ -19,18 +19,14 @@ _FPS = const(60)
 ################################################################
 # Monster ideas and examples
 # Scout (slow wanderer on the ground, slow mover)
+# BITMAP: width: 7, height: 8
 bitmap6 = bytearray([2,62,228,124,228,62,2])
 # BITMAP: width: 7, height: 8
 bitmap7 = bytearray([63,255,255,254,255,255,63])
-# Stomper (swings up and down vertically)
-# BITMAP: width: 7, height: 8
-bitmap8 = bytearray([36,110,247,124,247,110,36])
-# BITMAP: width: 7, height: 8
-bitmap9 = bytearray([239,255,255,254,255,255,239])
+
 # TODO: One the crawls along the ground and digs in to then pounce
 # TODO: make a monster that shoots bullets (just other monsters really)
 # TODO: Do a monster that flys into the background
-# TODO: Monster which is a swirling mass of sprites (multi-sprite monsters)
 # TODO: catepillar monster that is a chain of monsters.
 # TODO: forest - owl eyes. Blink twice * 3, then swoop to new location ()
 ################################################################
@@ -52,24 +48,33 @@ _BonesBoss = const(2) # Main monster of the Boss Bones swarm
 _ChargingBones = const(3) # Charging player
 _ChargingBonesFriend = const(4) # Charging other player
 _Skittle = const(5) # Bug that just flies straight to the left
+_Stomper = const(20) # Swings up and down vertically
 Bones = _Bones
 ChargingBones = _ChargingBones
 BonesBoss = _BonesBoss
 Skittle = _Skittle
+Stomper = _Stomper
 
 # Additional hidden bahaviour data
 _data = array('I', 0 for i in range(48*5))
 
 class Monsters:
+    # Bones & BossBones: Janky flying, charging in range. (and boss swarm)
     # BITMAP: width: 7, height: 8, frames: 3
     _bones = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,
         242,139,222,139,242,28])
     # BITMAP: width: 9, height: 8
     _bones_m = bytearray([28,62,247,243,239,243,247,62,28])
+    # Skittle (flies straight across screen to the left)
     # BITMAP: width: 8, height: 8
     _skittle = bytearray([56,84,56,124,56,124,56,16])
     # BITMAP: width: 9, height: 8
     _skittle_m = bytearray([56,124,254,124,254,124,254,124,56])
+    # Stomper (swings up and down vertically)
+    # BITMAP: width: 7, height: 8
+    _stomper = bytearray([36,110,247,124,247,110,36])
+    # BITMAP: width: 7, height: 8
+    _stomper_m = bytearray([239,255,255,254,255,255,239])
 
 
     def __init__(self, tape):
@@ -336,7 +341,7 @@ class Monsters:
             # Bones class types
             if _Bones <= typeid <= _ChargingBonesFriend:
                 # Select animation frame
-                f = 2 if typeid != _Bones else 0 if t*16//_FPS % 16 else 1
+                f = 2 if typeid != _Bones else 0 if t//10 % 6 else 1
                 # Draw Bones' layers and masks
                 draw(l, x-3, y-4, self._bones, 7, f) # Bones
                 mask(l, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
@@ -345,6 +350,12 @@ class Monsters:
             elif typeid == _Skittle:
                 draw(l, x, y-4, self._skittle, 8, 0)
                 mask(l, x-1, y-4, self._skittle_m, 9, 0)
+            # Stomper type
+            elif typeid == _Stomper:
+                m = (y*16+t)%440
+                yt = m if m < 50 else 50 if m < 170 else 220-m if m < 220 else 0
+                draw(l, x-3, yt+3, self._stomper, 7, 0)
+                mask(l, x-3, yt+3, self._stomper_m, 7, 0)
 
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):

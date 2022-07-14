@@ -108,7 +108,8 @@
 #================================================
 # Chapter 2
 # Exit tunnel into plains
-200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
+200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
 
 130, "@:WOAH!"
 0,   "^:SQUIRM!"
@@ -121,7 +122,7 @@
 
 70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 150, "CHAPTER~2: The Forest"
-50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
+50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([110,20])))
 
 750, "^:Doing well there, Umby!"
 0,   "@:You too, Glow!"
@@ -129,7 +130,7 @@
 0,   "^:NICE!"
 
 # Enter forest
-400, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
+370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
 
 360, "^:Phew! We made it!"
 0,   "@:That, we did!"
