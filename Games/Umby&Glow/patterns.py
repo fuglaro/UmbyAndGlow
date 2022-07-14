@@ -17,6 +17,24 @@
 # either direction. This enables the procedural creation of levels,
 # but is really just a good way to get richness cheaply on this
 # beautiful little piece of hardware.
+#
+# All pattern functions are called twice for each column of pixels
+# on each tape layer (or mask layer). The first call returns the
+# black(0) or white(1) pixel values for the top 32 pixels (as a 32 bit int),
+# and the second call returns the bottom 32 pixels. Since each
+# tape layer has a mask layer, some functions (which take advantage
+# of a mask pattern) come with an associated fill pattern,
+# for the mask layer with black(0) or transparent(1) values. Transparency
+# will show the white pixels of the associated layer and other
+# background layers.
+# The two calls to each layer, and the calls to the mask layer are guaranteed
+# to happen subsequently, and there is a _buf global variable to store
+# persistent static variables across function calls for the same pattern and
+# fill. This allows for optimisation of expensive operations for all pixels
+# and transparency values of a column of pixels on the same tape layer.
+# Pattens functions take two arguments:
+# * x: tape position horizontally to calculate column of pixels
+# * oY (yOrigin): top vertical position of the requested 32 bits (0 or 32).
 
 from array import array
 
@@ -63,7 +81,7 @@ def shash(x: int, step: int, size: int) -> int:
 ## Pattern Library ##
 
 ################################################################
-# Interesting and example patterns
+# Unused interesting patterns, and example patterns
 #
 #@micropython.viper
 #def pattern_template(x: int, oY: int) -> int:
@@ -369,8 +387,9 @@ def pattern_cloudy_snowy_mountains(x: int, oY: int) -> int:
     for y in range(oY, oY+32):
         cloud = int(buff[3] > y > buff[3]-buff[2])
         v |= (
-            (int(y > (113111^(xa*(y-buff[0])))>>7%386) if y+8 > buff[0]+(16-buff[1])
-                 else 1 if y > buff[0] else 0 if y+3 > buff[0] else cloud)
+            (int(y > (113111^(xa*(y-buff[0])))>>7%386)
+                if y+8 > buff[0]+(16-buff[1])
+                else 1 if y > buff[0] else 0 if y+3 > buff[0] else cloud)
          ) << (y-oY)
     return v
 
