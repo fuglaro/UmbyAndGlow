@@ -122,7 +122,7 @@
 
 70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 150, "CHAPTER~2: The Forest"
-50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([110,20])))
+50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([110,40])))
 
 750, "^:Doing well there, Umby!"
 0,   "@:You too, Glow!"
@@ -150,9 +150,7 @@
 # Forest monsters
 180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([40, 30])))
 
-999, "CHAPTER~TEST: TODO"
-
-800, "@:Alright Glow..."
+900, "@:Alright Glow..."
 0,   "@:Heres what Im thinking..."
 0,   "^:Im all ears, Umby!"
 0,   "@:Our cave is not safe,"
@@ -169,15 +167,17 @@
 0,   "^:In space...?"
 0,   "@:Yes. We hitch a ride..."
 0,   "^:On a monster?"
-0,   "@:No, on a Space Y rocket!"
-0,   "^:Space Y?"
+0,   "@:No, on a Space-Y rocket!"
+0,   "^:Space-Y?"
 0,   "@:Why? To kill the aliens!"
-0,   "^:Kay, but where will we find a Space Y rocket?"
-0,   "@:We live near a Space Y launchpad!"
-0,   "@:Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space Y launch facility!-"
+0,   "^:Okay, but where will we find a Space-Y rocket?"
+0,   "@:We live near a Space-Y launchpad!"
+0,   "@:Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space-Y launch facility!-"
 0,   "@:Its on the other side of the forest."
 0,   "^:Ah! Cool! Well.. Im game!"
 0,   "@:Nice! You rock! Lets roll."
+
+999, "CHAPTER~TEST: TODO"
 
 400, "Ask fuglaro for more chapters"
 
@@ -242,9 +242,9 @@
 160, "Graphics: ------------------"
 160, "John VL"
 160, "Lily VL"
+160, "Auri"
 160, "Doogle"
 160, "Timendus"
-160, "Auri"
 160, "Story and Writing: ------------------"
 160, "John VL"
 160, "DarkGizmo"
