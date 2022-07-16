@@ -129,28 +129,29 @@
 0,   "@:The forest is just up ahead!"
 0,   "^:NICE!"
 
+220, "CHAPTER~TEST: TODO"
+
 # Enter forest
 370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
 
 360, "^:Phew! We made it!"
 0,   "@:That, we did!"
-0,   "@:Hopefully this provides some cover while we figure all this out."
+0,   "@:Found some cover to figure it all out."
 0,   "^:Cool. Um... Umby..."
 0,   "@:Yes, Glow?"
 0,   "^:You didnt happen to look up by any chance?"
-0,   "@:And see a giant alien mothership dominating the sky?"
+0,   "@:You mean the giant alien mothership dominating the sky?"
 0,   "^:Yeah. What should we do?"
 0,   "@:Lets head further in for safety."
 0,   "@:I need to come up with a plan."
 0,   "^:Sweet! No need to rush anyway..."
-0,   "^:Nobody wants to be the early worm."
+0,   "^:You dont want to be the early worm."
 
-# TODO: Add forest monsters
-180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
+# Forest monsters
+180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar]), bytearray([40])))
 
 
 
-220, "CHAPTER~TEST: TODO"
 
 
 400, "Ask fuglaro for more chapters"
@@ -177,7 +178,7 @@
 #Lung gives info as sacrifice (he will be flooded out - no time to save)
 #Flood spaceship mainframe
 #Go back home
-#Cave -> forest -> plains -> space y -> rocket -> space -> spaceship ->
+#Cave -> plains -> forest -> space y -> rocket -> space -> spaceship ->
 #    spaceship computer mainframe -> dolphin aquarium ->
 #    flooded spaceship -> forrest -> cave
 ###

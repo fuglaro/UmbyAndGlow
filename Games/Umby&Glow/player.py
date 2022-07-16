@@ -262,8 +262,8 @@ class Player:
         play(death, 240, True)
 
     @micropython.native
-    def kill(self, t, monster):
-        ### Explode the rocket, killing the monster or nothing.
+    def kill(self, t, death_pos):
+        ### Explode the rocket, killing the monster at death_pos or nothing.
         # Also carves space out of the ground.
         ###
         tape = self._tp
@@ -273,8 +273,8 @@ class Player:
         play(rocket_bang, 40)
         if -40 < rx-tape.x[0] < 112:
             # Tag the wall with a death message,
-            if monster:
-                tape.tag("RIP", monster[0], monster[1])
+            if death_pos:
+                tape.tag("RIP", death_pos[0], death_pos[1])
                 play(rocket_kill, 30)
             # Or tag the wall with an explostion mark
             else:

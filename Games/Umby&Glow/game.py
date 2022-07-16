@@ -11,12 +11,13 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import gc
+gc.threshold(1000) # Aggressive garbace collection while initialising.
+gc.enable()
 from time import ticks_ms
 from audio import audio_tick
 from comms import comms, inbuf, outbuf
 from monsters import Monsters
 from player import Player, bU, bD, bL, bR, bB, bA
-gc.collect() # Memory fragmentation needs clearing up before importing script
 from script import get_chapters, story_events, story_jump
 from tape import Tape, display_update, EMULATED
 
@@ -159,10 +160,9 @@ def run_menu():
 def run_game():
     ### Initialise the game and run the game loop ###
     # Basic setup
-    # Force memory cleanup before entering menu
-    gc.collect()
     # Start menu
     glow, coop, start, sav = run_menu()
+
 
     # Ready the level for playing
     t = 1;
@@ -177,8 +177,12 @@ def run_game():
     # Initialise coop send data
     p1.port_out(outbuf)
 
-    # Force memory cleanup before entering game loop
+    # Forceful memory reinitialisation before entering game loop
     gc.collect()
+    gc.disable()
+    gc.collect()
+    gc.threshold(-1)
+    gc.enable()
 
     # Main gameplay loop
     pstat = pstat2 = ptot = pfps1 = pfps2 = 0

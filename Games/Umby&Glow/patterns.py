@@ -23,9 +23,9 @@
 # black(0) or white(1) pixel values for the top 32 pixels (as a 32 bit int),
 # and the second call returns the bottom 32 pixels. Since each
 # tape layer has a mask layer, some functions (which take advantage
-# of a mask pattern) come with an associated fill pattern,
-# for the mask layer with black(0) or transparent(1) values. Transparency
-# will show the white pixels of the associated layer and other
+# of a mask pattern) come with an associated fill pattern. Fill patterns for
+# the mask layers return black(0) or transparent(1) values. Transparency
+# will show the white pixels of the associated layer and also other
 # background layers.
 # The two calls to each layer, and the calls to the mask layer are guaranteed
 # to happen subsequently, and there is a _buf global variable to store
