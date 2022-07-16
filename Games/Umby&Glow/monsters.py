@@ -167,12 +167,14 @@ class Monsters:
             ys[i] = 64 + int(self._tp.players[0].y) # Target player 1
         elif mon_type == _Pillar:
             # Make all the sections in the chain
+            k = i
             for j in range(5):
-                k = int(self.add(_PillarTail, x, y))
+                kn = int(self.add(_PillarTail, x, y))
+                if kn > k:
+                    k = kn
             # Swap the tail for the head is protected by body.
-            if k >= 0:
-                tids[i] = _PillarTail
-                tids[k] = _Pillar
+            tids[i] = _PillarTail
+            tids[k] = _Pillar
             # Set the turn direction (1=clockwise)
             d[k*5+1] = x%2
         elif mon_type == _Hoot:
