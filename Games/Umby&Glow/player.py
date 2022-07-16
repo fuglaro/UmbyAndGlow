@@ -288,7 +288,7 @@ class Player:
             scratch(2, x, pattern, fill)
         # DEATH: Check for death by rocket blast
         dx, dy = rx-self.x, ry-self.y
-        if dx*dx + dy*dy < 64:
+        if dx*dx + dy*dy < 48:
             self.die(self.name + " kissed a rocket!")
         # Get ready to end rocket
         self.rocket_on = 0
