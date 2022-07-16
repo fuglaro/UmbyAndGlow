@@ -377,7 +377,8 @@ class Player:
                 self._tick_play_roof(t)
             # Check for common death conditions:
             # DEATH: Check for falling into the abyss
-            if y > 20480:
+            # Grappling can go further below the screen
+            if y > 17920 and (mode != 11 or y > 32768):
                 self.die(self.name + " fell into the abyss!")
         # Respawn mode
         elif 201 <= mode <= 202:
@@ -760,18 +761,18 @@ class Player:
             hy = py-5 if y_pos < py else py+32 if y_pos > py + 41 else y_pos-6
             tape.draw(abl, hx, hy, _aim, 3, 0)
             tape.mask(1, hx, hy, _aim_fore_mask, 3, 0)
-            return
-        # Select the character specifics
-        umby = mode == 0 or mode == 201
-        sdw = (_u_sdw if not air else _u_sdw_air) if umby else _g_sdw
-        art = _u_art if umby else _g_art
-        hy = y_pos-2
-        by = y_pos-6 if umby else y_pos-1
-        # Draw Umby's or Glow's layers and masks
-        tape.draw(0, x_pos-1, hy, sdw, 3, f) # Shadow
-        tape.draw(1, x_pos-1, hy, art, 3, f) # Umby
-        tape.mask(1, x_pos-1, hy, sdw, 3, f)
-        tape.mask(0, x_pos-4, by, _ug_back_mask, 9, 0)
+        else: # Draw the worm
+            # Select the character specifics
+            umby = mode == 0 or mode == 201
+            sdw = (_u_sdw if not air else _u_sdw_air) if umby else _g_sdw
+            art = _u_art if umby else _g_art
+            hy = y_pos-2
+            by = y_pos-6 if umby else y_pos-1
+            # Draw Umby's or Glow's layers and masks
+            tape.draw(0, x_pos-1, hy, sdw, 3, f) # Shadow
+            tape.draw(1, x_pos-1, hy, art, 3, f) # Umby
+            tape.mask(1, x_pos-1, hy, sdw, 3, f)
+            tape.mask(0, x_pos-4, by, _ug_back_mask, 9, 0)
         # Aims and hooks
         if mode == 11: # Activated grappling hook rope
             hook_x, hook_y = int(self._hx), int(self._hy)
