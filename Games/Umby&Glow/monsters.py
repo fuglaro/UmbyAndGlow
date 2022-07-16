@@ -14,8 +14,6 @@
 
 from array import array
 
-_FPS = const(60)
-
 ################################################################
 # Monster ideas and examples
 
@@ -45,14 +43,16 @@ _ChargingBonesFriend = const(4) # Charging other player
 _Skittle = const(5) # Bug that just flies straight to the left
 # Gap for Monster projectiles here
 _Stomper = const(20) # Swings up and down vertically
-_Pillar = const(21)
+_Pillar = const(21) # Crawls with a catepillar-chain around edges of land
 _PillarTail = const(22)
+_Hoot = const(23) # Owl-like monster that blinks and swoops.
 Bones = _Bones
 ChargingBones = _ChargingBones
 BonesBoss = _BonesBoss
 Skittle = _Skittle
 Stomper = _Stomper
 Pillar = _Pillar
+Hoot = _Hoot
 
 # Additional hidden bahaviour data
 _data = array('I', 0 for i in range(48*5))
@@ -83,6 +83,11 @@ class Monsters:
     _pillar_tail = bytearray([66,189,66,90,66,189,66])
     # BITMAP: width: 7, height: 8
     _pillar_tail_m = bytearray([126,255,255,255,255,255,126])
+    #=== Hoot (blinks and swoops like an owl)
+    # BITMAP: width: 9, height: 8
+    _hoot = bytearray([114,142,156,248,112,248,156,142,114])
+    # BITMAP: width: 7, height: 8
+    _hoot_blink = bytearray([112,96,0,0,0,96,112])
 
     def __init__(self, tape):
         ### Engine for all the different monsters ###
@@ -133,7 +138,7 @@ class Monsters:
     @micropython.viper
     def add(self, mon_type: int, x: int, y: int) -> int:
         ### Add a monster of the given type.
-        # @returns: the index of the spawned monster
+        # @returns: the index of the spawned monster, or -1
         ###
         # Find an empty monster slot
         tids = ptr8(self._tids)
@@ -145,7 +150,7 @@ class Monsters:
             if tids[i] == 0:
                 break
         else: # Monster buffer full
-            return
+            return -1
         # Create the new monster
         self.num = (int(self.num)+1) <<1|1
         tids[i] = mon_type
@@ -164,11 +169,15 @@ class Monsters:
             # Make all the sections in the chain
             for j in range(5):
                 k = int(self.add(_PillarTail, x, y))
-            # Swap the tail for the head so the head renders over body.
-            tids[i] = _PillarTail
-            tids[k] = _Pillar
+            # Swap the tail for the head is protected by body.
+            if k >= 0:
+                tids[i] = _PillarTail
+                tids[k] = _Pillar
             # Set the turn direction (1=clockwise)
             d[k*5+1] = x%2
+        elif mon_type == _Hoot:
+            d[ii] = x
+            d[ii+1] = d[ii+3] = y
         return i
 
     @micropython.viper
@@ -199,21 +208,22 @@ class Monsters:
             ## Handle each monster type ##
             typ = tids[i]
             # Bones and BonesBoss
-            if typ == _Bones:
-                if t%2==0:
-                    self._tick_bones(t, i)
+            if typ == _Bones and  t%2==0:
+                self._tick_bones(t, i)
             elif typ == _BonesBoss:
                 self._tick_bones_boss(t, i)
             ## Charging Bones
-            elif _ChargingBones <= typ <= _ChargingBonesFriend:
-                if t%4==1:
-                    self._tick_bones_charging(t, i)
+            elif _ChargingBones <= typ <= _ChargingBonesFriend and t%4==1:
+                self._tick_bones_charging(t, i)
             ## Skittle
             elif typ == _Skittle and t%2:
                 xs[i] -= 1 # Just fly straight left
             ## Pillar
             elif typ == _Pillar and t%3==0:
                 self._tick_pillar(t, i)
+            ## Hoot
+            elif typ == _Hoot and t%2==1:
+                self._tick_hoot(t, i)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -334,7 +344,7 @@ class Monsters:
         s = t//30%2 # every other section moves, alternatively
         # Move the head
         if s:
-            tpx = int(self._tp.x[0])
+            px = int(self._px)
             x, y = xs[i], ys[i]-64
             d = data[ii] # direction of movement (down:0/left:1/up:2/right:3)
             r = data[ii+1] # rotation direction
@@ -365,12 +375,16 @@ class Monsters:
                     ys[i] += 0 if cp else npy
                     xs[i] += 0 if cp else npx
                 # Dont fly offscreen,
+                if ys[i] > 127:
+                    ys[i] = 127
+                elif ys[i] < 64:
+                    ys[i] = 64
                 if d==0 and y > 63:
                     data[ii] = 2
                 elif d==2 and y < 0:
                     data[ii] = 0
                 # or too far to the right
-                elif d==3 and x > tpx+400:
+                elif d==3 and x > px+400:
                     data[ii] = (d-rd)%4
 
         # Move the tail
@@ -385,6 +399,35 @@ class Monsters:
                     d = ys[i]-ys[j]
                     ys[j] += 1 if d > 0 else -1 if d < 0 else 0
                 i = j # Each section follows the other
+
+    @micropython.viper
+    def _tick_hoot(self, t: int, i: int):
+        ### Hoot behavior: lurking then swooping every now and then ###
+        data = ptr32(_data)
+        ii = i*5
+        t//=2
+        xs, ys = ptr32(self.x), ptr8(self.y)
+        x, y = xs[i], ys[i]-64
+        tr = (t+i*97)%200
+        if tr==0:
+            # Set new swoop location
+            data[ii], data[ii+1] = x, y
+            data[ii+2] = t*x*y%100-50
+            data[ii+3] = (t^(x*y))%50+5
+            # Dont fly too far off to the right
+            if data[ii+3] > int(self._px) + 400:
+                data[ii+3] = int(self._px) + 400
+        elif tr <= 50:
+            # Exececute the swoop
+            xs[i] = data[ii] + data[ii+2]*tr//50
+            ys[i] = 64 + data[ii+1] + (data[ii+3]-data[ii+1])*tr//50
+            # Add curve to swoop
+            ys[i] += 20 - ((20-tr)*(20-tr)//20 if tr < 20
+                else (tr-30)*(tr-30)//20 if tr >= 30 else 0)
+
+
+
+
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
@@ -415,34 +458,52 @@ class Monsters:
             typeid = tids[i]
             x = xs[i]-tpx
             y = ys[i]-64
+            pf = mf = 0 # Animation frame number
             # Monsters in the distance get drawn to background layers
             l = 1 if -36 <= x-px < 108 else 0
 
             # Bones class types
             if _Bones <= typeid <= _ChargingBonesFriend:
-                # Select animation frame
-                f = 2 if typeid != _Bones else 0 if t//10 % 6 else 1
-                # Draw Bones' layers and masks
-                draw(l, x-3, y-4, self._bones, 7, f) # Bones
-                mask(l, x-4, y-4, self._bones_m, 9, 0) # Mask Back
-                mask(0, x-4, y-4, self._bones_m, 9, 0) # Mask Fore
+                pf = 2 if typeid != _Bones else 0 if t//10 % 6 else 1
+                img, msk = self._bones, self._bones_m
+                px, py, pw = -3, -4, 7
+                mx, my, mw = -4, -4, 9
+                # Draw additional mask
+                mask(0, mx, my, msk, 9, 0) # Mask Back
             # Skittle type
             elif typeid == _Skittle:
-                draw(l, x, y-4, self._skittle, 8, 0)
-                mask(l, x-1, y-4, self._skittle_m, 9, 0)
+                img, msk = self._skittle, self._skittle_m
+                px, py, pw = 0, -4, 8
+                mx, my, mw = -1, -4, 9
             # Stomper type
             elif typeid == _Stomper:
+                img, msk = self._stomper, self._stomper_m
                 m = (y*16+t)%440
-                yt = m if m < 50 else 50 if m < 170 else 220-m if m < 220 else 0
-                draw(l, x-3, yt+3, self._stomper, 7, 0)
-                mask(l, x-3, yt+3, self._stomper_m, 7, 0)
+                px, py, pw = -3, (m if m < 50 else 50 if m < 170 else 220-m
+                    if m < 220 else 0)+3-y, 7
+                mx, my, mw = -3, py, 7
             # Pillar type
             elif typeid == _Pillar:
-                draw(l, x-3, y-4, self._pillar_head, 7, 0)
-                mask(l, x-3, y-4, self._pillar_head_m, 7, 0)
+                img, msk = self._pillar_head, self._pillar_head_m
+                px, py, pw = -3, -4, 7
+                mx, my, mw = -3, -4, 7
             elif typeid == _PillarTail:
-                draw(l, x-3, y-4, self._pillar_tail, 7, 0)
-                mask(l, x-3, y-4, self._pillar_tail_m, 7, 0)
+                img, msk = self._pillar_tail, self._pillar_tail_m
+                px, py, pw = -3, -4, 7
+                mx, my, mw = -3, -4, 7
+            # Hoot type
+            elif typeid == _Hoot:
+                img, msk = self._hoot, self._hoot_blink
+                px, py, pw = -4, -5, 9
+                mx, my, mw = -3, -5, 7 if t%120<10 or 20<t%120<30 else 0
+                # Draw open eyes
+                draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
+            else:
+                continue
+
+            # Draw the common layers
+            draw(l, x+px, y+py, img, pw, pf)
+            mask(l, x+mx, y+my, msk, mw, mf)
 
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):

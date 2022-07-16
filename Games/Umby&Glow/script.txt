@@ -129,30 +129,55 @@
 0,   "@:The forest is just up ahead!"
 0,   "^:NICE!"
 
-220, "CHAPTER~TEST: TODO"
-
 # Enter forest
 370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
 
 360, "^:Phew! We made it!"
 0,   "@:That, we did!"
-0,   "@:Found some cover to figure it all out."
+0,   "@:This should give us some cover."
 0,   "^:Cool. Um... Umby..."
 0,   "@:Yes, Glow?"
-0,   "^:You didnt happen to look up by any chance?"
-0,   "@:You mean the giant alien mothership dominating the sky?"
-0,   "^:Yeah. What should we do?"
-0,   "@:Lets head further in for safety."
+0,   "^:Did you look up back there?"
+0,   "@:I did, and I guess you are referring to..."
+0,   "@:the giant alien mothership dominating the sky?"
+0,   "^:Yeah. That. So what should we do?"
+0,   "@:Lets head in further for safety."
 0,   "@:I need to come up with a plan."
 0,   "^:Sweet! No need to rush anyway..."
-0,   "^:You dont want to be the early worm."
+0,   "^:We dont want to be the early worm."
+0,   "@:HA! No, we dont."
 
 # Forest monsters
-180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar]), bytearray([40])))
+180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([40, 30])))
 
+999, "CHAPTER~TEST: TODO"
 
-
-
+800, "@:Alright Glow..."
+0,   "@:Heres what Im thinking..."
+0,   "^:Im all ears, Umby!"
+0,   "@:Our cave is not safe,"
+0,   "^:Lol, nope!"
+0,   "@:And this thing is widespread,"
+0,   "^:No kidding!"
+0,   "@:And you know I dont like to just wait out a problem!"
+0,   "^:You are nothing if not tenatious!"
+0,   "@:So lets fix this ourselves."
+0,   "^:No way out but through!"
+0,   "^:...just one question..."
+0,   "^:How???"
+0,   "@:Simple. We head to the mothership."
+0,   "^:In space...?"
+0,   "@:Yes. We hitch a ride..."
+0,   "^:On a monster?"
+0,   "@:No, on a Space Y rocket!"
+0,   "^:Space Y?"
+0,   "@:Why? To kill the aliens!"
+0,   "^:Kay, but where will we find a Space Y rocket?"
+0,   "@:We live near a Space Y launchpad!"
+0,   "@:Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space Y launch facility!-"
+0,   "@:Its on the other side of the forest."
+0,   "^:Ah! Cool! Well.. Im game!"
+0,   "@:Nice! You rock! Lets roll."
 
 400, "Ask fuglaro for more chapters"
 
@@ -163,13 +188,6 @@
 ### # TODO turn story into script
 # TODO: Create bosses for all levels
 ###
-#Umby and Glow save their cave.
-#
-#1.1) Umby, Glow in cave, with monsters and traps being about.
-#1.2) Umby and Glow find monsters have infiltrated their cave.
-#1.3) They suspect it is Lung.
-#1.4) They decide to find out where they have come from.
-#1.5) They leave their cave.
 #
 # Worm loves worm (referenced and credited)
 #Suspect bad worm
@@ -178,9 +196,9 @@
 #Lung gives info as sacrifice (he will be flooded out - no time to save)
 #Flood spaceship mainframe
 #Go back home
-#Cave -> plains -> forest -> space y -> rocket -> space -> spaceship ->
+#Cave -> plains -> forest -> plains -> space y -> rocket -> space -> spaceship ->
 #    spaceship computer mainframe -> dolphin aquarium ->
-#    flooded spaceship -> forrest -> cave
+#    flooded spaceship -> forest -> cave
 ###
 #
 # Take your time, you don't want to be the early worm.
@@ -192,10 +210,7 @@
 #Yeah, synthesized tuna. They even thought they got the better deal. After the fish were wiped out, to the dolphins, the planet was just a big rock. From their point of view, they sold the aliens a rock for tuna.
 #Gah! Tricky Blighters!
 #
-#Good thing we live near a SpaceY launch pad.
-#We live near a SpaceY launch pad?
-#Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask "Whats that?", and I always say "The downside of living near a SpaceY facility"
-#Cool! Lets roll.
+
 #
 #
 #Time to eat the frog!
