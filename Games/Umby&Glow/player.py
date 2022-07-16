@@ -159,6 +159,7 @@ class Player:
         self._moving = 0
         self._x_vel, self._y_vel = 0, 0 # Unit is 65536 of a pixel
         self._hx, self._hy = 0, 0 # Position where hook attaches ceiling
+        self._topt = 0 # Amount of ticks Umby is being cheeky above roof
         # Internal hook parameters (resolved to player x, y in tick)
         self._hook_ang = 0 # Unit is 65536th of a radian
         self._hook_vel = 0
@@ -414,10 +415,15 @@ class Player:
         if t%3==0 and not ch(x, y-3) and ((c&4 and lwall) or (c&8 and rwall)):
             self._y = (yf-256) <<1|1 # Climbing
         # CONTROLS: Apply jump - allow continual jump until falling begins
-        if y < 1:
-            self._y = 256 <<1|1
-            self._y_vel = 0 <<1|1
-        elif c&32 and (yv < 0 or grounded):
+        if y < 0:
+            topt = int(self._topt)
+            topt += 1
+            if topt > 120:
+                self.die(self.name + " flew too close to the sun!")
+            self._topt = topt <<1|1
+        elif self._topt:
+            self._topt = 0 <<1|1
+        if c&32 and y > -32 and (yv < 0 or grounded):
             if grounded: # detatch from ground grip
                 self._y = (yf-256) <<1|1
                 play(worm_jump, 15)
@@ -425,7 +431,7 @@ class Player:
         # DEATH: Check for head smacking
         if ch(x, y-4) and c&32:
             # Only actually die if the platform hit is largish
-            if (ch(x, y-5) and
+            if (ch(x, y-5) and ch(x, y-4)
                 (ch(x-1, y-4) and ch(x-2, y-4))
                     or(ch(x+1, y-4) and ch(x+2, y-4))):
                 self.die(self.name + " face-planted the roof!")
