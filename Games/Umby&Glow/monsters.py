@@ -367,7 +367,7 @@ class Monsters:
                 # Dont fly offscreen,
                 if d==0 and y > 63:
                     data[ii] = 2
-                elif d==2 and y < :
+                elif d==2 and y < 0:
                     data[ii] = 0
                 # or too far to the right
                 elif d==3 and x > tpx+400:
