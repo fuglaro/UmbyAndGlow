@@ -434,7 +434,7 @@ class Player:
             # Only actually die if the platform hit is largish
             if (ch(x, y-5) and ch(x, y-4)
                 (ch(x-1, y-4) and ch(x-2, y-4))
-                    or(ch(x+1, y-4) and ch(x+2, y-4))):
+                    or (ch(x+1, y-4) and ch(x+2, y-4))):
                 self.die(self.name + " face-planted the roof!")
 
         # Umby's rocket.
