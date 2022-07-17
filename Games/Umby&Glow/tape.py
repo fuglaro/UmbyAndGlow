@@ -1,4 +1,5 @@
 # Copyright © 2022 John van Leeuwen <jvl@convex.cc>
+# Copyright © 2022 Auri <@Auri#8401(Discord)>
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -16,9 +17,20 @@ from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
 
-_FPS = const(60)
+# Font by Auri (@Auri#8401)
+_font = (
+    # Alphabet # BITMAP: width: 78, height: 8
+    bytearray([240,72,248,240,168,88,240,136,152,248,136,112,240,168,136,248,40,8,112,136,200,248,64,248,136,248,136,64,136,248,248,96,152,120,136,128,248,56,248,248,8,240,240,136,248,240,72,56,112,200,248,240,72,184,176,168,200,8,248,8,120,128,248,248,192,56,248,224,248,216,96,216,152,160,120,200,168,152])
+
+    + # Numbers # BITMAP: width: 30, height: 8
+    bytearray([120,136,240,144,248,192,208,136,176,136,168,88,32,48,248,88,136,104,112,168,200,8,200,56,88,168,208,56,40,240])
+    + # Symbols # BITMAP: width: 57, height: 8
+    bytearray([184,0,184,16,136,48,216,216,0,152,216,0,0,24,0,24,0,24,128,96,24,136,80,32,32,80,136,240,136,0,0,136,120,112,136,0,0,136,112,192,192,0,128,192,0,32,112,32,80,32,80,32,32,32,0,0,0])
+    )
+_font_index = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +"0123456789" +"!?:;'\"/><[]().,+*- "
 
 # Setup basic display access
+_FPS = const(60)
 from ssd1306 import SSD1306_SPI
 display = SSD1306_SPI(72, 40,
     SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
@@ -115,22 +127,9 @@ class Tape:
         self.x = memoryview(self._tape_scroll)[3:5]
         self.midx = memoryview(self._tape_scroll)[1:2]
         # Alphabet for writing text - 3x5 text size (4x6 with spacing)
-        # @ = Umby and ^ = Glow
-            # BITMAP: width: 126, height: 8
-        self.abc = (bytearray([240,40,240,248,168,208,248,136,216,248,136,112,
-            248,168,136,248,40,8,112,136,232,248,32,248,136,248,136,192,136,
-            248,248,32,216,248,128,128,248,16,248,248,8,240,248,136,248,248,40,
-            56,120,200,184,248,40,216,176,168,232,8,248,8,248,128,248,120,128,
-            120,248,64,248,216,112,216,184,160,248,200,168,152,0,0,0,0,184,0,
-            128,96,0,192,192,0,0,80,0,32,32,32,32,80,136,136,80,32,8,168,56,0,
-            248,136,136,248,0,128,240,48,0,248,192,64,32,16,32,112,32,80,32,
-            80])
-            # BITMAP: width: 30, height: 8 (numbers)
-            + bytearray([16,248,0,144,200,176,136,168,248,56,32,248,184,168,
-            72,240,168,232,8,232,24,248,168,248,56,40,248,248,136,248]))
-        self.abc_i = dict((v, i) for i, v in enumerate(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ !,.:-<>?[]@^/+*1234567890"))
-
+        # Custom emojis: @ = Umby and ^ = Glow
+        self.abc = _font + bytearray([128,240,48,0,248,192])
+        self.abc_i = dict((v, i) for i, v in enumerate(_font_index+"@^"))
         # The patterns to feed into each tape section
         self.feed = [None, None, None, None, None]
     
@@ -522,7 +521,7 @@ class Tape:
         for i in range(int(len(text))):
             for o in range(3):
                 p = (x+o+i*4)%216*2
-                b = abc_b[int(abc_i.get(text[i], 26))*3+o]
+                b = abc_b[int(abc_i.get(text[i], -1))*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
                 img2 = b >> 32-h if h-32 < 0 else b << h-32
                 # Draw to the draw layer
