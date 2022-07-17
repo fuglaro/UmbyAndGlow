@@ -44,24 +44,25 @@
 # Chapter 1
 # Cave with Bones
 1120,"CHAPTER~1: The Cave"
+
 50, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
-250, "@:Hi Glow!"
-0,   "^:Hi Umby!"
-0,   "@:These monsters are destroying our cave!"
-0,   "^:Where did they come from?"
-0,   "@:I dont know..."
-0,   "^:Do you think it was Lung?"
-0,   "@:Maybe..."
-0,   "@:But this isnt like his usual tricks."
+250, "@: Hi Glow!"
+0,   "^: Hi Umby!"
+0,   "@: These monsters are destroying our cave!"
+0,   "^: Where did they come from?"
+0,   "@: I dont know..."
+0,   "^: Do you think it was Lung?"
+0,   "@: Maybe..."
+0,   "@: But this isnt like his usual tricks."
 
 200, "Aim rockets: [UP/DOWN]"
 
 200, "---->"
-0,   "^:Hey Umby..."
-0,   "@:Yes, Glow?"
-0,   "^:They seem to be coming from outside."
-0,   "@:Indeed."
-0,   "@:Lets head to the entrance."
+0,   "^: Hey Umby..."
+0,   "@: Yes, Glow?"
+0,   "^: They seem to be coming from outside."
+0,   "@: Indeed."
+0,   "@: Lets head to the entrance."
 60,  "---->"
 120,  "---->"
 120,  "---->"
@@ -70,25 +71,25 @@
 200, "Glows tunnelling: [RIGHT/LEFT]+B [TAPPING:B]"
 200, "Shoot each other, not yourself!"
 
-600, "^:What are you thinking, Umby?"
-0,   "@:I think something is seriously wrong..."
-0,   "@:These monsters..."
-0,   "@:Ive never seen anything like them before."
-0,   "@:They seem really..."
-0,   "^:Alien?"
-0,   "@:Yes! They have, green blood!"
-0,   "^:Well, the cave entrance is just up ahead."
+600, "^: What are you thinking, Umby?"
+0,   "@: I think something is seriously wrong..."
+0,   "@: These monsters..."
+0,   "@: Ive never seen anything like them before."
+0,   "@: They seem really..."
+0,   "^: Alien?"
+0,   "@: Yes! They have, green blood!"
+0,   "^: Well, the cave entrance is just up ahead."
 60,  "---->"
 
 # Stop monster spawning
 200, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
 
-200, "^:Ummm... Umby?..."
-0,   "@:Yes Glow?..."
-0,   "^:Whats that rumbling?"
-0,   "@:Whatever it is, its big..."
-0,   "@:and its invaded the wrong cave!"
-0,   "^:Right. Lets rumble!"
+200, "^: Ummm... Umby?..."
+0,   "@: Yes Glow?..."
+0,   "^: Whats that rumbling?"
+0,   "@: Whatever it is, its big..."
+0,   "@: and its invaded the wrong cave!"
+0,   "^: Right. Lets rumble!"
 
 200, "Get ready!"
 0, BonesBoss
@@ -96,11 +97,11 @@
 # Background changes near tunnel
 500, ([pattern_cloudy_snowy_mountains,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
 
-100, "@:Nice work, Glow!"
-0,   "^:Back at ya, Umby!"
-0,   "@:I think we cleared the whole swarm."
-0,   "^:Is that all of them?"
-0,   "@:Lets head outside and find out..."
+100, "@: Nice work, Glow!"
+0,   "^: Back at ya, Umby!"
+0,   "@: I think we cleared the whole swarm."
+0,   "^: Is that all of them?"
+0,   "@: Lets head outside and find out..."
 
 # Snowy mountain background starts, and tunnel
 80, ([pattern_cloudy_snowy_mountains,pattern_none,pattern_fill,pattern_tunnel,pattern_fill],(bytearray([]), bytearray([])))
@@ -111,73 +112,89 @@
 200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
 
-130, "@:WOAH!"
-0,   "^:SQUIRM!"
-0,   "@:They are everywhere!"
-0,   "^:What are we going to do?"
-0,   "@:Keep blasting and get moving!"
-0,   "@:Theres a forest up ahead we can use for cover."
-0,   "^:Ok. Ive got your back."
-0,   "@:Lets roll..."
+130, "@: WOAH!"
+0,   "^: SQUIRM!"
+0,   "@: They are everywhere!"
+0,   "^: What are we going to do?"
+0,   "@: Keep blasting and get moving!"
+0,   "@: Theres a forest up ahead we can use for cover."
+0,   "^: Ok. Ive got your back."
+0,   "@: Lets roll..."
 
 70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 150, "CHAPTER~2: The Forest"
-50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([110,40])))
+50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])))
 
-750, "^:Doing well there, Umby!"
-0,   "@:You too, Glow!"
-0,   "@:The forest is just up ahead!"
-0,   "^:NICE!"
+750, "^: Doing well there, Umby!"
+0,   "@: You too, Glow!"
+0,   "@: The forest is just up ahead!"
+0,   "^: NICE!"
 
 # Enter forest
 370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
 
-360, "^:Phew! We made it!"
-0,   "@:That, we did!"
-0,   "@:This should give us some cover."
-0,   "^:Cool. Um... Umby..."
-0,   "@:Yes, Glow?"
-0,   "^:Did you look up back there?"
-0,   "@:I did, and I guess you are referring to..."
-0,   "@:the giant alien mothership dominating the sky?"
-0,   "^:Yeah. That. So what should we do?"
-0,   "@:Lets head in further for safety."
-0,   "@:I need to come up with a plan."
-0,   "^:Sweet! No need to rush anyway..."
-0,   "^:We dont want to be the early worm."
-0,   "@:HA! No, we dont."
+360, "^: Phew! We made it!"
+0,   "@: That, we did!"
+0,   "@: This should provide us with some cover while we think."
+0,   "^: Cool. Um... Umby..."
+0,   "@: Yes, Glow?"
+0,   "^: Did you happen to look up back there?"
+0,   "@: I did, and I guess you are referring to..."
+0,   "@: the giant alien mothership dominating the sky?"
+0,   "^: Yeah. That. So what should we do?"
+0,   "@: Lets head in further for safety."
+0,   "@: I need to come up with a plan."
+0,   "^: Sweet! No need to rush anyway..."
+0,   "^: We dont want to be the early worm."
+0,   "@: HA! No, we dont."
 
 # Forest monsters
-180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([40, 30])))
+180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([30, 15])))
 
-900, "@:Alright Glow..."
-0,   "@:Heres what Im thinking..."
-0,   "^:Im all ears, Umby!"
-0,   "@:Our cave is not safe,"
-0,   "^:Lol, nope!"
-0,   "@:And this thing is widespread,"
-0,   "^:No kidding!"
-0,   "@:And you know I dont like to just wait out a problem!"
-0,   "^:You are nothing if not tenatious!"
-0,   "@:So lets fix this ourselves."
-0,   "^:No way out but through!"
-0,   "^:...just one question..."
-0,   "^:How???"
-0,   "@:Simple. We head to the mothership."
-0,   "^:In space...?"
-0,   "@:Yes. We hitch a ride..."
-0,   "^:On a monster?"
-0,   "@:No, on a Space-Y rocket!"
-0,   "^:Space-Y?"
-0,   "@:Why? To kill the aliens!"
-0,   "^:Okay, but where will we find a Space-Y rocket?"
-0,   "@:We live near a Space-Y launchpad!"
-0,   "@:Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space-Y launch facility!-"
-0,   "@:Its on the other side of the forest."
-0,   "^:Ah! Cool! Well.. Im game!"
-0,   "@:Nice! You rock! Lets roll."
+
+800, "@: Alright Glow..."
+0,   "@: Heres what Im thinking..."
+0,   "^: Im all ears, Umby!"
+0,   "@: Our cave is not safe,"
+0,   "^: Lol, nope!"
+0,   "@: And this thing is widespread,"
+0,   "^: No kidding!"
+0,   "@: And you know I dont like to just wait out a problem!"
+0,   "^: You are nothing if not tenatious!"
+0,   "@: So lets fix this ourselves."
+0,   "^: No way out but through!"
+0,   "^: ...just one question..."
+0,   "^: How???"
+0,   "@: Simple. We head to the mothership."
+0,   "^: In space...?"
+0,   "@: Yes. We hitch a ride..."
+0,   "^: On a monster?"
+0,   "@: No, on a Space-Y rocket!"
+0,   "^: Space... Y ??"
+0,   "@: Why??.. To kill the aliens!"
+0,   "^: Okay, but where will we find a Space-Y rocket?"
+0,   "@: We live near a Space-Y launchpad!"
+0,   "@: Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space-Y launch facility!-"
+0,   "@: Its on the other side of the forest."
+0,   "^: Ah!... Cool!... Well..."
+0,   "^: Im game!"
+0,   "@: Nice! You rock!"
+0,   "^: Lets roll."
+
+# Back to the plains (less monsters this time)
+400, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([10])))
+
+200,  "^: Hey!"
+0,    "^: Umby, I see it!"
+0,    "^: Hey, yeah! There it is."
+
+# Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
+
+# TODO: Space-Y Chapter 3: flat bar in the middle of screen (nothing else) lined up with chain link fence in mid background layer
 
 999, "CHAPTER~TEST: TODO"
+
+
 
 400, "Ask fuglaro for more chapters"
 
@@ -246,13 +263,13 @@
 160, "Doogle"
 160, "Timendus"
 160, "Story and Writing: ------------------"
-160, "John VL"
+160, "FugLaro"
 160, "DarkGizmo"
 160, "Play Testers: ------------------"
 160, "Andy N"
 160, "Ann VL"
 160, "Doogle"
-160, "John VL"
+160, "HemlockMay"
 160, "Lily VL"
 160, "Mevlan S"
 160, "Paul K"
