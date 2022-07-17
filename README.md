@@ -14,4 +14,4 @@ Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of th
 * Make demo video (WIP: https://drive.google.com/file/d/1NM4SpyZwK2Xgj_-J5FfPJtdIFm1kZSmK)
 * Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
 
-Please see the credits in the source [script.py](/Games/Umby&Glow/script.py) for special thanks and contributors.
+Please see the credits in the source [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
