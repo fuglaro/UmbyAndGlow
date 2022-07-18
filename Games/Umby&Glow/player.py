@@ -432,9 +432,7 @@ class Player:
         # DEATH: Check for head smacking
         if ch(x, y-4) and c&32:
             # Only actually die if the platform hit is largish
-            if (ch(x, y-5) and ch(x, y-4)
-                (ch(x-1, y-4) and ch(x-2, y-4))
-                    or (ch(x+1, y-4) and ch(x+2, y-4))):
+            if ch(x, y-5) and ch(x, y-4) and ch(x-1, y-4) and ch(x+1, y-4):
                 self.die(self.name + " face-planted the roof!")
 
         # Umby's rocket.
@@ -783,7 +781,8 @@ class Player:
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self._aim_x), int(self._aim_y)
-        if not self._ai and not self._coop: # Only main player has aiming
+        # Aiming (only main player has aiming)
+        if mode != 199 and not self._ai and not self._coop:
             # Rocket aim
             hx = x_pos+aim_x-1
             hy = y_pos+aim_y-6
