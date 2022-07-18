@@ -43,7 +43,7 @@
 #================================================
 # Chapter 1
 # Cave with Bones
-1120,"CHAPTER~1: The Cave"
+1120,"CHAPTER~1: \n The_Cave"
 
 50, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
 250, "@: Hi Glow!"
@@ -122,7 +122,7 @@
 0,   "@: Lets roll..."
 
 70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
-150, "CHAPTER~2: The Forest"
+150, "CHAPTER~2: \n The_Forest"
 50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])))
 
 750, "^: Doing well there, Umby!"
@@ -186,27 +186,41 @@
 
 200,  "^: Hey!"
 0,    "^: Umby, I see it!"
-0,    "^: Hey, yeah! There it is."
+0,    "@: Hey, yeah! There it is."
+0,    "^: One shiny rocket."
+0,    "@: Looks like the aliens have seen it too..."
+0,    "^: What is that? A dragon?"
+0,    "@: Its some kind of giant alien worm..."
+0,    "^: Well, lets go pick on something definitely not our own size!"
+0,    "@: Right behind you, Glow!"
+
+# Stop monsters spawning
+100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+
+999, "CHAPTER~X: TEST_(TODO)"
+
+# Boss Battle: Dragon Bones
+200, DragonBones
 
 
 
-# Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
+# TODO: Boss: charging bones (slowly moves left, rushes if you try to get past) with a long line of Pillar-tails. - to kill you have to hit the number of times it has tail segments
+
+150, "CHAPTER~3: \n Space_Y"
 
 # TODO: Space-Y Chapter 3: flat bar in the middle of screen (nothing else) lined up with chain link fence in mid background layer
+# TODO: Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
 
 
 400, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
 
-999, "CHAPTER~TEST: TODO"
+999, "CHAPTER~X: TEST_(TODO)"
 
 
 300,  "\n \n ____RESTRICTED____ _______AREA_______"
 300,  "\n \n ____AUTHORIZED____ __PERSONEL_ONLY!__"
-
 300,  "\n \n ______ACTIVE______ ___LAUNCH__SITE___"
-
 300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
-
 300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
 300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
 
@@ -245,10 +259,10 @@
 #
 
 #
-#
 #Time to eat the frog!
-#Eat the frog? - Do you mean: Try to do something impossible but by never giving up, eventually succeed?
-#Yes. Eventually the worm eats all.
+#Eat the frog? - Wait, do you mean we should Try to do something impossible but by never giving up, eventually succeed?
+#Umm, sure.
+#I suppose you are right anyway, eventually the worm eats everything.
 #"""
 ################################################################
 
@@ -260,6 +274,8 @@
 160, "Hardware, Reference, and Dev Platform: ------------------"
 160, "TinyCircuits"
 160, "Special Thanks To: ------------------"
+160, "Lily VL"
+160, "Ann VL"
 160, "TinyCircuits"
 160, "TinyCircuits Thumby Discord Channel"
 160, "Auri"
@@ -269,6 +285,7 @@
 160, "Doogle"
 160, "Mason W."
 160, "Timendus"
+160, "transistortester"
 160, "Xyvir"
 160, "Game Development: ------------------"
 160, "John VL"
@@ -281,11 +298,15 @@
 160, "Story and Writing: ------------------"
 160, "FugLaro"
 160, "DarkGizmo"
+160, "Audio: ------------------"
+160, "Doogle"
+160, "HemlockMay"
+160, "transistortester"
 160, "Play Testers: ------------------"
 160, "Andy N"
 160, "Ann VL"
 160, "Doogle"
-160, "HemlockMay"
+160, "John VL"
 160, "Lily VL"
 160, "Mevlan S"
 160, "Paul K"
