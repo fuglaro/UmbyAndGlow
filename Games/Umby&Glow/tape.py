@@ -541,7 +541,7 @@ class Tape:
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in text.split(' '):
-            if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72:
+            if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72 or word=="\n":
                 lines.append("")
             lines[-1] += (" " if lines[-1] else "") + word
         # Draw centered (if applicable)
@@ -554,7 +554,8 @@ class Tape:
                 y += 10
             for i in range(leng):
                 line = lines[i]
-                self.write(layer, line, x-(int(len(line))*2), y)
+                if line:
+                    self.write(layer, line, x-(int(len(line))*2), y)
                 y += 6
         else:
             # Draw top (if applicable)
