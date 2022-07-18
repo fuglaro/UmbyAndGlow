@@ -377,17 +377,19 @@ class Monsters:
                     ys[i] += 0 if cp else npy
                     xs[i] += 0 if cp else npx
                 # Dont fly offscreen,
+                if d==0 and ys[i] > 127:
+                    data[ii] = 2
+                elif d==2 and ys[i] < 64:
+                    data[ii] = 0
                 if ys[i] > 127:
                     ys[i] = 127
                 elif ys[i] < 64:
                     ys[i] = 64
-                if d==0 and y > 63:
-                    data[ii] = 2
-                elif d==2 and y < 0:
-                    data[ii] = 0
                 # or too far to the right
-                elif d==3 and x > px+400:
-                    data[ii] = (d-rd)%4
+                elif d==3 and x > px+108:
+                    # Turn back the other way
+                    data[ii] = 1
+                    data[ii+1] = 0 if r else 1
 
         # Move the tail
         for j in range(i-1, -1, -1):
