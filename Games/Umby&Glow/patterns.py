@@ -567,6 +567,27 @@ def pattern_mid_forest_fill(x: int, oY: int) -> int:
         else 0 if (xb-5)%60 > 35 # Tree shadow
         else -1) & int(pattern_forest_ferns_fill(x, oY+5))
 
+@micropython.viper
+def pattern_fence_top(x: int, oY: int) -> int:
+    ### PATTERN [fence_top]: 4 pixel thick  ###
+    return 0 if oY else -268435456
+
+@micropython.viper
+def pattern_chain_link_fence(x: int, oY: int) -> int:
+    ### PATTERN [chain_link_fence]:
+    # chain link fence on bottom half with bar across the top
+    ###
+    if oY==0: # Top bar with post tops
+        return -268435456 if x%151>=4 else -16777216
+    # Chain mess
+    v = 0
+    for y in range(oY, oY+32):
+        ym = y%10
+        v |= (
+            1 if ym<=x%10<=ym+1 or ym<=(0-x)%10<=ym+1 or x%151<4 else 0
+        ) << (y-oY)
+    return v
+
 def pattern_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
     # position and size. Intended to be used for scratch_tape.
@@ -593,8 +614,8 @@ def pattern_bang(blast_x, blast_y, blast_size, invert):
 
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
-pattern_testing_back = pattern_fill
-pattern_testing = pattern_forest
-pattern_testing_fill = pattern_forest_fill
+pattern_testing_back = pattern_cloudy_snowy_mountains
+pattern_testing = pattern_chain_link_fence
+pattern_testing_fill = pattern_fill
 
 

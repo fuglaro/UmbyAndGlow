@@ -188,11 +188,27 @@
 0,    "^: Umby, I see it!"
 0,    "^: Hey, yeah! There it is."
 
+
+
 # Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
 
 # TODO: Space-Y Chapter 3: flat bar in the middle of screen (nothing else) lined up with chain link fence in mid background layer
 
+
+400, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
+
 999, "CHAPTER~TEST: TODO"
+
+
+300,  "\n \n ____RESTRICTED____ _______AREA_______"
+300,  "\n \n ____AUTHORIZED____ __PERSONEL_ONLY!__"
+
+300,  "\n \n ______ACTIVE______ ___LAUNCH__SITE___"
+
+300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
+
+300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
+300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
 
 
 
