@@ -79,17 +79,17 @@ def run_menu():
 
     def sel(i):
         ### Menu arrows for a particular selection ###
-        return (("  " if ch[i] else "<<")
-            + ("----" if i == ch[4] else "    ")
-            + (">>" if ch[i] else "  "))
+        return ((" " if ch[i] else "<")
+            + ("--" if i == ch[4] else "  ")
+            + (">" if ch[i] else " "))
     def update_main_menu():
         ### Draw the main selection menu ###
         ch[4] = (ch[4] + (1 if not bD() else -1 if not bU() else 0)) % 3
         if not (bL() and bR()):
             ch[ch[4]] = 0 if not bL() else 1
-        msg = "UMBY "+sel(0)+" GLOW "
-        msg += "1P   "+sel(1)+"   2P "
-        msg += "NEW  "+sel(2)+" LOAD"
+        msg = "__UMBY "+sel(0)+" GLOW__ "
+        msg += "____1P "+sel(1)+" 2P____ "
+        msg += "___NEW "+sel(2)+" LOAD__"
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
