@@ -50,13 +50,17 @@ def story_jump(tape, start, lobby):
     global _next_event, _next_at
     # Loop through the script finding the starting position, and setting
     # the level as needed.
-    while _next_at <= start:
-        # Handle level type changes
-        if isinstance(_next_event, tuple):
-            tape.feed[:] = _next_event[0]
-            tape.spawner = _next_event[1]
-        dist, _next_event = next(_line)
-        _next_at += dist
+    level = None
+    pos, ev = _next_at, _next_event
+    while pos <= start:
+        if isinstance(ev, tuple):
+            level = ev # Handle level type changes
+        dist, ev = next(_line)
+        pos += dist
+    _next_at, _next_event = pos, ev
+    if level:
+        tape.feed[:] = level[0]
+        tape.spawner = level[1]
     # Reset the tape data to match the new details, and potentially
     # clear the starting area.
     tape.reset(start)
