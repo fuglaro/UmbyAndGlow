@@ -542,9 +542,19 @@ class Tape:
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in text.split(' '):
-            if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72 or word=="\n":
+            lenn = int(len(lines[-1]))
+            if (lenn + int(len(word)) + 1)*4 > 72 or word=="\n":
+                if lenn and lenn*4 < 72 and position:
+                    # Add space after line for legibility
+                    lines[-1] += " "
                 lines.append("")
+            if word == "\n":
+                continue
             lines[-1] += (" " if lines[-1] else "") + word
+        lenn = int(len(lines[-1]))
+        if lenn and lenn*4 < 72 and position:
+            # Add space after line for legibility
+            lines[-1] += " "
         # Draw centered (if applicable)
         leng = int(len(lines))
         if position == 0:
