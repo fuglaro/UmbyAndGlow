@@ -154,6 +154,9 @@ def run_menu():
             t += 1
 
     tape.clear_overlay()
+    tape.message(0, "GET READY!!...", 3)
+    background_update()
+    tape.clear_overlay()
     return ch[0], ch[1], start, sav
 
 @micropython.native
