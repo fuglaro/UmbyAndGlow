@@ -197,16 +197,16 @@
 # Stop monsters spawning
 100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 
-999, "CHAPTER~X: TEST_(TODO)"
-
 # Boss Battle: Dragon Bones
-200, DragonBones
+200, "Get ready!"
+0, DragonBones
 
 
+999, "CHAPTER~X: TEST_(TODO)"
 
 # TODO: Boss: charging bones (slowly moves left, rushes if you try to get past) with a long line of Pillar-tails. - to kill you have to hit the number of times it has tail segments
 
-150, "CHAPTER~3: \n Space_Y"
+1150, "CHAPTER~3: \n Space_Y"
 
 # TODO: Space-Y Chapter 3: flat bar in the middle of screen (nothing else) lined up with chain link fence in mid background layer
 # TODO: Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
