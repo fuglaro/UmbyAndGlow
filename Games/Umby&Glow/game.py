@@ -242,11 +242,12 @@ def run_game():
         audio_tick()
         t += 1
 
-        # Save game every 30 seconds
+        # Save and clean memory every 30 seconds
         if (t % 1800 == 0):
             f = open(sav, "w")
             f.write(str(tape.x[0]))
             f.close()
+            gc.collect()
 
         # Flush to the display, waiting on the next frame interval
         if not prof:
