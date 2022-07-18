@@ -338,18 +338,20 @@ class Monsters:
         xs, ys = ptr32(self.x), ptr8(self.y)
         ii = i*5
         s = t//16%2 # every other section moves, alternatively
-        # Shoot Skittle projectiles
-        if t%120==0:
+        # Shoot Fireball projectiles
+        if t%240==0:
             self.add(_Fireball, xs[i], ys[i]-64)
         # Move the head
-        if int(plyrs[0].x) > xs[i]:
+        if int(plyrs[0].x) > xs[i]: # Charge rapidly if worm sneaks past
             self._tick_bones_charging(t, i)
-        elif t%3:
+        elif t%3: # Standard random Bones movements
             self._tick_bones(t, i)
-        if t%20==0: # Slowly shift to the left
-            xs[i] -= 1
+        elif t%10==0: # Drift over time towards player
+            self._tick_bones_charging(t, i)
         oy = -4 # Neck bend
         # Move the tail
+        ht = 0 # has tail?
+        mon = i
         for j in range(i-1, -1, -1):
             if tids[j] == _Pillar or tids[j] == _DragonBones:
                 break # Another head, we are done on this chain
@@ -362,6 +364,9 @@ class Monsters:
                     oy = 0
                     ys[j] += 1 if d > 0 else -1 if d < 0 else 0
                 i = j # Each section follows the other
+                ht = 1
+        if ht==0: # Switch to charging bones if no tail
+            tids[mon] = _ChargingBones
 
     @micropython.viper
     def _tick_bones_charging(self, t: int, i: int):
