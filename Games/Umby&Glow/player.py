@@ -218,7 +218,7 @@ class Player:
         if m&16:
             self.rocket_x = buf[12] + px <<1|1
             self.rocket_y = buf[13] <<1|1
-            self.kill(buf[12], None)
+            self.detonate(buf[12])
         self.mode = buf[4] <<1|1
         self.x = buf[5] + px <<1|1
         self.y = buf[6] <<1|1
@@ -263,25 +263,17 @@ class Player:
         play(death, 240, True)
 
     @micropython.native
-    def kill(self, t, death_pos):
-        ### Explode the rocket, killing the monster at death_pos or nothing.
-        # Also carves space out of the ground.
-        ###
+    def detonate(self, t):
+        ### Explode the rocket, also carving space out of the ground. ###
         tape = self._tp
         scratch = tape.scratch_tape
         rx, ry = self.rocket_x, self.rocket_y
         self._boom_x, self._boom_y = rx, ry
         play(rocket_bang, 40)
-        if -40 < rx-tape.x[0] < 112:
-            # Tag the wall with a death message,
-            if death_pos:
-                tape.tag("RIP", death_pos[0], death_pos[1])
-                play(rocket_kill, 30)
-            # Or tag the wall with an explostion mark
-            else:
-                tag = t%4
-                tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-                    "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
+        # Tag the wall with an explostion mark
+        tag = t%4
+        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
         # Carve blast hole out of ground
         pattern = pattern_bang(rx, ry, 8, 0)
         fill = pattern_bang(rx, ry, 10, 1)
@@ -461,7 +453,7 @@ class Player:
             if ry >= 80: # Defuse if fallen through ground
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground
-                self.kill(t, None)
+                self.detonate(t)
         elif b==0:
             self._hold = 0 <<1|1
 
@@ -645,7 +637,7 @@ class Player:
             if not (80>=ry>=-1) or not (-30<=rx-int(self._tp.x[0])<=102):
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground
-                self.kill(t, None)
+                self.detonate(t)
 
         # Aiming and launching
         a_pow = int(self._aim_pow)

@@ -13,6 +13,7 @@
 ## Monster types including their AI ##
 
 from array import array
+from audio import *
 
 ################################################################
 # Monster ideas and examples
@@ -578,13 +579,22 @@ class Monsters:
 
 
     @micropython.viper
+    def _kill(self, t: int, mon: int, player, tag):
+        ptr8(self._tids)[mon] = 0
+        self.num = int(self.num) - 1 <<1|1
+        if player:
+            # Explode the rocket
+            player.detonate(t)
+            # Tag the wall with a death message,
+            self._tp.tag(tag, ptr32(self.x)[mon], ptr8(self.y)[mon]-64)
+            play(rocket_kill, 30)
+
+    @micropython.viper
     def _hit_monster(self, t: int, mon: int, player):
         ### Trigger for a player shooting a monster ###
         tids = ptr8(self._tids)
         tid = tids[mon]
-        num = int(self.num)
-        xs = ptr32(self.x)
-        ys = ptr8(self.y)
+        tag = "_RIP_"
 
         # Monster specific damage behaviors
         if tid == _Pillar: # Direct hit!
@@ -592,10 +602,8 @@ class Monsters:
                 if tids[j] == _Pillar:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail: # Destroy entire chain
-                    tids[j] = 0
-                    num -=1
-                    if player:
-                        player.kill(t, (xs[j], ys[j]-64))
+                    self._kill(t, j, player, "_RIP_")
+
         elif tid == _PillarTail or tid == _DragonBones:
             # Destroy last tail segment instead
             for j in range(mon-1, -1, -1):
@@ -603,10 +611,7 @@ class Monsters:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail:
                     mon = j
+                    tag = "_OUCH!_"
 
         # Wipe the monster, do the explosion, and leave a death message
-        tids[mon] = 0
-        num -=1
-        if player:
-            player.kill(t, (xs[mon], ys[mon]-64))
-        self.num = num <<1|1
+        self._kill(t, mon, player, tag)
