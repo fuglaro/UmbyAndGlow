@@ -184,46 +184,54 @@
 # Back to the plains (less monsters this time)
 400, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([10])))
 
-200,  "^: Hey!"
-0,    "^: Umby, I see it!"
-0,    "@: Hey, yeah! There it is."
-0,    "^: One shiny rocket."
-0,    "@: Looks like the aliens have seen it too..."
-0,    "^: What is that? A dragon?"
-0,    "@: Its some kind of giant alien worm..."
-0,    "^: Well, lets go pick on something definitely not our own size!"
-0,    "@: Right behind you, Glow!"
+200, "^: Hey!"
+0,   "^: Umby, I see it!"
+0,   "@: Hey, yeah! There it is."
+0,   "^: One shiny rocket."
+0,   "@: Looks like the aliens have seen it too..."
+0,   "^: What is that? A dragon?"
+0,   "@: Its some kind of giant alien worm..."
+0,   "^: Well, lets go pick on something definitely not our own size!"
+0,   "@: Ha! Right behind you, Glow!"
 
 # Stop monsters spawning
 100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 
 # Boss Battle: Dragon Bones
-200, "Get ready!"
-0, DragonBones
+300, "Get ready!"
+100, DragonBones
+-999,"^: Nice one, Umby!"
+0,   "@: You too, Glow!"
+0,   "^: That thing was nuts!"
+0,   "@: Indeed. These things are a blight on our home. This monstrous beast is even more reason to dig in and press on."
+0,   "^: Lets go eat the frog!"
+0,   "@: Eat the frog???"
+0,   "^: Yeah!"
+0,   "@: Do you mean we should try to do something impossible but by never giving up, eventually succeed?"
+0,   "^: Umm... sure!"
+0,   "@: I suppose you are right anyway..."
+0,   "@: Eventually the worm eats all!!"
+0,   "^: Lol! Lets go catch a rocket!"
 
+1600,"CHAPTER~3: \n Space_Y"
 
-999, "CHAPTER~X: TEST_(TODO)"
-
-# TODO: Boss: charging bones (slowly moves left, rushes if you try to get past) with a long line of Pillar-tails. - to kill you have to hit the number of times it has tail segments
-
-1150, "CHAPTER~3: \n Space_Y"
-
-# TODO: Space-Y Chapter 3: flat bar in the middle of screen (nothing else) lined up with chain link fence in mid background layer
-# TODO: Boss: Chased by monster drawing energy from lots of stompers (all stompers must be killed.)
-
-
-400, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
-
-999, "CHAPTER~X: TEST_(TODO)"
-
+100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
 
 300,  "\n \n ____RESTRICTED____ _______AREA_______"
 300,  "\n \n ____AUTHORIZED____ __PERSONEL_ONLY!__"
 300,  "\n \n ______ACTIVE______ ___LAUNCH__SITE___"
+
+100,  "^: I get the feeling they dont want us here!"
+0,    "@: I get the feeling they have enough of their own things to worry about."
+
 300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
 300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
 300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
 
+500, "TODO"
+
+
+999, "CHAPTER~X: TEST_(TODO)"
 
 
 400, "Ask fuglaro for more chapters"
@@ -258,11 +266,7 @@
 #Gah! Tricky Blighters!
 #
 
-#
-#Time to eat the frog!
-#Eat the frog? - Wait, do you mean we should Try to do something impossible but by never giving up, eventually succeed?
-#Umm, sure.
-#I suppose you are right anyway, eventually the worm eats everything.
+
 #"""
 ################################################################
 
@@ -284,6 +288,7 @@
 160, "DarkGizmo"
 160, "Doogle"
 160, "Mason W."
+160, "Nicole D"
 160, "Timendus"
 160, "transistortester"
 160, "Xyvir"

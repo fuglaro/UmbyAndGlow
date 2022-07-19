@@ -145,6 +145,11 @@ class Monsters:
                 xs[i] = buf[17+i*3]+px
                 ys[i] = buf[18+i*3]
 
+    @micropython.native
+    def is_alive(self, mon):
+        ### Check if a specific monster is alive ###
+        return bool(self._tids[mon])
+
     @micropython.viper
     def add(self, mon_type: int, x: int, y: int) -> int:
         ### Add a monster of the given type.
@@ -190,6 +195,7 @@ class Monsters:
                 d[k*5+1] = x%2
             elif mon_type == _DragonBones:
                 d[k*5+4] = 1 # Movement rate
+            i = k
         elif mon_type == _Hoot:
             d[ii] = x
             d[ii+1] = d[ii+3] = y
@@ -605,13 +611,13 @@ class Monsters:
                     self._kill(t, j, player, "_RIP_")
 
         elif tid == _PillarTail or tid == _DragonBones:
+            tag = "_OUCH!_"
             # Destroy last tail segment instead
             for j in range(mon-1, -1, -1):
                 if tids[j] == _Pillar:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail:
                     mon = j
-                    tag = "_OUCH!_"
 
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)

@@ -74,13 +74,14 @@ def story_jump(tape, start, lobby):
 
 _dialog_queue = []
 _dialog_c = 0 # Next line counter
+_active_battle = -1
 
 @micropython.viper
 def story_events(tape, mons, coop_px: int):
     ### Update story events including dialog and level type changes.
     # Update to the new px tape position: coop (furthest tape scroll of both players)
     ###
-    global _dialog_c, _next_event, _next_at
+    global _dialog_c, _next_event, _next_at, _active_battle
     # Update current dialog queue, if needed.
     dc = int(_dialog_c)
     if dc > 0: # Decrement the next-line counter
@@ -94,6 +95,12 @@ def story_events(tape, mons, coop_px: int):
         tape.message(position, text, 3)
         # Dialog display time (in ticks)
         _dialog_c = 60 + int(len(text))*5//2
+
+    # Check if we are in an active battle
+    if int(_active_battle) >= 0:
+        if mons.is_alive(_active_battle):
+            return
+        _active_battle = -1 <<1|1
 
     # Check for, and potentially action, the next event
     pos = int(tape.x[0])
@@ -128,7 +135,8 @@ def story_events(tape, mons, coop_px: int):
                 tape.message(0, event, 1)
         # Handle specific monster spawns like bosses.
         else:
-            mons.add(event, pos+144, 32)
+            # Pause script until monster is killed
+            _active_battle = mons.add(event, pos+144, 32)
         dist, _next_event = next(_line)
         _next_at += dist
 
