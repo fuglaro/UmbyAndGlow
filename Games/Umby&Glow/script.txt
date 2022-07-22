@@ -228,7 +228,18 @@
 300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
 300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
 
-500, "TODO"
+300,  "@: Glow, I see the launch area."
+0,    "^: Me too, Umby!"
+0,    "@: If we can get across it, we just need to find a way on."
+0,    "^: Check out the alien crawlers we need to fight through.
+0,    "@: Nice and clear of dragons though."
+0,    "^: Yep. Thanks to us!"
+0,    "@: Lets worm our way in."
+0,    "^: Lol! Go you!"
+
+# TODO: Make this the Space-Y launch area
+100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
+
 
 
 999, "CHAPTER~X: TEST_(TODO)"
@@ -238,6 +249,58 @@
 
 ################################################################
 # Story WIP and Ideas
+#
+#Umby Space Y
+#
+#Rocket ship
+#Rocket ship has left and right wall monsters that have specific attacks that just keep the worms in the center (need to detect which monster hits a player).
+#Left and right walls shut, keeping the player inside. Cant see outside.
+#Background layer monsters can be seen outside, along with clouds and stars. At different rates, they fall down the screen. (Use a bones that explodes on contact with ground - for use elsewhere - maybe another level? Maybe on the return home (because they are falling out of the sky? - fast but doesnt kill worm, just knocks them back and destroys land)
+#
+#Leading to rocket - boxes piled on ground. Jumping monster?
+#
+#After launch - rocket destroyed by aliens.
+#
+#
+#----
+#Rockets in background
+#Countdown to doors closing.  If you don't make it, it's reset. Doors bounce you back off. "Umby was too slow"
+#
+#Doors shut locking you in and you can see from outside that the rocket is lifting off.
+#Monsters get denser, stars start to show. Dialog at **timed intervals**. Needs timer events in dialog queue.
+#Death behaviour changes to not scroll back (based on "spaced" variable). Instead, holds worm in middle vertical spot for a while then places on platform on same horizonal position.
+#
+#Falling monsters and stars are controlled by the right door. That does all the work and timings. This way, everything outside can shake during liftoff.
+#
+#Monsters start falling down.
+#
+#^: Woaaaah! Here we go!
+#@: Brace yourself, Glow!
+#^: I'm hard stuck to this beam. Make sure youre good too, Umby!
+#@: Thanks! These G's are only increasing. I'm well planted!
+#
+#Monsters get faster.
+#
+#
+#
+#----
+#Level with monster wall that chases you is after the aquarium is destroyed, and a wall of water and monsters rushes after you and you are escaping the exploding ship.
+#Lots of stompers to navigate.
+#
+#----
+#Space
+#
+#Mon: alien with tentacles like an octopus.
+#Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
+#
+#Umby and Glow behave differently:
+# - Glow has no gravity but still wall crawls
+# - Umby has very low gravity moving downward.
+#
+#Normal gravity returns when getting on the alien ship.
+#
+#
+#
 #
 ###
 ### # TODO turn story into script

@@ -588,6 +588,72 @@ def pattern_chain_link_fence(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
+@micropython.viper
+def pattern_launch_area(x: int, oY: int) -> int:
+    ### PATTERN [launch_area]: TODO
+    # Puffy clouds with fairly-flat ground (foreground)
+    ###
+    # buff: [cloud-height, cloud-level, ground height]
+    buff = ptr32(_buf)
+    if oY == 0:
+        bx = int(shash(x//9,8,12))
+        br = int(shash(x//9,1,4))
+        buff[0] = (0 if bx < 6 else bx-6)*9 + (0 if br < 2 else br-2)*9
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y>45-buff[0]) # Ground and boxes
+
+
+         ) << (y-oY)
+    return v
+@micropython.viper
+def pattern_launch_area_fill(x: int, oY: int) -> int:
+    ### PATTERN [launch_area_fill]: TODO
+    # Puffy clouds with fairly-flat ground (foreground)
+    ###
+    # buff: [cloud-height, cloud-level, ground height]
+    buff = ptr32(_buf)
+    xb = (x-4)%9
+    bsq = x%9==1 or x%9==7
+    bedg = (x+1)%9<2
+    v = 0
+    for y in range(oY, oY+32):
+        yb = (y-5)%9
+        v |= (
+            # Ground and shadow
+            0 if y//3%2==0 and ((x+y)//3)%2 and y>45 else # Ground pattern
+            1 if y>42+buff[0]-xb//2 else # Shadow containment
+            (1 if (x+y)%(y-42) else 0) if y>45+buff[0]//5 # Scatter shadow
+            else (x+y)%2 if y>45 else # Main shadow
+            # Boxes
+            (0 if (xb==yb%9 or xb==(0-yb)%9 # box crosses
+                or bsq or y%9==2 or y%9==8) # Box squares
+                and not (bedg or y%9<2) # edge of boxes
+                else 1)
+            if y>45-buff[0]
+            else 1 # Sky
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_launch_back(x: int, oY: int) -> int:
+    ### PATTERN [launch_area]: TODO
+    # Puffy clouds with fairly-flat ground (foreground)
+    ###
+    # buff: [cloud-height, cloud-level, ground height]
+    buff = ptr32(_buf)
+    if oY == 0:
+        bx = int(shash(x//8,4,12))
+        br = int(shash(x//8,1,4))
+        buff[0] = (0 if bx < 6 else bx-6)*4 + (0 if br < 2 else br-2)*4
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            int(y>43-buff[0])
+         ) << (y-oY)
+    return v
+
 def pattern_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
     # position and size. Intended to be used for scratch_tape.
@@ -614,8 +680,8 @@ def pattern_bang(blast_x, blast_y, blast_size, invert):
 
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
-pattern_testing_back = pattern_cloudy_snowy_mountains
-pattern_testing = pattern_chain_link_fence
-pattern_testing_fill = pattern_fill
+pattern_testing_back = pattern_launch_back
+pattern_testing = pattern_launch_area
+pattern_testing_fill = pattern_launch_area_fill
 
 
