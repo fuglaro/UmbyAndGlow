@@ -224,6 +224,7 @@
 100,  "^: I get the feeling they dont want us here!"
 0,    "@: I get the feeling they have enough of their own things to worry about."
 
+300,  "\n \n _____SPACE__Y...__ _BECAUSE_ITS_COOL!"
 300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
 300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
 300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
@@ -231,14 +232,14 @@
 300,  "@: Glow, I see the launch area."
 0,    "^: Me too, Umby!"
 0,    "@: If we can get across it, we just need to find a way on."
-0,    "^: Check out the alien crawlers we need to fight through.
+0,    "^: Check out the alien crawlers we need to fight through."
 0,    "@: Nice and clear of dragons though."
 0,    "^: Yep. Thanks to us!"
 0,    "@: Lets worm our way in."
 0,    "^: Lol! Go you!"
 
 # TODO: Make this the Space-Y launch area
-100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
+100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
 
 
 
