@@ -590,29 +590,48 @@ def pattern_chain_link_fence(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_launch_area(x: int, oY: int) -> int:
-    ### PATTERN [launch_area]: TODO
-    # Puffy clouds with fairly-flat ground (foreground)
+    ### PATTERN [launch_area]:
+    # High flat ground with boxes and hanging platforms.
     ###
-    # buff: [cloud-height, cloud-level, ground height]
+    # buff: [box-height, platform height, chain pattern]
     buff = ptr32(_buf)
     if oY == 0:
         bx = int(shash(x//9,8,12))
         br = int(shash(x//9,1,4))
+        # Boxes
         buff[0] = (0 if bx < 6 else bx-6)*9 + (0 if br < 2 else br-2)*9
+        pr = int(ihash(x//42)) # For 0-3 platforms with 5 pixel gaps
+        plnum = pr&3 # Num platforms TODO optimise out
+        pr >>= 2
+        pllvl1 = pr&15 # First platform height
+        pr >>= 5
+        pnd = 22 if plnum==2 else 14*plnum+1 # length of platfrom
+        plse = (x%42)%pnd # position into gap and platform
+        # Height of current platform and gaps(-8)
+        buff[1] = (-8 if pnd-plse < 8 or plnum==0 else
+            pllvl1 + (x%42//pnd)*(int(pr&15)-8))
+        # Chain: 1 = middle chain, 2 = chain edge
+        buff[2] = 1 if plse==1 or pnd-plse==9 else 2 if plse<3 or pnd-plse<11 else 0
+    pllvl = buff[1]
+    chain = buff[2]
+
     v = 0
     for y in range(oY, oY+32):
+        cy = y-pllvl+1
         v |= (
-            int(y>45-buff[0]) # Ground and boxes
-
-
+            1 if y>45-buff[0] else # Ground and boxes
+            1 if pllvl < y < pllvl+3 # Platforms
+                or (chain and y < pllvl and ( # Chains
+                    cy%3==0 and chain==1 or cy%3>0 and chain==2))
+            else 0
          ) << (y-oY)
     return v
 @micropython.viper
 def pattern_launch_area_fill(x: int, oY: int) -> int:
-    ### PATTERN [launch_area_fill]: TODO
-    # Puffy clouds with fairly-flat ground (foreground)
+    ### PATTERN [launch_area_fill]:
+    # Associated fill patter for launch_area includes:
+    # box decoration, box shadows, and ground pattern.
     ###
-    # buff: [cloud-height, cloud-level, ground height]
     buff = ptr32(_buf)
     xb = (x-4)%9
     bsq = x%9==1 or x%9==7
@@ -638,18 +657,26 @@ def pattern_launch_area_fill(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_launch_back(x: int, oY: int) -> int:
-    ### PATTERN [launch_area]: TODO
-    # Puffy clouds with fairly-flat ground (foreground)
+    ### PATTERN [launch_back]:
+    # Distant background boxes and rockets.
     ###
-    # buff: [cloud-height, cloud-level, ground height]
+    # buff: [box height, rocket middle]
     buff = ptr32(_buf)
     if oY == 0:
         bx = int(shash(x//8,4,12))
         br = int(shash(x//8,1,4))
         buff[0] = (0 if bx < 6 else bx-6)*4 + (0 if br < 2 else br-2)*4
+        # Rocket parameters
+        rx = x%50-20
+        buff[1] = rx+2 if rx > 0 else rx-2
+    rx = buff[1]
     v = 0
     for y in range(oY, oY+32):
+        ry = y//3-11
         v |= (
+            # Rockets in the distance
+            1 if rx*rx+ry*ry < 30 or (y<43 and rx*rx//5<y-30) else
+            # Boxes in the distance
             int(y>43-buff[0])
          ) << (y-oY)
     return v
