@@ -11,7 +11,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import gc
-gc.threshold(1000) # Aggressive garbace collection while initialising.
+gc.threshold(2000) # Aggressive garbace collection while initialising.
 gc.enable()
 from time import ticks_ms
 from audio import audio_tick
