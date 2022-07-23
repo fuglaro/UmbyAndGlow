@@ -12,7 +12,7 @@
 
 ## Players and input ##
 
-from machine import Pin
+from machine import Pin, reset
 from math import sqrt, floor
 from patterns import *
 from audio import *
@@ -258,7 +258,10 @@ class Player:
         self._y_vel = 0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
         self._respawn_x = self._x - 90000
-        self._tp.message(0, death_message, 3)
+        self._tp.message(0, death_message + " \n \n Continue? \n 5", 3)
+        self._death_message = death_message
+        self._continue = 5
+        self._cacc = 0 # Continue acceptance 0=held, 1=released, 2=accepted
         self._air = 1
         play(death, 240, True)
 
@@ -686,6 +689,23 @@ class Player:
         xf = int(self._x)
         yf = int(self._y)
         rex = int(self._respawn_x)
+        last_cont = int(self._continue)
+        c = int(self._c)
+        cacc = int(self._cacc)
+        # Update continue question
+        cont = (xf-rex)//15360
+        if cont != last_cont and cont >= 0 and cacc != 2:
+            self._continue = cont <<1|1
+            tape.clear_overlay()
+            tape.message(0, self._death_message
+                + " \n \n Continue? \n " + str(self._continue), 3)
+        if cacc==0 and c&(16|32)==0:
+            cacc = 1
+        if cacc==1 and c&(16|32):
+            tape.clear_overlay()
+            tape.message(0, self._death_message, 3)
+            cacc = 2
+        self._cacc = cacc <<1|1
         # Move player towards the respawn location
         if xf > rex:
             self._x = xf-256 <<1|1
@@ -695,6 +715,9 @@ class Player:
                 # Draw the starting platform
                 tape.redraw_tape(2, (xf>>8)-5, pattern_room, pattern_fill)
         else:
+            # Check if player continues
+            if cacc!=2:
+                reset()
             # Cancel any rocket powering
             self._aim_pow = 256 <<1|1
             # Hide any death message
