@@ -64,8 +64,8 @@
 0,   "@: Indeed."
 0,   "@: Lets head to the entrance."
 60,  "---->"
-120,  "---->"
-120,  "---->"
+120, "---->"
+120, "---->"
 
 200, "Umbys platforms: B*2"
 200, "Glows tunnelling: [RIGHT/LEFT]+B [TAPPING:B]"
@@ -239,14 +239,14 @@
 0,    "^: Lol! Go you!"
 
 # TODO: Make this the Space-Y launch area
-100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
+100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Bones,Stomper,Molaar]), bytearray([5,5,100])))
 
 
 
 999, "CHAPTER~X: TEST_(TODO)"
 
 
-400, "Ask fuglaro for more chapters"
+4400, "Ask fuglaro for more chapters"
 
 ################################################################
 # Story WIP and Ideas
@@ -293,6 +293,7 @@
 #
 #Mon: alien with tentacles like an octopus.
 #Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
+#Similar to Bones but shoots fireballs.
 #
 #Umby and Glow behave differently:
 # - Glow has no gravity but still wall crawls

@@ -614,14 +614,14 @@ def pattern_launch_area(x: int, oY: int) -> int:
         buff[2] = 1 if plse==1 or pnd-plse==9 else 2 if plse<3 or pnd-plse<11 else 0
     pllvl = buff[1]
     chain = buff[2]
-
     v = 0
     for y in range(oY, oY+32):
         cy = y-pllvl+1
         v |= (
             1 if y>45-buff[0] else # Ground and boxes
             1 if pllvl < y < pllvl+3 # Platforms
-                or (chain and y < pllvl and ( # Chains
+                or ((0 if chain!=0 and y==0 else chain) # Prevent Molaar traps
+                    and y < pllvl and ( # Chains
                     cy%3==0 and chain==1 or cy%3>0 and chain==2))
             else 0
          ) << (y-oY)
