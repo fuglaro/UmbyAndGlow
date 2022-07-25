@@ -11,7 +11,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import gc
-gc.threshold(2000) # Aggressive garbace collection while initialising.
+gc.threshold(16000) # Aggressive garbace collection while initialising.
 gc.enable()
 from time import ticks_ms
 from audio import audio_tick
@@ -180,12 +180,9 @@ def run_game():
     # Initialise coop send data
     p1.port_out(outbuf)
 
-    # Forceful memory reinitialisation before entering game loop
-    gc.collect()
-    gc.disable()
+    # Memory clearing before relaxing gc and entering game loop
     gc.collect()
     gc.threshold(-1)
-    gc.enable()
 
     # Main gameplay loop
     pstat = pstat2 = ptot = pfps1 = pfps2 = 0

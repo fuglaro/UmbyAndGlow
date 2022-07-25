@@ -15,5 +15,6 @@ Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of th
 * Full game description and overview (for arcade_description.txt file)
 * Make demo video (WIP: https://drive.google.com/file/d/1NM4SpyZwK2Xgj_-J5FfPJtdIFm1kZSmK)
 * Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
+* Reduce gc threshold during init to 2000
 
 Please see the credits in the source [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
