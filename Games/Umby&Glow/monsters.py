@@ -606,7 +606,7 @@ class Monsters:
         px = int(self._px) - tpx
 
         # Extract the states and positions of the rockets
-        r1, r2 = 0, 0
+        r1 = r2 = 0
         if p1:
             r1 = int(p1.rocket_on)
             r1x, r1y = int(p1.rocket_x)-tpx, int(p1.rocket_y)
@@ -640,37 +640,40 @@ class Monsters:
         ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
+        mx = px = -3
+        my = py = -4
+        mw = pw = 8
 
         # Bones class types
         if _Bones <= tid <= _ChargingBonesFriend:
             pf = 2 if tid != _Bones else 0 if t//10 % 6 else 1
             img, msk = self._bones, self._bones_m
-            px, py, pw = -3, -4, 7
-            mx, my, mw = -4, -4, 9
+            pw = 7
+            mx = -4
+            mw = 9
             # Draw additional mask
             tape.mask(0, mx, my, msk, 9, 0) # Mask Back
         # Skittle type
         elif tid == _Skittle:
             img, msk = self._skittle, self._skittle_m
-            px, py, pw = 0, -4, 8
-            mx, my, mw = -1, -4, 9
+            px = 0
+            mx = -1
+            mw = 9
         # Fireball type
         elif tid == _Fireball:
             img, msk = self._fireball, self._fireball_m
-            px, py, pw = 0, -4, 8
-            mx, my, mw = 0, -4, 8
+            px = mx = 0
         # Stomper type
         elif tid == _Stomper:
             img, msk = self._stomper, self._stomper_m
             m = (y*16+t)%440
-            px, py, pw = -3, (m if m < 50 else 50 if m < 170 else 220-m
-                if m < 220 else 0)+3-y, 7
-            mx, my, mw = -3, py, 7
+            my = py = (m if m < 50 else 50 if m < 170 else 220-m
+                if m < 220 else 0)+3-y
+            mw = pw = 7
         # Molaar type
         elif _Molaar <= tid <= _MolaarClimbingCharging:
             img, msk = self._molaar_feet, self._molaar_feet_m
-            px, py, pw = -3, -4, 6
-            mx, my, mw = -3, -4, 6
+            mw = pw = 6
             # Handle Charging
             hf = 0 if tid < _MolaarCharging else 1
             hpx = 0 if tid < _MolaarCharging else 2
@@ -690,17 +693,17 @@ class Monsters:
         # Pillar type
         elif tid == _Pillar:
             img, msk = self._pillar_head, self._pillar_head_m
-            px, py, pw = -3, -4, 7
-            mx, my, mw = -3, -4, 7
+            mw = pw = 7
         elif tid == _PillarTail:
             img, msk = self._pillar_tail, self._pillar_tail_m
-            px, py, pw = -3, -4, 7
-            mx, my, mw = -3, -4, 7
+            mw = pw = 7
         # Hoot type
         elif tid == _Hoot:
             img, msk = self._hoot, self._hoot_blink
-            px, py, pw = -4, -5, 9
-            mx, my, mw = -3, -5, 7 if t%120<10 or 20<t%120<30 else 0
+            px = -4
+            my = py = -5
+            pw = 9
+            mw = 7 if t%120<10 or 20<t%120<30 else 0
             # Draw open eyes
             tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
         else:

@@ -82,7 +82,7 @@ def _load_title_screen():
     display = SSD1306_SPI(72, 40,
         SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
     if "rate" not in dir(display): # Load the emulator display if using the IDE API
-        from thumby import display
+        from thumbyGraphics import display
         display.display.buffer[:] = title
         display.update()
     else: # Otherwise use the raw one if on the thumby device

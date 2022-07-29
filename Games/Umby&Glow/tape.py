@@ -38,7 +38,7 @@ display = SSD1306_SPI(72, 40,
 EMULATED = "rate" not in dir(display)
 _REFRESH = _FPS if EMULATED else _FPS*2 
 if EMULATED: # Load the emulator display if using the IDE API
-    from thumby import display as emu_dpy
+    from thumbyGraphics import display as emu_dpy
     emu_dpy.setFPS(_FPS)
     display_update = emu_dpy.update
     _display_buffer = emu_dpy.display.buffer
