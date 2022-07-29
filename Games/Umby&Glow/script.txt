@@ -53,7 +53,7 @@
 0,   "@: I dont know..."
 0,   "^: Do you think it was Lung?"
 0,   "@: Maybe..."
-0,   "@: But this isnt like his usual tricks."
+0,   "@: But this isn't like his usual tricks."
 
 200, "Aim rockets: [UP/DOWN]"
 
@@ -74,7 +74,7 @@
 600, "^: What are you thinking, Umby?"
 0,   "@: I think something is seriously wrong..."
 0,   "@: These monsters..."
-0,   "@: Ive never seen anything like them before."
+0,   "@: I've never seen anything like them before."
 0,   "@: They seem really..."
 0,   "^: Alien?"
 0,   "@: Yes! They have, green blood!"
@@ -86,13 +86,15 @@
 
 200, "^: Ummm... Umby?..."
 0,   "@: Yes Glow?..."
-0,   "^: Whats that rumbling?"
+0,   "^: What's that rumbling?"
 0,   "@: Whatever it is, its big..."
-0,   "@: and its invaded the wrong cave!"
+0,   "@: and it's invaded the wrong cave!"
 0,   "^: Right. Lets rumble!"
 
 200, "Get ready!"
-0, BonesBoss
+0,   BonesBoss
+0,   "@: Nailed that hit!!"
+0,   "^: Sweet!"
 
 # Background changes near tunnel
 500, ([pattern_cloudy_snowy_mountains,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
@@ -101,7 +103,7 @@
 0,   "^: Back at ya, Umby!"
 0,   "@: I think we cleared the whole swarm."
 0,   "^: Is that all of them?"
-0,   "@: Lets head outside and find out..."
+0,   "@: Let's head outside and find out..."
 
 # Snowy mountain background starts, and tunnel
 80, ([pattern_cloudy_snowy_mountains,pattern_none,pattern_fill,pattern_tunnel,pattern_fill],(bytearray([]), bytearray([])))
@@ -140,9 +142,9 @@
 0,   "@: Yes, Glow?"
 0,   "^: Did you happen to look up back there?"
 0,   "@: I did, and I guess you are referring to..."
-0,   "@: the giant alien mothership dominating the sky?"
+0,   "@: The giant alien mothership dominating the sky?"
 0,   "^: Yeah. That. So what should we do?"
-0,   "@: Lets head in further for safety."
+0,   "@: Let's head in further for safety."
 0,   "@: I need to come up with a plan."
 0,   "^: Sweet! No need to rush anyway..."
 0,   "^: We dont want to be the early worm."
@@ -153,15 +155,15 @@
 
 
 800, "@: Alright Glow..."
-0,   "@: Heres what Im thinking..."
-0,   "^: Im all ears, Umby!"
+0,   "@: Here's what I'm thinking..."
+0,   "^: I'm all ears, Umby!"
 0,   "@: Our cave is not safe,"
 0,   "^: Lol, nope!"
 0,   "@: And this thing is widespread,"
 0,   "^: No kidding!"
 0,   "@: And you know I dont like to just wait out a problem!"
 0,   "^: You are nothing if not tenatious!"
-0,   "@: So lets fix this ourselves."
+0,   "@: So let's fix this ourselves."
 0,   "^: No way out but through!"
 0,   "^: ...just one question..."
 0,   "^: How???"
@@ -174,12 +176,12 @@
 0,   "@: Why??.. To kill the aliens!"
 0,   "^: Okay, but where will we find a Space-Y rocket?"
 0,   "@: We live near a Space-Y launchpad!"
-0,   "@: Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -Whats that?-, and I always say -The downside of living near a Space-Y launch facility!-"
-0,   "@: Its on the other side of the forest."
+0,   "@: Literally like every 3 weeks or so, the whole cave shakes itself half loose, and you always ask -What's that?-, and I always say -The downside of living near a Space-Y launch facility!-"
+0,   "@: It's on the other side of the forest."
 0,   "^: Ah!... Cool!... Well..."
-0,   "^: Im game!"
+0,   "^: I'm game!"
 0,   "@: Nice! You rock!"
-0,   "^: Lets roll."
+0,   "^: Let's roll."
 
 # Back to the plains (less monsters this time)
 400, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([10])))
@@ -191,7 +193,7 @@
 0,   "@: Looks like the aliens have seen it too..."
 0,   "^: What is that? A dragon?"
 0,   "@: Its some kind of giant alien worm..."
-0,   "^: Well, lets go pick on something definitely not our own size!"
+0,   "^: Well, let's go pick on something definitely not our own size!"
 0,   "@: Ha! Right behind you, Glow!"
 
 # Stop monsters spawning
@@ -204,16 +206,16 @@
 0,   "@: You too, Glow!"
 0,   "^: That thing was nuts!"
 0,   "@: Indeed. These things are a blight on our home. This monstrous beast is even more reason to dig in and press on."
-0,   "^: Lets go eat the frog!"
+0,   "^: Let's go eat the frog!"
 0,   "@: Eat the frog???"
 0,   "^: Yeah!"
 0,   "@: Do you mean we should try to do something impossible but by never giving up, eventually succeed?"
 0,   "^: Umm... sure!"
 0,   "@: I suppose you are right anyway..."
 0,   "@: Eventually the worm eats all!!"
-0,   "^: Lol! Lets go catch a rocket!"
+0,   "^: Too right! Let's go catch a rocket!"
 
-1600,"CHAPTER~3: \n Space_Y"
+1600,"CHAPTER~3: \n Space-Y"
 
 100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
 
@@ -221,8 +223,9 @@
 300,  "\n \n ____AUTHORIZED____ __PERSONEL_ONLY!__"
 300,  "\n \n ______ACTIVE______ ___LAUNCH__SITE___"
 
-100,  "^: I get the feeling they dont want us here!"
+100,  "^: I get the feeling they don't want us here!"
 0,    "@: I get the feeling they have enough of their own things to worry about."
+0,    "^: No kidding!"
 
 300,  "\n \n _____SPACE__Y...__ _BECAUSE_ITS_COOL!"
 300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
@@ -231,19 +234,56 @@
 
 300,  "@: Glow, I see the launch area."
 0,    "^: Me too, Umby!"
-0,    "@: If we can get across it, we just need to find a way on."
-0,    "^: Check out the alien crawlers we need to fight through."
+0,    "@: If we can cross it, we'll just need a way onboard."
+0,    "^: Check out all the alien crawlers we need to fight through."
 0,    "@: Nice and clear of dragons though."
 0,    "^: Yep. Thanks to us!"
-0,    "@: Lets worm our way in."
+0,    "@: Let's worm our way in."
 0,    "^: Lol! Go you!"
 
-# TODO: Make this the Space-Y launch area
-100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Bones,Stomper,Molaar]), bytearray([5,5,100])))
+# Molaar infested launch area
+100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Bones,Stomper,Molaar]), bytearray([10,5,60])))
+
+900,  "@: Nice spree there, Glow!"
+0,    "^: Umby, I'm almost enjoying this!"
+0,    "@: It's nice to make the most of it."
+0,    "@: It looks like we are about halfway through this swarm."
+0,    "^: So we just have more mulch to make!"
+0,    "@: Yep, one monster at a time..."
+
+# Launch area (close to rocket, only monsters are stompers)
+900, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Stomper]), bytearray([20])))
 
 
+200,  "^: Umby, we are major mulch machines!"
+0,    "@: No time to dawdle, Glow."
+0,    "@: Looks like they're getting ready for something..."
+0,    "^: Something like a launch sequence?"
+0,    "@: Precisely."
+0,    "@: This is the one time we want to be the early worm!"
+0,    "^: Last one on's a rotten egg!"
+0,    "@: Mmmm... Delicious!"
+
+# Launch pad (with stompers)
+
+# TODO: increase stomper rate to 40
+
+200, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_pad,pattern_launch_pad_fill],(bytearray([Stomper]), bytearray([0])))
+
+300,  "\n \n ____PREPARING_____ _LAUNCH_SEQEUENCE_"
 
 999, "CHAPTER~X: TEST_(TODO)"
+
+# Create rocket and start countdown (moves +500 into distance automatically)
+300, LeftDoor
+# TODO:test allowing this battle to continue script.
+500,   ([pattern_none,pattern_none,pattern_fill,pattern_door,pattern_fill],(bytearray([]), bytearray([])))
+20,  ([pattern_none,pattern_none,pattern_fill,pattern_room,pattern_fill],(bytearray([]), bytearray([])))
+
+
+# TODO Rocket blast
+
+
 
 
 4400, "Ask fuglaro for more chapters"
@@ -254,6 +294,7 @@
 #Umby Space Y
 #
 #Rocket ship
+# LEFT DOOR: manages player and rockets directly. Never draws a sprite, only manipulates tape directly!
 #Rocket ship has left and right wall monsters that have specific attacks that just keep the worms in the center (need to detect which monster hits a player).
 #Left and right walls shut, keeping the player inside. Cant see outside.
 #Background layer monsters can be seen outside, along with clouds and stars. At different rates, they fall down the screen. (Use a bones that explodes on contact with ground - for use elsewhere - maybe another level? Maybe on the return home (because they are falling out of the sky? - fast but doesnt kill worm, just knocks them back and destroys land)

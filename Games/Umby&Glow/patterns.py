@@ -266,6 +266,16 @@ def pattern_room(x: int, oY: int) -> int:
     return v
 
 @micropython.viper
+def pattern_door(x: int, oY: int) -> int:
+    ### PATTERN [door]:- low height mid tunnel ###
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if y < 25 else 1 if y > 30 else 0
+        ) << (y-oY)
+    return v
+
+@micropython.viper
 def pattern_cave(x: int, oY: int) -> int:
     ### PATTERN [cave]:
     # Cave system with ceiling and ground. Ceiling is never less
@@ -601,7 +611,7 @@ def pattern_launch_area(x: int, oY: int) -> int:
         # Boxes
         buff[0] = (0 if bx < 6 else bx-6)*9 + (0 if br < 2 else br-2)*9
         pr = int(ihash(x//42)) # For 0-3 platforms with 5 pixel gaps
-        plnum = pr&3 # Num platforms TODO optimise out
+        plnum = pr&3 # Num platforms
         pr >>= 2
         pllvl1 = pr&15 # First platform height
         pr >>= 5
@@ -611,7 +621,8 @@ def pattern_launch_area(x: int, oY: int) -> int:
         buff[1] = (-8 if pnd-plse < 8 or plnum==0 else
             pllvl1 + (x%42//pnd)*(int(pr&15)-8))
         # Chain: 1 = middle chain, 2 = chain edge
-        buff[2] = 1 if plse==1 or pnd-plse==9 else 2 if plse<3 or pnd-plse<11 else 0
+        buff[2] = (1 if plse==1 or pnd-plse==9 else
+            2 if plse<3 or pnd-plse<11 else 0)
     pllvl = buff[1]
     chain = buff[2]
     v = 0
@@ -622,14 +633,14 @@ def pattern_launch_area(x: int, oY: int) -> int:
             1 if pllvl < y < pllvl+3 # Platforms
                 or ((0 if chain!=0 and y==0 else chain) # Prevent Molaar traps
                     and y < pllvl and ( # Chains
-                    cy%3==0 and chain==1 or cy%3>0 and chain==2))
+                        cy%3==0 and chain==1 or cy%3>0 and chain==2))
             else 0
          ) << (y-oY)
     return v
 @micropython.viper
 def pattern_launch_area_fill(x: int, oY: int) -> int:
     ### PATTERN [launch_area_fill]:
-    # Associated fill patter for launch_area includes:
+    # Associated fill pattern for launch_area includes:
     # box decoration, box shadows, and ground pattern.
     ###
     buff = ptr32(_buf)
@@ -652,6 +663,53 @@ def pattern_launch_area_fill(x: int, oY: int) -> int:
                 else 1)
             if y>45-buff[0]
             else 1 # Sky
+         ) << (y-oY)
+    return v
+
+@micropython.viper
+def pattern_launch_pad(x: int, oY: int) -> int:
+    ### PATTERN [launch_pad]:
+    # Similar to launch area but no boxes and no crane platform variance.
+    ###
+    # buff: [box-height, platform height, chain pattern]
+    buff = ptr32(_buf)
+    if oY == 0:
+        pr = int(ihash(x//42)) # For 0-3 platforms with 5 pixel gaps
+        plnum = pr&3 or 1 # Num platforms
+        pr >>= 2
+        pllvl1 = (pr&7) + 8 # First platform height
+        pr >>= 4
+        pnd = 22 if plnum==2 else 14*plnum+1 # length of platfrom
+        plse = (x%42)%pnd # position into gap and platform
+        # Height of current platform and gaps(-8)
+        buff[1] = -8 if pnd-plse < 8 else pllvl1
+        # Chain: 1 = middle chain, 2 = chain edge
+        buff[2] = (1 if plse==1 or pnd-plse==9 else
+            2 if plse<3 or pnd-plse<11 else 0)
+    pllvl = buff[1]
+    chain = buff[2]
+    v = 0
+    for y in range(oY, oY+32):
+        cy = y-pllvl+1
+        v |= (
+            1 if y>45 else # Ground
+            1 if pllvl < y < pllvl+3 # Platforms
+                or ((0 if chain!=0 and y==0 else chain) # Prevent Molaar traps
+                    and y < pllvl and ( # Chains
+                        cy%3==0 and chain==1 or cy%3>0 and chain==2))
+            else 0
+         ) << (y-oY)
+    return v
+@micropython.viper
+def pattern_launch_pad_fill(x: int, oY: int) -> int:
+    ### PATTERN [launch_pad_fill]:
+    # Associated fill pattern for launch_pad includes:
+    # Ground pattern only.
+    ###
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            0 if y//3%2==0 and ((x+y)//3)%2 and y>45 else 1
          ) << (y-oY)
     return v
 
@@ -708,7 +766,7 @@ def pattern_bang(blast_x, blast_y, blast_size, invert):
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
 pattern_testing_back = pattern_launch_back
-pattern_testing = pattern_launch_area
-pattern_testing_fill = pattern_launch_area_fill
+pattern_testing = pattern_launch_pad
+pattern_testing_fill = pattern_launch_pad_fill
 
 

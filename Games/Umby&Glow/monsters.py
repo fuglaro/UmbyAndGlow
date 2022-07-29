@@ -56,6 +56,7 @@ _MolaarClimbingCharging = const(26) # Mode: charing fireball and climbing up
 _Pillar = const(27) # Crawls with a catepillar-chain around edges of land
 _PillarTail = const(28)
 _Hoot = const(29) # Owl-like monster that blinks and swoops.
+_LeftDoor = const(30) # Door that manages countdown sequence for rocket.
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
@@ -66,6 +67,8 @@ Stomper = _Stomper
 Molaar = _Molaar
 Pillar = _Pillar
 Hoot = _Hoot
+LeftDoor = _LeftDoor
+boss_types = [_BonesBoss, _DragonBones]
 
 # Additional hidden bahaviour data
 _data = array('I', 0 for i in range(48*5))
@@ -111,7 +114,7 @@ class Monsters:
     _molaar_head = bytearray([44,70,100,78,107,73,38,30,
         102,195,230,134,203,137,230,126])
     # BITMAP: width: 6, height: 8
-    _molaar_feet = bytearray([24,52,36,36,44,24])
+    _molaar_feet = bytearray([120,52,36,36,44,24])
     # BITMAP: width: 6, height: 8
     _molaar_feet_m = bytearray([60,126,255,255,126,60])
     # BITMAP: width: 4, height: 8, frames: 2 (up tail, down tail)
@@ -223,6 +226,10 @@ class Monsters:
         elif mon_type == _Hoot:
             d[ii] = x
             d[ii+1] = d[ii+3] = y
+        elif mon_type == _LeftDoor:
+            d[ii] = -1 # Countdown timer paused
+            # Send self 500 pixels into distance
+            ptr32(self.x)[i] += 500
         return i
 
     @micropython.viper
@@ -272,6 +279,9 @@ class Monsters:
             ## Hoot
             elif typ == _Hoot and t%2==1:
                 self._tick_hoot(t, i)
+            ## LeftDoor (RocketShip manager)
+            elif typ == _LeftDoor:
+                self._tick_left_door(t, i)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -439,8 +449,8 @@ class Monsters:
             d = data[ii] # direction of movement (down:0/left:1/up:2/right:3)
             r = data[ii+1] # rotation direction
             if ch(x, y): # Try to find an edge from within solid foreground
-                xs[i] -= 1
-                ys[i] += -1 if t%250<100 and y > 4 else 1 if y < 60 else 0
+                xs[i] -= 1 if tid==_Pillar or t%30==0 else 0
+                ys[i] += -1 if t%360<180 and y > 1 else 1 if y < 62 else 0
             else:
                 # Prepare edge crawling detection and turn variables
                 npx = 1 if d==3 else -1 if d==1 else 0
@@ -490,7 +500,7 @@ class Monsters:
                 tids[i] = (_Molaar if d<=1 else _MolaarClimbing if d==2
                     else _MolaarHanging)
                 # Update charging
-                if (t+data[ii+2])%180<50:
+                if (t+data[ii+2])%360<50:
                     tids[i] += 3
                 elif _old_tid > _MolaarClimbing:
                     # Released charge - launch fireball
@@ -535,6 +545,57 @@ class Monsters:
             # Add curve to swoop
             ys[i] += 20 - ((20-tr)*(20-tr)//20 if tr < 20
                 else (tr-30)*(tr-30)//20 if tr >= 30 else 0)
+
+    @micropython.viper
+    def _tick_left_door(self, t: int, i: int):
+        tape = self._tp
+        plyrs = tape.players
+        data = ptr32(_data)
+        ii = i*5
+        x = ptr32(self.x)[i]
+        p1x = int(plyrs[0].x)
+        p2x = x+9999 if int(len(plyrs))==1 else int(plyrs[1].x)
+        timer = data[ii]
+        alive = int(plyrs[0].mode) < 200
+
+        # Start the countdown timer when both players close
+        if timer < 0 and p1x > x-500 and p2x > x-500 and alive:
+            data[ii] = 0
+        # Update the countdown timer if player not respawning
+        elif 100 <= timer < 1300 and (timer-100)%120 == 0 and alive:
+            tape.clear_overlay()
+            msg = "T-Minus " + str((1300-timer)//120)
+            tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
+            
+            print(plyrs[0].x, x) # TODO
+
+
+        # Handle countdown finishing
+        elif timer == 1300:
+            if p1x < x or p2x < x:
+                # One of the players failed failed to board
+                name = plyrs[0].name if p1x < x else plyrs[1].name
+                msg = name + " failed to board!"
+                plyrs[0].die(msg, (x-600)*256)
+                data[ii] = -9
+            else:
+                # Players boarded!
+                tape.clear_overlay()
+                msg = "Ready to Launch!"
+                tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
+        # Handle launch stage 1 (cam shaking)
+        elif timer == 1420:
+            tape.clear_overlay()
+
+        # Increase the timer if active
+        if timer >= 0:        
+            data[ii] += 1
+
+
+
+
+
+
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
@@ -642,6 +703,8 @@ class Monsters:
             mx, my, mw = -3, -5, 7 if t%120<10 or 20<t%120<30 else 0
             # Draw open eyes
             tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
+        else:
+            return
 
         # Draw the common layers
         tape.draw(l, x+px, y+py, img, pw, pf)
@@ -682,6 +745,9 @@ class Monsters:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail:
                     mon = j
+        elif tid == _LeftDoor:
+            # LeftDoor can't die
+            return
 
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)

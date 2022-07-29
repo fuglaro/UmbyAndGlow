@@ -250,17 +250,24 @@ class Player:
         return 1 if 199 <= int(self.mode) <= 202 or self._ai or self._coop else 0
 
     @micropython.native
-    def die(self, death_message):
+    def die(self, death_message, respawn=None):
+        ### Start respawn sequence.
+        # @param death_message: message to display
+        # @param respawn: respawn point to move to, or default (1px=256)
+        ###
         if self.immune:
             return
         ### Put Player into a respawning state ###
         self._x_vel = 0 # Reset speed
         self._y_vel = 0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
-        self._respawn_x = self._x - 90000
+        if respawn == None:
+            respawn = self._x - 90000
+        self._respawn_x = respawn
+        self._tp.clear_overlay()
         self._tp.message(0, death_message + " \n \n Continue? \n 5", 3)
         self._death_message = death_message
-        self._continue = 5
+        self._continue = 300
         self._cacc = 0 # Continue acceptance 0=held, 1=released, 2=accepted
         self._air = 1
         play(death, 240, True)
@@ -689,35 +696,38 @@ class Player:
         xf = int(self._x)
         yf = int(self._y)
         rex = int(self._respawn_x)
-        last_cont = int(self._continue)
+        cont = int(self._continue)
         c = int(self._c)
         cacc = int(self._cacc)
+
         # Update continue question
-        cont = (xf-rex)//15360
-        if cont != last_cont and cont >= 0 and cacc != 2:
-            self._continue = cont <<1|1
-            tape.clear_overlay()
-            tape.message(0, self._death_message
-                + " \n \n Continue? \n " + str(self._continue), 3)
+        if cont%60==0 and cacc != 2:
+            if cont >= 0:
+                tape.clear_overlay()
+                tape.message(0, self._death_message
+                    + " \n \n Continue? \n " + str(cont//60), 3)
+            else:
+                reset()
+        self._continue = cont-1 <<1|1
         if cacc==0 and c&(16|32)==0:
             cacc = 1
-        if cacc==1 and c&(16|32):
+        elif cacc==1 and c&(16|32):
             tape.clear_overlay()
             tape.message(0, self._death_message, 3)
             cacc = 2
         self._cacc = cacc <<1|1
+
         # Move player towards the respawn location
-        if xf > rex:
-            self._x = xf-256 <<1|1
+        if xf//256 != rex//256 or cont >= -60:
+            self._x = xf + (256 if xf<rex else -256 if xf>rex else 0) <<1|1
             self._y = (yf + 0 if (yf>>8) == 20 else
                 yf+256 if (yf>>8) < 20 else yf-256) <<1|1
-            if xf < rex + 4680:
-                # Draw the starting platform
+            # Draw the starting platform
+            if rex <= xf < rex + 4000:
                 tape.redraw_tape(2, (xf>>8)-5, pattern_room, pattern_fill)
+            elif rex - 4000 < xf <= rex:
+                tape.redraw_tape(2, (xf>>8)+5, pattern_room, pattern_fill)
         else:
-            # Check if player continues
-            if cacc!=2:
-                reset()
             # Cancel any rocket powering
             self._aim_pow = 256 <<1|1
             # Hide any death message

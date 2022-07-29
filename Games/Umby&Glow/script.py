@@ -82,7 +82,10 @@ def story_events(tape, mons, coop_px: int):
     # Update to the new px tape position: coop (furthest tape scroll of both players)
     ###
     global _dialog_c, _next_event, _next_at, _active_battle
-    # Update current dialog queue, if needed.
+    # Don't progress script if respawning
+    if tape.players and int(tape.players[0].mode) > 200:
+        return
+    # Update current dialog queue.
     dc = int(_dialog_c)
     if dc > 0: # Decrement the next-line counter
         dc -= 1
@@ -135,8 +138,10 @@ def story_events(tape, mons, coop_px: int):
                 tape.message(0, event, 1)
         # Handle specific monster spawns like bosses.
         else:
-            # Pause script until monster is killed
+            # Pause script until boss monsters are killed
             _active_battle = mons.add(event, pos+144, 32)
+            if _active_battle not in boss_types:
+                _active_battle = -1
         dist, _next_event = next(_line)
         _next_at += dist
 
