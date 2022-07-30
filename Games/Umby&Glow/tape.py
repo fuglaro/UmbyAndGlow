@@ -129,10 +129,12 @@ class Tape:
         self.midx = memoryview(self._tape_scroll)[1:2]
         # Alphabet for writing text - 3x5 text size (4x6 with spacing)
         # Custom emojis: @ = Umby and ^ = Glow
-        self.abc = _font + bytearray([128,240,48,0,248,192])
-        self.abc_i = dict((v, i) for i, v in enumerate(_font_index+"@^"))
+        self._abc = _font + bytearray([128,240,48,0,248,192])
+        self._abc_i = dict((v, i) for i, v in enumerate(_font_index+"@^"))
         # The patterns to feed into each tape section
         self.feed = [None, None, None, None, None]
+        # Camera shake amount, 0 for None
+        self.cam_shake = 0
     
         # Actor and player management variables
         ### Render and collision detection buffer
@@ -170,6 +172,7 @@ class Tape:
         self.mons_add = _pass
         # How far along the tape spawning has completed
         self._x = array('I', [0])
+        self.player = None # Player at this device
         self.players = [] # Player register for interactions
         self.clear_overlay()
         self.clear_stage()
@@ -349,8 +352,6 @@ class Tape:
         ### Scroll the tape one pixel forwards, or backwards for each layer.
         # Updates the tape scroll position of that layer.
         # Fills in the new column with pattern data from the relevant
-        # pattern functions. Since this is a rotating buffer, this writes
-        # over the column that has been scrolled offscreen.
         # Each layer can be moved in the following directions:
         #     -1 -> rewind layer backwards,
         #     0 -> leave layer unmoved,
@@ -489,7 +490,8 @@ class Tape:
             self.scroll_tape(n if c % 4 == 0 else 0, n*(c % 2), n)
         # Reset the vertical offset as needed
         y -= 20
-        ptr32(self._tape_scroll)[4] = (y if y >= 0 else 0) if y <= 24 else 24
+        ptr32(self._tape_scroll)[4] = ((y if y >= 0 else 0) if y <= 24
+            else 24) + t//2%(int(self.cam_shake)+1)
 
     @micropython.viper
     def write(self, layer: int, text, x: int, y: int):
@@ -506,8 +508,8 @@ class Tape:
         ###
         text = text.upper() # only uppercase is supported
         tape = ptr32(self._tape)
-        abc_b = ptr8(self.abc)
-        abc_i = self.abc_i
+        abc_b = ptr8(self._abc)
+        abc_i = self._abc_i
         h = y - 8 # y position is from bottom of text
         # Select the relevant layers
         mask = 864 if layer == 1 else 2160

@@ -13,7 +13,8 @@
 ## Monster types including their AI ##
 
 from array import array
-from audio import *
+from audio import play, rocket_kill
+from patterns import *
 
 ### Bones is a monster that flyes about then charges the player.
 # Bones looks a bit like a skull.
@@ -39,12 +40,13 @@ from audio import *
 # All monsters will diw if they go offscreen to the left + 72 pixels but
 # some monsters have avoidance tactics.
 _Bones = const(1) # Random flying about
-_BonesBoss = const(2) # Main monster of the Boss Bones swarm
-_DragonBones = const(3) # Head monster of the Dragon Bones chain
-_ChargingBones = const(4) # Charging player
-_ChargingBonesFriend = const(5) # Charging other player
-_Skittle = const(6) # Bug that just flies straight to the left at player
-_Fireball = const(7) # Projectile that just flies straight to the left
+_BackBones = const(2) # Background bones (non interactive)
+_BonesBoss = const(3) # Main monster of the Boss Bones swarm
+_DragonBones = const(4) # Head monster of the Dragon Bones chain
+_ChargingBones = const(5) # Charging player
+_ChargingBonesFriend = const(6) # Charging other player
+_Skittle = const(7) # Bug that just flies straight to the left at player
+_Fireball = const(8) # Projectile that just flies straight to the left
 # Gap for Monster projectiles here
 _Stomper = const(20) # Swings up and down vertically
 _Molaar = const(21) # Crawls around edges of land, shooting fireballs
@@ -69,6 +71,9 @@ Pillar = _Pillar
 Hoot = _Hoot
 LeftDoor = _LeftDoor
 boss_types = [_BonesBoss, _DragonBones]
+
+# Dialog from worms in reaction to monster events
+reactions = []
 
 # Additional hidden bahaviour data
 _data = array('I', 0 for i in range(48*5))
@@ -199,11 +204,13 @@ class Monsters:
 
         # Set any monster specifics
         if mon_type == _BonesBoss:
-            d[ii+4] = 20 # Starting numbr of monsters in the swarm
+            d[ii+4] = 20 # Starting number of monsters in the swarm
         elif mon_type == _Bones:
             d[ii+4] = int(self._tp.x[0]) # Movement rate type
+        elif mon_type == _BackBones:
+            d[ii+4] = x//4 # Movement rate type
         elif mon_type == _Skittle:
-            ys[i] = 64 + int(self._tp.players[0].y) # Target player 1
+            ys[i] = 64 + int(self._tp.player.y) # Target player 1
         elif mon_type == _Pillar or mon_type == _DragonBones:
             # Make all the sections in the chain
             k = i
@@ -260,7 +267,7 @@ class Monsters:
             ## Handle each monster type ##
             typ = tids[i]
             # Bones and BonesBoss
-            if typ == _Bones and  t%2==0:
+            if _Bones <= typ <= _BackBones and t%2==0:
                 self._tick_bones(t, i)
             elif typ == _BonesBoss:
                 self._tick_bones_boss(t, i)
@@ -318,7 +325,7 @@ class Monsters:
             p1 = int(len(plyrs)) > 0
             p1x = int(plyrs[0].x) if p1 else 0
             p1y = int(plyrs[0].y) if p1 else 0
-            p2 = int(len(plyrs)) > 1
+            p2 = int(plyrs[1].coop) if int(len(plyrs)) > 1 else 0
             p2x = int(plyrs[1].x) if p2 else 0
             p2y = int(plyrs[1].y) if p2 else 0
             if p1 and (p1x-x)*(p1x-x) + (p1y-y)*(p1y-y) < 300:
@@ -374,7 +381,7 @@ class Monsters:
         ### Dragon with a bones head, and a chain of Pillar tails,
         # Also shoots fireballs
         ###
-        plyrs = self._tp.players
+        plyr = self._tp.player
         tids = ptr8(self._tids)
         xs, ys = ptr32(self.x), ptr8(self.y)
         ii = i*5
@@ -383,7 +390,7 @@ class Monsters:
         if t%240==0:
             self.add(_Fireball, xs[i], ys[i]-64)
         # Move the head
-        if int(plyrs[0].x) > xs[i]: # Charge rapidly if worm sneaks past
+        if int(plyr.x) > xs[i]: # Charge rapidly if worm sneaks past
             self._tick_bones_charging(t, i)
         elif t%3: # Standard random Bones movements
             self._tick_bones(t, i)
@@ -419,7 +426,7 @@ class Monsters:
         if typ != _ChargingBonesFriend:
             px = int(plyrs[0].x)
             py = int(plyrs[0].y)
-        elif int(len(plyrs)) > 1:
+        elif int(len(plyrs)) > 1 and plyrs[1].coop:
             px = int(plyrs[1].x)
             py = int(plyrs[1].y)
         else:
@@ -548,16 +555,23 @@ class Monsters:
 
     @micropython.viper
     def _tick_left_door(self, t: int, i: int):
+        ### TODO ###
         tape = self._tp
+        rx = int(tape.x[0]) + 140
+        mx = int(tape.midx[0]) + 140
         plyrs = tape.players
+        tids = ptr8(self._tids)
+        xs = ptr32(self.x)
+        ys = ptr8(self.y)
         data = ptr32(_data)
         ii = i*5
-        x = ptr32(self.x)[i]
-        p1x = int(plyrs[0].x)
-        p2x = x+9999 if int(len(plyrs))==1 else int(plyrs[1].x)
+        x = xs[i]
+        p1, p2 = plyrs[0], plyrs[1]
+        p1x = int(p1.x)
+        p2x = int(p2.x)
         timer = data[ii]
         alive = int(plyrs[0].mode) < 200
-
+    
         # Start the countdown timer when both players close
         if timer < 0 and p1x > x-500 and p2x > x-500 and alive:
             data[ii] = 0
@@ -566,35 +580,149 @@ class Monsters:
             tape.clear_overlay()
             msg = "T-Minus " + str((1300-timer)//120)
             tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
+        else:
+            self._left_door_events(timer, p1, p1x, p2, p2x, ii, x)
+    
+        # Increase the timer if active
+        if timer >= 0:
+            data[ii] += 1
+    
+        # Keep redrawing the rocket ship windows when in flight
+        if timer >= 1600:
+            tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
+    
+        # Stop walls being destroyed
+        r1x = int(p1.rocket_x)
+        if p1.rocket_on and ((r1x <= x+2 and timer >= 1300) or r1x >= x+77):
+            p1.rocket_on = 0 <<1|1
+        r2x = int(p2.rocket_x)
+        if not p2.coop and p2.rocket_on and (
+                (r2x <= x+2 and timer >= 1300) or r2x >= x+77):
+            p2.rocket_on = 0 <<1|1
+
+        # Draw spaceship
+        if timer < 1300:
+            if rx > x-20:
+                ptrn = (pattern_door if rx<x else pattern_room if rx<x+80 else
+                    pattern_fill)
+                tape.redraw_tape(2, rx, ptrn, pattern_fill)
+            x1 = x-20-rx+mx
+            if rx > x:
+                tape.redraw_tape(1, x1, pattern_fill, pattern_fill)
+            if mx-20 > x1:
+                tape.redraw_tape(1, mx-20, pattern_fill, pattern_fill)
+    
+        # Keep background monsters in range and falling
+        if timer%(8-data[ii+1])==0:
+            for xi in range(48):
+                if tids[xi] != _BackBones:
+                    continue
+                if xs[xi] > x+88:
+                    xs[xi] = x+88
+                elif xs[xi] < x-8:
+                    xs[xi] = x-8
+                if ys[xi] > 104:
+                    ys[xi] = 74
+                ys[xi] += data[ii+2]
+    
+        # Flying sequence monster spawning
+        if 2200 < timer < 50000 and timer%180==0:
+            p = (timer^x)%448
+            x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
+            y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
+            mon = _Molaar if y1==63 and 50 < x1 < 140 else _ChargingBones
+            self.add(mon, x+x1-40, y1+64)
+
+        # Stop monsters hogging the respawn area or charging for too long
+        xi = timer//2%48
+        if tids[xi] == _ChargingBones:
+            if xs[xi] == p1x or ys[xi] == int(p1.y):
+                if int(p1.mode) > 200:
+                    if xs[xi] == p1x:
+                        xs[xi] += 30 if xi%2 else -30
+                    else:
+                        ys[xi] += 30 if xi//2%2 else -30
+                tids[xi] = _Bones
+                data[xi*5+4] = 2
+        # Keep monsters in area
+        if tids[xi] == _Bones:
+            if xs[xi] > x+120:
+                xs[xi] == x+120
+            elif xs[xi] < x-20:
+                xs[xi] == x-20
             
-            print(plyrs[0].x, x) # TODO
+            
+    
+        # TODO end rocket launch (release into space)
+        # TODO unset custom respawn point
+        # TODO add charging bones monsters offscreen
+        # TODO giant cam shake before exploding
 
-
+    def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
+        ### TODO ###
+        tape = self._tp
         # Handle countdown finishing
-        elif timer == 1300:
-            if p1x < x or p2x < x:
+        if timer == 1300:
+            if p1x < x or (p2.coop and p2x < x):
                 # One of the players failed failed to board
-                name = plyrs[0].name if p1x < x else plyrs[1].name
+                name = p1.name if p1x < x else p2.name
                 msg = name + " failed to board!"
-                plyrs[0].die(msg, (x-600)*256)
-                data[ii] = -9
+                p1.die(msg, (x-600)*256)
+                tape.feed = [pattern_cloudy_snowy_mountains,pattern_launch_back,
+                    pattern_fill,pattern_launch_pad,pattern_launch_pad_fill]
+                _data[ii] = -9
             else:
                 # Players boarded!
                 tape.clear_overlay()
                 msg = "Ready to Launch!"
                 tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
+                # Shut the rocket doors
+                for xi in range(x-80, x):
+                    tape.redraw_tape(2, xi, pattern_fill, pattern_fill)
+                for xi in range(0, 216):
+                    tape.redraw_tape(0, xi, pattern_none, None)
+                # Set repawn point to be within rocket
+                p1.respawn_loc = x + 40
         # Handle launch stage 1 (cam shaking)
-        elif timer == 1420:
+        elif timer == 1400:
             tape.clear_overlay()
+            tape.cam_shake = 3
+        elif timer == 1450:
+            reactions.extend(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
+                "@: Brace yourself, Glow!",
+                "^: I'm stuck to this beam. You brace too, Umby!",
+                "@: The G-Force is only increasing. I'm well planted!"])
+            # Release background monsters
+            for xi in range(20):
+                self.add(_BackBones, x+xi*4, 10)
+            _data[ii+2] = 1 # Start lifting off
 
-        # Increase the timer if active
-        if timer >= 0:        
-            data[ii] += 1
-
-
-
-
-
+        # Lift off acceleration sequence
+        elif timer == 1800:
+            _data[ii+2] = 1
+        elif timer == 1900:
+            _data[ii+1] = 1
+        elif timer == 2000:
+            _data[ii+1] = 2
+        elif timer == 2100:
+            _data[ii+1] = 3
+        elif timer == 2200:
+            _data[ii+1] = 4
+        elif timer == 2300:
+            _data[ii+1] = 5
+        elif timer == 2400:
+            _data[ii+1] = 6
+        elif timer == 2600:
+            _data[ii+1] = 7
+        elif timer == 2800:
+            _data[ii+2] = 2
+            tape.cam_shake = 2
+        elif timer == 3000:
+            _data[ii+2] = 3
+            tape.cam_shake = 1
+        elif timer == 3200:
+            _data[ii+2] = 4
+            tape.cam_shake = 0
 
 
     @micropython.viper
@@ -646,11 +774,15 @@ class Monsters:
 
         # Bones class types
         if _Bones <= tid <= _ChargingBonesFriend:
-            pf = 2 if tid != _Bones else 0 if t//10 % 6 else 1
+            pf = 2 if not _Bones <= tid <= _BackBones else 0 if t//10 % 6 else 1
             img, msk = self._bones, self._bones_m
             pw = 7
             mx = -4
             mw = 9
+            # Just draw main mask for BackBones
+            if tid == _BackBones:
+                tape.draw(0, x+px, y+py, img, pw, pf)
+                return
             # Draw additional mask
             tape.mask(0, mx, my, msk, 9, 0) # Mask Back
         # Skittle type
@@ -754,3 +886,4 @@ class Monsters:
 
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)
+

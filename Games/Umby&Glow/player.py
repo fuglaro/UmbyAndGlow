@@ -146,8 +146,9 @@ class Player:
         self.mode = 0
         self.name = name # Umby, Glow, or Clip
         self._ai = ai
-        self._coop = coop
+        self.coop = coop
         self.dir = 1
+        self.respawn_loc = 0 # custom respawn point
         self.x, self.y = x, y # Unit is 1 pixel
         self.rocket_on = 0
         self.rocket_x, self.rocket_y = 0, 0 # Unit is 1 pixel
@@ -247,7 +248,7 @@ class Player:
         ### Returns if Umby is in a mode that can't be killed,
         # or killed by this engine.
         ###
-        return 1 if 199 <= int(self.mode) <= 202 or self._ai or self._coop else 0
+        return 1 if 199 <= int(self.mode) <= 202 or self._ai or self.coop else 0
 
     @micropython.native
     def die(self, death_message, respawn=None):
@@ -261,6 +262,8 @@ class Player:
         self._x_vel = 0 # Reset speed
         self._y_vel = 0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
+        if self.respawn_loc:
+            respawn = self.respawn_loc*256
         if respawn == None:
             respawn = self._x - 90000
         self._respawn_x = respawn
@@ -352,7 +355,7 @@ class Player:
         mode = int(self.mode)
         y = int(self._y)
         # If repesentation of coop Thumby, skip tick
-        if self._coop:
+        if self.coop:
             return
         # Update button press states
         if self._ai:
@@ -807,7 +810,7 @@ class Player:
             hx, hy = hook_x-p-1, hook_y-6
         aim_x, aim_y = int(self._aim_x), int(self._aim_y)
         # Aiming (only main player has aiming)
-        if mode != 199 and not self._ai and not self._coop:
+        if mode != 199 and not self._ai and not self.coop:
             # Rocket aim
             hx = x_pos+aim_x-1
             hy = y_pos+aim_y-6

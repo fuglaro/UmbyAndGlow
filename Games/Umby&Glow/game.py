@@ -36,8 +36,8 @@ def load_save(sav, load):
     if load:
         try:
             f = open(sav, "r")
-            # Subtract 300 from last save position to not skip boss battles
-            start = int(f.read()) - 300
+            # Subtract from last save position to not skip boss battles
+            start = int(f.read()) - 800
             f.close()
         except:
             pass
@@ -176,7 +176,9 @@ def run_game():
     prof = not bL() # Activate profiling by holding Right direction
     p1 = Player(tape, mons, name, start+10, 20)
     p2 = Player(tape, mons, p2name, start+10, 20, ai=not coop, coop=coop)
+    tape.player = p1
     tape.players.append(p1)
+    tape.players.append(p2)
     # Initialise coop send data
     p1.port_out(outbuf)
 

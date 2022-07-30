@@ -276,6 +276,23 @@ def pattern_door(x: int, oY: int) -> int:
     return v
 
 @micropython.viper
+def pattern_windows(x: int, oY: int) -> int:
+    ### PATTERN [windows]:- wall with windows ###
+    # buff: [window-edges]
+    buff = ptr32(_buf)
+    if oY == 0:
+        buff[0] = (12 if 10 < x%24 < 14 else 5 if 9 < x%24 < 15 else
+            3 if 8 < x%24 < 16 else 2 if 7 < x%24 < 17 else
+            1 if 5 < x%24 < 19 else 0)
+    we = buff[0]
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if y < 10+we else 1 if y > 30-we else 0
+        ) << (y-oY)
+    return v
+
+@micropython.viper
 def pattern_cave(x: int, oY: int) -> int:
     ### PATTERN [cave]:
     # Cave system with ceiling and ground. Ceiling is never less
@@ -765,8 +782,8 @@ def pattern_bang(blast_x, blast_y, blast_size, invert):
 
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
-pattern_testing_back = pattern_launch_back
-pattern_testing = pattern_launch_pad
-pattern_testing_fill = pattern_launch_pad_fill
+pattern_testing_back = pattern_cloudy_snowy_mountains
+pattern_testing = pattern_windows
+pattern_testing_fill = pattern_fill
 
 

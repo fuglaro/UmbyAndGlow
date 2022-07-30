@@ -272,14 +272,17 @@
 
 300,  "\n \n ____PREPARING_____ _LAUNCH_SEQEUENCE_"
 
+100, "^: Look Umby! An open latch!"
+0,   "@: I don't know how you see so well without eyes."
+0,   "^: There's just enough wiggle room to squeeze in!"
+
 999, "CHAPTER~X: TEST_(TODO)"
 
 # Create rocket and start countdown (moves +500 into distance automatically)
-300, LeftDoor
-# TODO:test allowing this battle to continue script.
-500,   ([pattern_none,pattern_none,pattern_fill,pattern_door,pattern_fill],(bytearray([]), bytearray([])))
-20,  ([pattern_none,pattern_none,pattern_fill,pattern_room,pattern_fill],(bytearray([]), bytearray([])))
+200, LeftDoor
+0,   "Hurry!"
 
+# Note: Rocket ship script handled by LeftDoor monster with events.
 
 # TODO Rocket blast
 
@@ -316,10 +319,7 @@
 #
 #Monsters start falling down.
 #
-#^: Woaaaah! Here we go!
-#@: Brace yourself, Glow!
-#^: I'm hard stuck to this beam. Make sure youre good too, Umby!
-#@: Thanks! These G's are only increasing. I'm well planted!
+
 #
 #Monsters get faster.
 #

@@ -76,6 +76,30 @@ _dialog_queue = []
 _dialog_c = 0 # Next line counter
 _active_battle = -1
 
+@micropython.native
+def add_dialog(tape, dialog):
+    ### Say dialog or narration ###
+    char = dialog[0]
+    pos = 1 if char == '^' else 2 if char == '@' else 0
+    # Handle worm dialog
+    if pos:
+        # Queue up the dialog in chunks of at most 2 lines each.
+        # Split the text into lines that fit on screen.
+        lines = [""]
+        for word in dialog.split(' '):
+            if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72:
+                lines.append("")
+            lines[-1] += (" " if lines[-1] else "") + word
+        # Queue up each 2 lines dialog
+        while lines:
+            line = lines.pop(0)
+            if lines:
+                line += " " + lines.pop(0)
+            _dialog_queue.append((pos, line))
+    # Handle naration
+    else:
+        tape.message(0, dialog, 1)
+
 @micropython.viper
 def story_events(tape, mons, coop_px: int):
     ### Update story events including dialog and level type changes.
@@ -83,7 +107,7 @@ def story_events(tape, mons, coop_px: int):
     ###
     global _dialog_c, _next_event, _next_at, _active_battle
     # Don't progress script if respawning
-    if tape.players and int(tape.players[0].mode) > 200:
+    if tape.player and int(tape.player.mode) > 200:
         return
     # Update current dialog queue.
     dc = int(_dialog_c)
@@ -105,6 +129,10 @@ def story_events(tape, mons, coop_px: int):
             return
         _active_battle = -1 <<1|1
 
+    # Check for monster reaction dialog
+    while reactions:
+        add_dialog(tape, reactions.pop(0))
+
     # Check for, and potentially action, the next event
     pos = int(tape.x[0])
     pos = pos if pos > coop_px else coop_px # Furthest of both players
@@ -116,26 +144,7 @@ def story_events(tape, mons, coop_px: int):
             tape.spawner = event[1]
         # Handle script dialog and naration
         elif isinstance(event, str):
-            char = event[0]
-            pos = 1 if char == '^' else 2 if char == '@' else 0
-            # Handle worm dialog
-            if pos:
-                # Queue up the dialog in chunks of at most 2 lines each.
-                # Split the text into lines that fit on screen.
-                lines = [""]
-                for word in event.split(' '):
-                    if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72:
-                        lines.append("")
-                    lines[-1] += (" " if lines[-1] else "") + word
-                # Queue up each 2 lines dialog
-                while lines:
-                    line = lines.pop(0)
-                    if lines:
-                        line += " " + lines.pop(0)
-                    _dialog_queue.append((pos, line))
-            # Handle naration
-            else:
-                tape.message(0, event, 1)
+            add_dialog(tape, event)
         # Handle specific monster spawns like bosses.
         else:
             # Pause script until boss monsters are killed
