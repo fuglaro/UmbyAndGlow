@@ -152,6 +152,7 @@ class Player:
         self.x, self.y = x, y # Unit is 1 pixel
         self.rocket_on = 0
         self.rocket_x, self.rocket_y = 0, 0 # Unit is 1 pixel
+        self.space = 0 # Low gravity mode
         # Internal properties
         self._tp = tape
         self._mons = mons
@@ -411,7 +412,7 @@ class Player:
         rwall = int(ch(x+1, y-3)) | cr
         # Apply gravity and ground check
         if not grounded:
-            self._y = (yf + (yv>>8)) <<1|1
+            self._y = (yf + (yv>>(10 if self.space else 8))) <<1|1
         # Stop gravity when hit ground but keep some fall speed ready
         self._y_vel = (32768 if grounded else yv + 2730) <<1|1
         # CONTROLS: Apply movement
@@ -429,7 +430,7 @@ class Player:
             self._topt = topt <<1|1
         elif self._topt:
             self._topt = 0 <<1|1
-        if c&32 and y > -32 and (yv < 0 or grounded):
+        if c&32 and y > -32 and (yv < 0 or grounded or self.space):
             if grounded: # detatch from ground grip
                 self._y = (yf-256) <<1|1
                 play(worm_jump, 15)
@@ -451,7 +452,7 @@ class Player:
             # Apply rocket motion
             rxf += int(self._rocket_x_vel)
             ryf += ryv
-            ryv += 11 # Apply gravity
+            ryv += 1 if self.space else 11 # Apply gravity
             # Update stored properties
             rx, ry = rxf>>8, ryf>>8
             self.rocket_x, self.rocket_y = rx <<1|1, ry <<1|1
@@ -606,7 +607,7 @@ class Player:
                     x_vel = -32768 if l else 32768 if r else 0
                     self._hold = 1 <<1|1
                 # Apply gravity to vertical speed
-                y_vel += 1638
+                y_vel += 256 if self.space else 1638
                 # Update positions with momentum
                 xf += x_vel>>8
                 yf += y_vel>>8

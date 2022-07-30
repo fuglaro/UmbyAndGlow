@@ -555,7 +555,7 @@ class Monsters:
 
     @micropython.viper
     def _tick_left_door(self, t: int, i: int):
-        ### TODO ###
+        ### Hidden monster that manages the rocket launch sequence ###
         tape = self._tp
         rx = int(tape.x[0]) + 140
         mx = int(tape.midx[0]) + 140
@@ -571,7 +571,7 @@ class Monsters:
         p2x = int(p2.x)
         timer = data[ii]
         alive = int(plyrs[0].mode) < 200
-    
+
         # Start the countdown timer when both players close
         if timer < 0 and p1x > x-500 and p2x > x-500 and alive:
             data[ii] = 0
@@ -582,36 +582,34 @@ class Monsters:
             tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
         else:
             self._left_door_events(timer, p1, p1x, p2, p2x, ii, x)
-    
+
         # Increase the timer if active
         if timer >= 0:
             data[ii] += 1
-    
+
         # Keep redrawing the rocket ship windows when in flight
         if timer >= 1600:
             tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
-    
-        # Stop walls being destroyed
-        r1x = int(p1.rocket_x)
-        if p1.rocket_on and ((r1x <= x+2 and timer >= 1300) or r1x >= x+77):
-            p1.rocket_on = 0 <<1|1
-        r2x = int(p2.rocket_x)
-        if not p2.coop and p2.rocket_on and (
-                (r2x <= x+2 and timer >= 1300) or r2x >= x+77):
-            p2.rocket_on = 0 <<1|1
 
-        # Draw spaceship
-        if timer < 1300:
-            if rx > x-20:
-                ptrn = (pattern_door if rx<x else pattern_room if rx<x+80 else
-                    pattern_fill)
-                tape.redraw_tape(2, rx, ptrn, pattern_fill)
-            x1 = x-20-rx+mx
-            if rx > x:
-                tape.redraw_tape(1, x1, pattern_fill, pattern_fill)
-            if mx-20 > x1:
-                tape.redraw_tape(1, mx-20, pattern_fill, pattern_fill)
-    
+        # Repair spaceship (until 12000)
+        if timer < 9700:
+            if timer < 1300:
+                if rx > x-20:
+                    ptrn = (pattern_door if rx<x else
+                        pattern_room if rx<x+80 else pattern_fill)
+                    tape.redraw_tape(2, rx, ptrn, pattern_fill)
+                x1 = x-20-rx+mx
+                if rx > x:
+                    tape.redraw_tape(1, x1, pattern_fill, pattern_fill)
+                if mx-20 > x1:
+                    tape.redraw_tape(1, mx-20, pattern_fill, pattern_fill)
+            else: # Spaceship repairs
+                x1 = timer%20
+                tape.redraw_tape(2, x-x1-1 if x1<10 else x+x1+70,
+                    pattern_fill, None)
+                if int(p1.mode) > 200:
+                    tape.redraw_tape(2, x+timer%80, pattern_room, None)
+
         # Keep background monsters in range and falling
         if timer%(8-data[ii+1])==0:
             for xi in range(48):
@@ -626,11 +624,11 @@ class Monsters:
                 ys[xi] += data[ii+2]
     
         # Flying sequence monster spawning
-        if 2200 < timer < 50000 and timer%180==0:
+        if 2300 < timer < 10000 and timer%300==0:
             p = (timer^x)%448
             x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
             y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
-            mon = _Molaar if y1==63 and 50 < x1 < 140 else _ChargingBones
+            mon = _Molaar if 50 < x1 < 140 else _ChargingBones
             self.add(mon, x+x1-40, y1+64)
 
         # Stop monsters hogging the respawn area or charging for too long
@@ -650,16 +648,18 @@ class Monsters:
                 xs[xi] == x+120
             elif xs[xi] < x-20:
                 xs[xi] == x-20
-            
-            
-    
+
+
+
         # TODO end rocket launch (release into space)
+        if timer%60==0:
+            print(timer)
         # TODO unset custom respawn point
         # TODO add charging bones monsters offscreen
         # TODO giant cam shake before exploding
 
     def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
-        ### TODO ###
+        ### Key events during the rocket launch sequence ###
         tape = self._tp
         # Handle countdown finishing
         if timer == 1300:
@@ -668,16 +668,18 @@ class Monsters:
                 name = p1.name if p1x < x else p2.name
                 msg = name + " failed to board!"
                 p1.die(msg, (x-600)*256)
-                tape.feed = [pattern_cloudy_snowy_mountains,pattern_launch_back,
-                    pattern_fill,pattern_launch_pad,pattern_launch_pad_fill]
                 _data[ii] = -9
             else:
                 # Players boarded!
+                tape.feed = [pattern_none,pattern_fill,pattern_fill,
+                    pattern_fill,pattern_fill]
                 tape.clear_overlay()
                 msg = "Ready to Launch!"
                 tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
                 # Shut the rocket doors
                 for xi in range(x-80, x):
+                    tape.redraw_tape(2, xi, pattern_fill, pattern_fill)
+                for xi in range(x+80, x+160):
                     tape.redraw_tape(2, xi, pattern_fill, pattern_fill)
                 for xi in range(0, 216):
                     tape.redraw_tape(0, xi, pattern_none, None)
@@ -710,6 +712,8 @@ class Monsters:
             _data[ii+1] = 4
         elif timer == 2300:
             _data[ii+1] = 5
+            reactions.extend(["^: Monsters!", "@: They're getting in!",
+                "^: Let's fight!"])
         elif timer == 2400:
             _data[ii+1] = 6
         elif timer == 2600:
@@ -724,6 +728,35 @@ class Monsters:
             _data[ii+2] = 4
             tape.cam_shake = 0
 
+        elif timer == 6000:
+            reactions.extend(["@: This ship is taking a beating!",
+                "^: It's not going to take much more!"])
+
+        # Reach orbit
+        elif timer == 8800:
+            _data[ii+2] = 3
+            reactions.extend(["@: Looks like we are easing into orbit",
+                "^: Finally!"])
+        elif timer == 9000:
+            _data[ii+2] = 2
+        elif timer == 9200:
+            _data[ii+2] = 1
+        elif timer == 9400:
+            _data[ii+1] = 6
+        elif timer == 9500:
+            _data[ii+1] = 5
+        elif timer == 9600:
+            _data[ii+1] = 4
+            p1.space = p2.space = 1
+            reactions.extend(["^: Woah!", "@: Low Gravity!", "^: Cool!"])
+        elif timer == 9700:
+            _data[ii+1] = 3
+        elif timer == 9800:
+            _data[ii+1] = 2
+        elif timer == 9900:
+            _data[ii+1] = 1
+        elif timer == 10000:
+            _data[ii+2] = 0
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):

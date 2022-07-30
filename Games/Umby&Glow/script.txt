@@ -266,9 +266,7 @@
 
 # Launch pad (with stompers)
 
-# TODO: increase stomper rate to 40
-
-200, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_pad,pattern_launch_pad_fill],(bytearray([Stomper]), bytearray([0])))
+200, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_pad,pattern_launch_pad_fill],(bytearray([Stomper]), bytearray([40])))
 
 300,  "\n \n ____PREPARING_____ _LAUNCH_SEQEUENCE_"
 
@@ -343,7 +341,7 @@
 #Normal gravity returns when getting on the alien ship.
 #
 #
-#
+# Teleport from alien spaceship to the ground.
 #
 ###
 ### # TODO turn story into script
