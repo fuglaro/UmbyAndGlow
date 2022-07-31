@@ -722,7 +722,7 @@ class Player:
         self._cacc = cacc <<1|1
 
         # Move player towards the respawn location
-        if xf//256 != rex//256 or cont >= -60:
+        if xf//256 != rex//256 or cacc != 2:
             self._x = xf + (256 if xf<rex else -256 if xf>rex else 0) <<1|1
             self._y = (yf + 0 if (yf>>8) == 20 else
                 yf+256 if (yf>>8) < 20 else yf-256) <<1|1

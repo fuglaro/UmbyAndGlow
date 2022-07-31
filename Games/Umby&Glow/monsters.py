@@ -788,7 +788,7 @@ class Monsters:
             p1.respawn_loc = 0
             reactions.extend(["^: WOAH!", "@: Did...", "@: Did we make it?!!",
                 "^: I think we did!!", "^: That was insane!",
-                "@: We are a couple of lucky worms.",
+                "@: We are a couple of lucky worms!",
                 "@: Let's not test it though...",
                 "@: Let's get away from this wreckage.",
                 "^: Sure thing, Umby!"])

@@ -274,16 +274,16 @@
 0,   "@: I don't know how you see so well without eyes."
 0,   "^: There's just enough wiggle room to squeeze in!"
 
-999, "CHAPTER~X: TEST_(TODO)"
+999, "CHAPTER~X: \n TEST_(TODO)"
 
 # Create rocket and start countdown (moves +500 into distance automatically)
 200, LeftDoor
 0,   "Hurry!"
+### Note: Rocket ship script handled by LeftDoor monster with events.
+## See _left_door_events in monsters.py
+###
 
-# Note: Rocket ship script handled by LeftDoor monster with events.
-
-# TODO Rocket blast
-
+1000, "CHAPTER~4: \n Among the Stars"
 
 
 
