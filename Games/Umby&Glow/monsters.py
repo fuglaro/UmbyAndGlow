@@ -13,7 +13,7 @@
 ## Monster types including their AI ##
 
 from array import array
-from audio import play, rocket_kill
+from audio import play, rocket_kill, rocket_bang
 from patterns import *
 
 ### Bones is a monster that flyes about then charges the player.
@@ -587,10 +587,6 @@ class Monsters:
         if timer >= 0:
             data[ii] += 1
 
-        # Keep redrawing the rocket ship windows when in flight
-        if timer >= 1600:
-            tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
-
         # Repair spaceship (until 12000)
         if timer < 9700:
             if timer < 1300:
@@ -609,6 +605,9 @@ class Monsters:
                     pattern_fill, None)
                 if int(p1.mode) > 200:
                     tape.redraw_tape(2, x+timer%80, pattern_room, None)
+            # Keep redrawing the rocket ship windows when in flight
+            if timer >= 1600:
+                tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
 
         # Keep background monsters in range and falling
         if timer%(8-data[ii+1])==0:
@@ -625,7 +624,7 @@ class Monsters:
     
         # Flying sequence monster spawning
         if 2300 < timer < 10000 and timer%300==0:
-            p = (timer^x)%448
+            p = (timer^p1x)%448
             x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
             y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
             mon = _Molaar if 50 < x1 < 140 else _ChargingBones
@@ -649,14 +648,17 @@ class Monsters:
             elif xs[xi] < x-20:
                 xs[xi] == x-20
 
-
-
-        # TODO end rocket launch (release into space)
-        if timer%60==0:
-            print(timer)
-        # TODO unset custom respawn point
-        # TODO add charging bones monsters offscreen
-        # TODO giant cam shake before exploding
+        # Ship breaking apart
+        if 10600 < timer < 11300:
+            if timer%5==0:
+                self._blast(timer//5, timer^p1x, timer*p1x)
+            # Clearing out background monsters
+            if tids[timer%48] != _LeftDoor:
+                tids[timer%48] = 0
+                self.num = int(self.num) - 1 <<1|1
+        elif timer == 11300:
+            tids[i] = 0
+            self.num = int(self.num) - 1 <<1|1
 
     def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         ### Key events during the rocket launch sequence ###
@@ -673,6 +675,7 @@ class Monsters:
                 # Players boarded!
                 tape.feed = [pattern_none,pattern_fill,pattern_fill,
                     pattern_fill,pattern_fill]
+                tape.spawner = (bytearray([]), bytearray([]))
                 tape.clear_overlay()
                 msg = "Ready to Launch!"
                 tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
@@ -692,7 +695,8 @@ class Monsters:
         elif timer == 1450:
             reactions.extend(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
                 "@: Brace yourself, Glow!",
-                "^: I'm stuck to this beam. You brace too, Umby!",
+                "^: I'm stuck good to this beam.",
+                "^: Brace yourself too, Umby!",
                 "@: The G-Force is only increasing. I'm well planted!"])
             # Release background monsters
             for xi in range(20):
@@ -757,6 +761,53 @@ class Monsters:
             _data[ii+1] = 1
         elif timer == 10000:
             _data[ii+2] = 0
+
+        # Rocket explosions
+        elif timer == 10200:
+            tape.cam_shake = 1
+            reactions.extend(["^: Umby?!", "@: Glow... WOW...",
+                "^: I think this ship is coming apart!",
+                "@: I think so too..."])
+        elif timer == 10300:
+            tape.cam_shake = 2
+        elif timer == 10400:
+            tape.cam_shake = 3
+        elif timer == 10500:
+            tape.cam_shake = 4
+            reactions.extend(["^: What do we do?!", "@: I don't know!",
+                "@: Hold on???", "^: I'm trying!"])
+            tape.feed = [pattern_none,pattern_none,pattern_fill,
+                pattern_none,pattern_fill]
+        elif timer == 10600:
+            tape.cam_shake = 5
+        elif timer == 10700:
+            tape.cam_shake = 7
+            reactions.extend(["^: AAAAAGGGH!", "@: AAAAAGGGH!"])
+        elif timer == 11300:
+            tape.cam_shake = 0
+            p1.respawn_loc = 0
+            reactions.extend(["^: WOAH!", "@: Did...", "@: Did we make it?!!",
+                "^: I think we did!!", "^: That was insane!",
+                "@: We are a couple of lucky worms.",
+                "@: Let's not test it though...",
+                "@: Let's get away from this wreckage.",
+                "^: Sure thing, Umby!"])
+
+    @micropython.native
+    def _blast(self, t, x, y):
+        ### Make explosion without killing player ###
+        tape = self._tp
+        scratch = tape.scratch_tape
+        rx, ry = x%216+tape.x[0]-72, y%64
+        play(rocket_bang, 40)
+        # Tag the wall with an explostion mark
+        tag = t%4
+        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
+        # Carve blast hole out of ground
+        pattern = pattern_bang(rx, ry, 8, 0)
+        for x1 in range(rx-8, rx+8):
+            scratch(2, x1, pattern, pattern)
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
