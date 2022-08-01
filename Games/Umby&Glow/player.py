@@ -260,7 +260,6 @@ class Player:
         if respawn == None:
             respawn = self._x - 90000
         self._respawn_x = respawn
-        self._tp.clear_overlay()
         self._tp.message(0, death_message + " \n \n Continue? \n 5", 3)
         self._death_message = death_message
         self._continue = 300

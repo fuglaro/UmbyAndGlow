@@ -2,7 +2,8 @@
 
 from array import array
 from audio import play, rocket_kill, rocket_bang
-from patterns import *
+from patterns import (pattern_fill, pattern_none,
+    pattern_windows, pattern_room, pattern_door)
 
 ### Bones is a monster that flyes about then charges the player.
 # Bones looks a bit like a skull.
@@ -613,9 +614,12 @@ class Monsters:
     
         # Flying sequence monster spawning
         if 2300 < timer < 10000 and timer%300==0:
+            # Random position from edge of screen
             p = (timer^p1x)%448
             x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
             y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
+            if x1 <= 50: # No monsters from left of screen
+                return
             mon = _Molaar if 50 < x1 < 140 else _ChargingBones
             self.add(mon, x+x1-40, y1+64)
 
@@ -777,12 +781,6 @@ class Monsters:
         elif timer == 11300:
             tape.cam_shake = 0
             p1.respawn_loc = 0
-            reactions.extend(["^: WOAH!", "@: Did...", "@: Did we make it?!!",
-                "^: I think we did!!", "^: That was insane!",
-                "@: We are a couple of lucky worms!",
-                "@: Let's not test it though...",
-                "@: Let's get away from this wreckage.",
-                "^: Sure thing, Umby!"])
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):

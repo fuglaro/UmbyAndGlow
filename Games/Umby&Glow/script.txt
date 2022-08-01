@@ -12,7 +12,7 @@
 #     "" (no prefix) -> Narration (written to middle of background)
 # The script can also include level changes which takes the form of a
 # tuple with the following form:
-#    (feed, spawner)
+#    (feed, spawner, mode)
 # E.g:
 #    # Level: Cave filled with Bones
 #    (
@@ -21,12 +21,15 @@
 #      pattern_stalagmites, pattern_stalagmites_fill,
 #      pattern_cave, pattern_cave_fill],
 #     # Reset monster spawner to the new level
-#     (bytearray([Bones]), bytearray([200])))
+#     (bytearray([Bones]), bytearray([200])),
+#     # Player environment dynamics behavior (0-normal, 1-sace))
+#     0
+#    )
 # Or as a number, which will load the relevant monster directly.
 
 #### MENU ####
 -999,"MENU"
-0,   ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
+0,   ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray(), bytearray()),0)
 1,   Bones
 
 #================================================
@@ -34,7 +37,7 @@
 # Cave with Bones
 1120,"CHAPTER~1: \n The_Cave"
 
-50,  ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
+50,  ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])),0)
 250, "@: Hi Glow!"
 0,   "^: Hi Umby!"
 0,   "@: These monsters are destroying our cave!"
@@ -71,7 +74,7 @@
 60,  "---->"
 
 # Stop monster spawning
-200, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
+200, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray(), bytearray()),0)
 
 200, "^: Ummm... Umby?..."
 0,   "@: Yes Glow?..."
@@ -86,7 +89,7 @@
 0,   "^: Sweet!"
 
 # Background changes near tunnel
-500, ([pattern_cloudy_snowy_mountains,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
+500, ([pattern_cloudy_snowy_mountains,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray(), bytearray()),0)
 
 100, "@: Nice work, Glow!"
 0,   "^: Back at ya, Umby!"
@@ -95,13 +98,13 @@
 0,   "@: Let's head outside and find out..."
 
 # Snowy mountain background starts, and tunnel
-80, ([pattern_cloudy_snowy_mountains,pattern_none,pattern_fill,pattern_tunnel,pattern_fill],(bytearray([]), bytearray([])))
+80, ([pattern_cloudy_snowy_mountains,pattern_none,pattern_fill,pattern_tunnel,pattern_fill],(bytearray(), bytearray()),0)
 
 #================================================
 # Chapter 2
 # Exit tunnel into plains
-200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
-100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])))
+200, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray(), bytearray()),0)
+100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([110])),0)
 
 130, "@: WOAH!"
 0,   "^: SQUIRM!"
@@ -112,9 +115,9 @@
 0,   "^: Ok. Ive got your back."
 0,   "@: Lets roll..."
 
-70,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+70,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray(), bytearray()),0)
 150, "CHAPTER~2: \n The_Forest"
-50,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])))
+50,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])),0)
 
 750, "^: Doing well there, Umby!"
 0,   "@: You too, Glow!"
@@ -122,7 +125,7 @@
 0,   "^: NICE!"
 
 # Enter forest
-370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([]), bytearray([])))
+370, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray(), bytearray()),0)
 
 360, "^: Phew! We made it!"
 0,   "@: That, we did!"
@@ -140,7 +143,7 @@
 0,   "@: HA! No, we dont."
 
 # Forest monsters
-180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([30, 15])))
+180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
 
 
 800, "@: Alright Glow..."
@@ -173,7 +176,7 @@
 0,   "^: Let's roll."
 
 # Back to the plains (less monsters this time)
-400, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([10])))
+400, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones]), bytearray([10])),0)
 
 200, "^: Hey!"
 0,   "^: Umby, I see it!"
@@ -186,7 +189,7 @@
 0,   "@: Ha! Right behind you, Glow!"
 
 # Stop monsters spawning
-100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+100, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray(), bytearray()),0)
 
 # Boss Battle: Dragon Bones
 300, "Get ready!"
@@ -206,7 +209,7 @@
 
 1600,"CHAPTER~3: \n Space-Y"
 
-100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])))
+100, ([pattern_cloudy_snowy_mountains,pattern_chain_link_fence,pattern_fill,pattern_fence_top,pattern_fill],(bytearray([Pillar,Bones,Stomper]), bytearray([10,10,10])),0)
 
 300,  "\n \n ____RESTRICTED____ _______AREA_______"
 300,  "\n \n ____AUTHORIZED____ __PERSONEL_ONLY!__"
@@ -231,7 +234,7 @@
 0,    "^: Lol! Go you!"
 
 # Molaar infested launch area
-100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Bones,Stomper,Molaar]), bytearray([10,5,60])))
+100, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Bones,Stomper,Molaar]), bytearray([10,5,60])),0)
 
 900,  "@: Nice spree there, Glow!"
 0,    "^: Umby, I'm almost enjoying this!"
@@ -241,7 +244,7 @@
 0,    "@: Yep, one monster at a time..."
 
 # Launch area (close to rocket, only monsters are stompers)
-900, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Stomper]), bytearray([20])))
+900, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_area,pattern_launch_area_fill],(bytearray([Stomper]), bytearray([20])),0)
 
 
 200,  "^: Umby, we are major mulch machines!"
@@ -255,7 +258,7 @@
 
 # Launch pad (with stompers)
 
-200, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_pad,pattern_launch_pad_fill],(bytearray([Stomper]), bytearray([40])))
+200, ([pattern_cloudy_snowy_mountains,pattern_launch_back,pattern_fill,pattern_launch_pad,pattern_launch_pad_fill],(bytearray([Stomper]), bytearray([60])),0)
 
 300,  "\n \n ____PREPARING_____ _LAUNCH_SEQEUENCE_"
 
@@ -266,11 +269,22 @@
 999, "CHAPTER~X: \n TEST_(TODO)"
 
 # Create rocket and start countdown (moves +500 into distance automatically)
-200, LeftDoor
-0,   "Hurry!"
+200, "Hurry!"
+0,   LeftDoor
 ### Note: Rocket ship script handled by LeftDoor monster with events.
 ## See _left_door_events in monsters.py
 ###
+0,   ([pattern_none,pattern_none,pattern_fill,pattern_none,pattern_fill],(bytearray(), bytearray()),1)
+0,   "^: WOAH!"
+0,   "@: Did..."
+0,   "@: Did we make it to space?!!"
+0,   "^: I think we did!!"
+0,   "^: That was insane!"
+0,   "@: We are a couple of lucky worms!"
+0,   "@: Let's not test it though..."
+0,   "@: Let's get away from this wreckage."
+0,   "^: Sure thing, Umby!"
+0,   "@: Careful with the low gravity!"
 
 1000, "CHAPTER~4: \n Among the Stars"
 
@@ -364,7 +378,7 @@
 ################################################################
 
 ## Credits ##
-200, ([pattern_toplit_wall,pattern_none,pattern_fill,pattern_room,pattern_fill],(bytearray([]), bytearray([])))
+200, ([pattern_toplit_wall,pattern_none,pattern_fill,pattern_room,pattern_fill],(bytearray(), bytearray()), 0)
 200, "Credits"
 160, "A convex.cc game by John VL"
 160, "For my Mum, who taught me how to tinker."

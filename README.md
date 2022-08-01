@@ -8,8 +8,6 @@ Coop side scrolling platformer for the Thumby device - Umby the earthworm and Gl
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
 
 ## TODO
-* Save file location updated to new convention.
-* Smarter save point loading (turn LeftDoor into Boss (block progress) then update save point from script's previous event.
 * Mumbling speach sound with different pitch for each character, when either one of them is speaking...
 * Write remainder of script / story
 * Add 8 more levels, and more monsters!

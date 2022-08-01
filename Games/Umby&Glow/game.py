@@ -3,12 +3,13 @@
 import gc
 gc.threshold(8000) # Aggressive garbace collection while initialising.
 gc.enable()
+from os import mkdir
 from time import ticks_ms
 from audio import audio_tick
 from comms import comms, inbuf, outbuf
 from monsters import Monsters
 from player import Player, bU, bD, bL, bR, bB, bA
-from script import get_chapters, story_events, story_jump
+from script import get_chapters, story_events, story_jump, state
 from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
@@ -23,10 +24,8 @@ def load_save(sav, load):
     start = 3
     if load:
         try:
-            f = open(sav, "r")
-            # Subtract from last save position to not skip boss battles
-            start = int(f.read()) - 800
-            f.close()
+            with open(sav, "r") as f:
+                start = int(f.read()) - 145
         except:
             pass
     return start if start > 3 else 3
@@ -109,7 +108,11 @@ def run_menu():
                 held = 2
             else:
                 # Find the starting position (of this player)
-                sav = "/Games/Umby&Glow/"+("glow" if ch[0] else "umby")+".sav"
+                try:
+                    mkdir("/Saves")
+                except:
+                    pass
+                sav = "/Saves/Umby&Glow-"+("glow" if ch[0] else "umby")+".sav"
                 if ch[3] == -1:
                     start = load_save(sav, ch[2])
                 else: # Start at selected chapter
@@ -153,9 +156,6 @@ def run_game():
     # Start menu
     glow, coop, start, sav = run_menu()
 
-    # Ready the level for playing
-    t = 1;
-    story_jump(tape, start, True)
     # Select character, or testing mode by holding Right+B+A (release R last)
     name = "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby"
     p2name = "Umby" if glow else "Glow"
@@ -165,6 +165,9 @@ def run_game():
     tape.player = p1
     tape.players.append(p1)
     tape.players.append(p2)
+    # Ready the level for playing
+    t = 1;
+    story_jump(tape, start, True)
     # Initialise coop send data
     p1.port_out(outbuf)
 
@@ -173,11 +176,10 @@ def run_game():
     gc.threshold(-1)
 
     # Main gameplay loop
-    pstat = pstat2 = ptot = pfps1 = pfps2 = 0
+    savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
     mons2 = Monsters(tape)
     ch = tape.check
-    coop_px = 0
     while(1):
         story_events(tape, mons, coop_px)
         # Update the game engine by a tick
@@ -230,12 +232,12 @@ def run_game():
         audio_tick()
         t += 1
 
-        # Save and clean memory every 30 seconds
-        if (t % 1800 == 0):
+        # Save any script progress (script events function as save points)
+        if (savst != state[0]):
             f = open(sav, "w")
-            f.write(str(tape.x[0]))
+            f.write(str(state[0]))
             f.close()
-            gc.collect()
+            savst = state[0]
 
         # Flush to the display, waiting on the next frame interval
         if not prof:

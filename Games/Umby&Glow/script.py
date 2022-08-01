@@ -4,20 +4,17 @@ from monsters import *
 from patterns import *
 
 def _script():
+    ### Returns iterator that feeds out script events ###
     with open("/Games/Umby&Glow/script.txt") as fp:
         ### Feeds out the script line by line ###
-        for ln, line in enumerate(fp):
+        for line in fp:
             if line and line[0] != "#" and line[0] != "\n":
                 dist, _, ev_str = line.partition(",")
-                try:
-                    yield int(dist), ev_str.strip()
-                except SyntaxError:
-                    print(ln+1, line)
-                    raise
+                yield int(dist), ev_str.strip()
 
 def get_chapters():
     ### Return the chapters and their starting positions ###
-    pos = -300
+    pos = -145
     for dist, ev in _script():
         pos += dist
         if ev.startswith('"CHAPTER~'):
@@ -25,6 +22,14 @@ def get_chapters():
 
 _line = _script()
 _next_at, _next_event = next(_line)
+state = [_next_at] # Last event for save state
+
+def _load_lvl(tape, ev):
+    ### Load level patterns, monsters and player dynamics ###
+    tape.feed = ev[0]
+    tape.spawner = ev[1]
+    for plyr in tape.players:
+        plyr.space = ev[2]
 
 def story_jump(tape, start, lobby):
     ### Prepare everything for the level of gameplay
@@ -38,17 +43,17 @@ def story_jump(tape, start, lobby):
     global _next_event, _next_at
     # Loop through the script finding the starting position, and setting
     # the level as needed.
-    lvl = None
-    for dist, _next_event in _line:
-        _next_at += dist
-        if _next_event[0] == "(":
-            lvl = _next_event
-        if _next_at > start:
-            break
-    if lvl:
-        ev = eval(lvl)
-        tape.feed = ev[0]
-        tape.spawner = ev[1]
+    if _next_at <= start:
+        lvl = None
+        for dist, _next_event in _line:
+            state[0] = _next_at
+            _next_at += dist
+            if _next_event[0] == "(":
+                lvl = _next_event
+            if _next_at > start:
+                break
+        if lvl:
+            _load_lvl(tape, eval(lvl))
 
     # Reset the tape data to match the new details, and potentially
     # clear the starting area.
@@ -125,20 +130,20 @@ def story_events(tape, mons, coop_px):
     pos = tape.x[0]
     pos = pos if pos > coop_px else coop_px # Furthest of both players
     if pos >= _next_at:
+        state[0] = _next_at
         event = eval(_next_event)
         # Handle level type changes
         if isinstance(event, tuple):
-            tape.feed = event[0]
-            tape.spawner = event[1]
+            _load_lvl(tape, event)
         # Handle script dialog and naration
         elif isinstance(event, str):
             add_dialog(tape, event)
         # Handle specific monster spawns like bosses.
         else:
             # Pause script until boss monsters are killed
-            _active_battle = mons.add(event, pos+144, 32)
-            if _active_battle not in boss_types:
-                _active_battle = -1
+            bat = mons.add(event, pos+144, 32)
+            if event in boss_types:
+                _active_battle = bat
         dist, _next_event = next(_line)
         _next_at += dist
 

@@ -66,6 +66,21 @@ path.append("/Games/Umby&Glow")
 #raise Exception("STOP")
 ##
 
+##
+# SCRIPT TESTING: find invalid lines easily
+#from patterns import *
+#from monsters import *
+#with open("/Games/Umby&Glow/script.txt") as fp:
+#    for ln, line in enumerate(fp):
+#        if line and line[0] != "#" and line[0] != "\n":
+#            dist, _, ev_str = line.partition(",")
+#            try:
+#                int(dist), eval(ev_str.strip())
+#            except SyntaxError:
+#                print(ln+1, line)
+#                raise
+##
+
 
 from machine import Pin, SPI
 from ssd1306 import SSD1306_SPI
