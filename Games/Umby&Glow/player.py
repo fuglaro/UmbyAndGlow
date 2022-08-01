@@ -1,20 +1,7 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 ## Players and input ##
 
 from machine import Pin, reset
 from math import sqrt, floor
-from patterns import *
 from audio import *
 
 _FPS = const(60)
@@ -76,6 +63,14 @@ _sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
     181, 179, 177, 176, 174, 172, 170, 168, 166, 164, 162, 160, 159, 157, 155,
     153, 151, 149, 147, 145, 143, 141, 139, 137, 135, 133, 131, 129])
 
+def _draw_trail(draw_func, x, y, rdir):
+    ### Leave a rocket trail behind a position ##
+    @micropython.viper
+    def trail(x: int, oY: int) -> int:
+        ry = int(y)
+        return 3 << ry-oY-1
+    for i in range(x-rdir*2, x, rdir):
+        draw_func(2, i, trail, None)
 
 class Player:
     ### Umby and Glow ###
@@ -237,10 +232,7 @@ class Player:
         self._moving = (m&8) <<1|1
         self._air = (m&64) <<1|1
         if m&32: # Leave rocket trail
-            drwtp = self._tp.draw_tape
-            trail = pattern_bang(rx-rdir, ry, 2, 1)
-            for rxp in range(rx-rdir*2, rx, rdir):
-                drwtp(2, rxp, trail, None)
+            _draw_trail(self._tp.draw_tape, rx, ry, rdir)
         return px + 72
 
     @property
@@ -279,20 +271,10 @@ class Player:
     @micropython.native
     def detonate(self, t):
         ### Explode the rocket, also carving space out of the ground. ###
-        tape = self._tp
-        scratch = tape.scratch_tape
-        rx, ry = self.rocket_x, self.rocket_y
-        self._boom_x, self._boom_y = rx, ry
         play(rocket_bang, 40)
-        # Tag the wall with an explostion mark
-        tag = t%4
-        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
-        # Carve blast hole out of ground
-        pattern = pattern_bang(rx, ry, 8, 0)
-        fill = pattern_bang(rx, ry, 10, 1)
-        for x in range(rx-10, rx+10):
-            scratch(2, x, pattern, fill)
+        rx, ry = self.rocket_x, self.rocket_y
+        self._boom_x, self._boom_y = rx, ry # Store for sending to coop
+        self._tp.blast(t, rx, ry)
         # DEATH: Check for death by rocket blast
         dx, dy = rx-self.x, ry-self.y
         if dx*dx + dy*dy < 48:
@@ -446,7 +428,6 @@ class Player:
         u, d, b = c&1, c&2, c&16
         # Apply rocket dynamics if it is active
         if ron:
-            rdir = int(self._rdir)
             rxf, ryf = int(self._rocket_x), int(self._rocket_y)
             ryv = int(self._rocket_y_vel)
             # Apply rocket motion
@@ -459,10 +440,7 @@ class Player:
             self._rocket_x, self._rocket_y = rxf <<1|1, ryf <<1|1
             self._rocket_y_vel = ryv <<1|1
             if b: # Create trail platform when activated
-                drwtp = self._tp.draw_tape
-                trail = pattern_bang(rx-rdir, ry, 2, 1)
-                for rxp in range(rx-rdir*2, rx, rdir):
-                    drwtp(2, rxp, trail, None)
+                _draw_trail(self._tp.draw_tape, rx, ry, self._rdir)
             self._trail = (1 if b else 0)<<1|1
             if ry >= 80: # Defuse if fallen through ground
                 self.rocket_on = 0 <<1|1
@@ -726,11 +704,17 @@ class Player:
             self._x = xf + (256 if xf<rex else -256 if xf>rex else 0) <<1|1
             self._y = (yf + 0 if (yf>>8) == 20 else
                 yf+256 if (yf>>8) < 20 else yf-256) <<1|1
+            @micropython.viper
+            def fill(x: int, oY: int) -> int:
+                return -1
+            @micropython.viper
+            def ptrn(x: int, oY: int) -> int:
+                return -128 if oY else 7
             # Draw the starting platform
             if rex <= xf < rex + 4000:
-                tape.redraw_tape(2, (xf>>8)-5, pattern_room, pattern_fill)
+                tape.redraw_tape(2, (xf>>8)-5, ptrn, fill)
             elif rex - 4000 < xf <= rex:
-                tape.redraw_tape(2, (xf>>8)+5, pattern_room, pattern_fill)
+                tape.redraw_tape(2, (xf>>8)+5, ptrn, fill)
         else:
             # Cancel any rocket powering
             self._aim_pow = 256 <<1|1

@@ -1,34 +1,21 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-# Copyright © 2022 Auri <@Auri#8401(Discord)>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 ## Tape Management, Stage, and display ##
 
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
+from patterns import ihash
 
 # Font by Auri (@Auri#8401)
 _font = (
     bytearray([0,0,0]) # Space needs to be at the start.
     + # Alphabet # BITMAP: width: 78, height: 8
     bytearray([240,72,248,240,168,88,240,136,152,248,136,112,240,168,136,248,40,8,112,136,200,248,64,248,136,248,136,64,136,248,248,96,152,120,136,128,248,56,248,248,8,240,240,136,248,240,72,56,112,200,248,240,72,184,176,168,200,8,248,8,120,128,248,248,192,56,248,224,248,216,96,216,152,160,120,200,168,152])
-
     + # Numbers # BITMAP: width: 30, height: 8
     bytearray([120,136,240,144,248,192,208,136,176,136,168,88,32,48,248,88,136,104,112,168,200,8,200,56,88,168,208,56,40,240])
     + # Symbols # BITMAP: width: 57, height: 8
     bytearray([184,0,184,16,136,48,216,216,0,152,216,0,0,24,0,24,0,24,128,96,24,136,80,32,32,80,136,240,136,0,0,136,120,112,136,0,0,136,112,192,192,0,128,192,0,32,112,32,80,32,80,32,32,32])
     )
-_font_index = " ABCDEFGHIJKLMNOPQRSTUVWXYZ" +"0123456789" +"!?:;'\"/><[]().,+*-"
+_font_index = " ABCDEFGHIJKLMNOPQRSTUVWXYZ"+"0123456789"+"!?:;'\"/><[]().,+*-"
 
 # Setup basic display access
 _FPS = const(60)
@@ -56,16 +43,29 @@ else: # Otherwise use the raw one if on the thumby device
         display.show()
         timer = ticks_ms() + fwait
 
-@micropython.viper
-def ihash(x: uint) -> int:
-    ### 32 bit deterministic semi-random hash fuction
-    # Credit: Thomas Wang
+def _gen_bang(blast_x, blast_y, blast_size, invert):
+    ### PATTERN (DYNAMIC) [bang]: explosion blast pattern generator
+    # with customisable position and size.
+    # Intended to be used for scratch_tape.
+    # Comes with it's own inbuilt fill patter for also blasting away
+    # the fill layer.
+    # @returns: a pattern (or fill) function.
     ###
-    x = (x ^ 61) ^ (x >> 16)
-    x += (x << 3)
-    x ^= (x >> 4)
-    x *= 0x27d4eb2d
-    return int(x ^ (x >> 15))
+    @micropython.viper
+    def p(x: int, oY: int) -> int:
+        s = int(blast_size)
+        f = int(invert)
+        _by = int(blast_y)
+        tx = x-int(blast_x)
+        v = 0
+        for y in range(oY, oY+32):
+            ty = y-_by
+            a = 0 if tx*tx+ty*ty < s*s else 1
+            v |= (
+                a if f == 0 else (0 if a else 1)
+            ) << (y-oY)
+        return v
+    return p
 
 class Tape:
     ###
@@ -473,7 +473,7 @@ class Tape:
             offset if offset >= 0 else 0) if offset <= 24 else 24
 
     @micropython.viper
-    def auto_camera_parallax(self, x: int, y: int, d: int, t: int):
+    def auto_camera(self, x: int, y: int, d: int, t: int):
         ### Move the camera so that an x, y tape position is in the spotlight.
         # This will scroll each tape layer to immitate a camera move and
         # will scroll with standard parallax.
@@ -589,6 +589,22 @@ class Tape:
         scroll = ptr32(self._tape_scroll)
         p = x-scroll[3]+scroll[1] # Translate position to mid background
         self.write(1, text, p-int(len(text))*2, y+3)
+
+    @micropython.viper
+    def blast(self, t: int, x: int, y: int):
+        ### Make explosion by scratching a circle from the foreground,
+        # and tagging a <KABLAM!> style message on the mid background.
+        ###
+        scratch = self.scratch_tape
+        # Tag the wall with an explostion mark
+        tag = t%4
+        self.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
+            "<WHAM!>" if tag==3 else "<BOOM!>", x, y)
+        # Carve blast hole out of ground
+        pattern = _gen_bang(x, y, 8, 0)
+        fill = _gen_bang(x, y, 10, 1)
+        for i in range(x-10, x+10):
+            scratch(2, i, pattern, fill)
 
     @micropython.viper
     def clear_overlay(self):

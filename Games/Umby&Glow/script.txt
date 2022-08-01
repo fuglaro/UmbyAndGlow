@@ -1,15 +1,3 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 ## Story data file ##
 
 ##
@@ -37,15 +25,16 @@
 # Or as a number, which will load the relevant monster directly.
 
 #### MENU ####
--999,([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
-1,Bones
+-999,"MENU"
+0,   ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([]), bytearray([])))
+1,   Bones
 
 #================================================
 # Chapter 1
 # Cave with Bones
 1120,"CHAPTER~1: \n The_Cave"
 
-50, ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
+50,  ([pattern_toplit_wall,pattern_stalagmites,pattern_stalagmites_fill,pattern_cave,pattern_cave_fill],(bytearray([Bones,Skittle]), bytearray([37,2])))
 250, "@: Hi Glow!"
 0,   "^: Hi Umby!"
 0,   "@: These monsters are destroying our cave!"
@@ -123,9 +112,9 @@
 0,   "^: Ok. Ive got your back."
 0,   "@: Lets roll..."
 
-70, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
+70,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([]), bytearray([])))
 150, "CHAPTER~2: \n The_Forest"
-50, ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])))
+50,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray([Bones,Stomper]), bytearray([90,40])))
 
 750, "^: Doing well there, Umby!"
 0,   "@: You too, Glow!"
@@ -227,9 +216,9 @@
 0,    "@: I get the feeling they have enough of their own things to worry about."
 0,    "^: No kidding!"
 
-300,  "\n \n _____SPACE__Y...__ _BECAUSE_ITS_COOL!"
+300,  "\n \n _____SPACE-Y...___ _BECAUSE_ITS_COOL!"
 300,  "\n \n __SEVERE__DANGER__ _OF_INCINERATION!_"
-300,  "\n \n _____SPACE__Y_____ __PERSONEL_ONLY!__"
+300,  "\n \n _____SPACE-Y______ __PERSONEL_ONLY!__"
 300,  "\n \n __NO_TRESPASSING__ _SECURE__FACILITY_"
 
 300,  "@: Glow, I see the launch area."
@@ -329,7 +318,7 @@
 #
 #----
 #Space
-#
+# Ship (vertical and left facing Like a ] shape. that fires two fireballs from top and bottom arm.)
 #Mon: alien with tentacles like an octopus.
 #Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
 #Similar to Bones but shoots fireballs.

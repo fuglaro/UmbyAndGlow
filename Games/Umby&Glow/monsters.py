@@ -1,15 +1,3 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 ## Monster types including their AI ##
 
 from array import array
@@ -70,12 +58,13 @@ Molaar = _Molaar
 Pillar = _Pillar
 Hoot = _Hoot
 LeftDoor = _LeftDoor
-boss_types = [_BonesBoss, _DragonBones]
+boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
 # Dialog from worms in reaction to monster events
 reactions = []
 
-# Additional hidden bahaviour data
+# Additional hidden bahaviour state for all monsters,
+# (do not use for draw behavior as it won't propagate to coop)
 _data = array('I', 0 for i in range(48*5))
 
 class Monsters:
@@ -651,7 +640,9 @@ class Monsters:
         # Ship breaking apart
         if 10600 < timer < 11300:
             if timer%5==0:
-                self._blast(timer//5, timer^p1x, timer*p1x)
+                play(rocket_bang, 40)
+                tape.blast(timer//5,
+                    (timer^p1x)%216+int(self.x[0])-72, (timer*p1x)%64)
             # Clearing out background monsters
             if tids[timer%48] != _LeftDoor:
                 tids[timer%48] = 0
@@ -792,22 +783,6 @@ class Monsters:
                 "@: Let's not test it though...",
                 "@: Let's get away from this wreckage.",
                 "^: Sure thing, Umby!"])
-
-    @micropython.native
-    def _blast(self, t, x, y):
-        ### Make explosion without killing player ###
-        tape = self._tp
-        scratch = tape.scratch_tape
-        rx, ry = x%216+tape.x[0]-72, y%64
-        play(rocket_bang, 40)
-        # Tag the wall with an explostion mark
-        tag = t%4
-        tape.tag("<BANG!>" if tag==0 else "<POW!>" if tag==1 else
-            "<WHAM!>" if tag==3 else "<BOOM!>", rx, ry)
-        # Carve blast hole out of ground
-        pattern = pattern_bang(rx, ry, 8, 0)
-        for x1 in range(rx-8, rx+8):
-            scratch(2, x1, pattern, pattern)
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):

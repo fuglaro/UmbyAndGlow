@@ -1,4 +1,5 @@
 # Copyright © 2022 John van Leeuwen <jvl@convex.cc>
+# Copyright © 2022 Auri <@Auri#8401(Discord)>
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or

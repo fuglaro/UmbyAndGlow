@@ -1,16 +1,4 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-## Patterns ##
+## Patterns and maths utility functions ##
 
 # Patterns are a collection of mathematical, and logical functions
 # that deterministically draw columns of the tape as it rolls in
@@ -258,12 +246,7 @@ def pattern_fill(x: int, oY: int) -> int:
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
     ### PATTERN [room]:- basic flat roof and high floor ###
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            1 if y < 3 else 1 if y > 38 else 0
-        ) << (y-oY)
-    return v
+    return -128 if oY else 7
 
 @micropython.viper
 def pattern_door(x: int, oY: int) -> int:
@@ -755,30 +738,6 @@ def pattern_launch_back(x: int, oY: int) -> int:
             int(y>43-buff[0])
          ) << (y-oY)
     return v
-
-def pattern_bang(blast_x, blast_y, blast_size, invert):
-    ### PATTERN (DYNAMIC) [bang]: explosion blast with customisable
-    # position and size. Intended to be used for scratch_tape.
-    # Comes with it's own inbuilt fill patter for also blasting away
-    # the fill layer.
-    # @returns: a pattern (or fill) function.
-    ###
-    @micropython.viper
-    def pattern(x: int, oY: int) -> int:
-        s = int(blast_size)
-        f = int(invert)
-        _by = int(blast_y)
-        tx = x-int(blast_x)
-        v = 0
-        for y in range(oY, oY+32):
-            ty = y-_by
-            a = 0 if tx*tx+ty*ty < s*s else 1
-            v |= (
-                a if f == 0 else (0 if a else 1)
-            ) << (y-oY)
-        return v
-    return pattern
-
 
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)

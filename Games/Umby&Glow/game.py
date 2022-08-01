@@ -1,14 +1,4 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+## Game Play including main loop ##
 
 import gc
 gc.threshold(8000) # Aggressive garbace collection while initialising.
@@ -22,8 +12,6 @@ from script import get_chapters, story_events, story_jump
 from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
-
-## Game Play ##
 
 tape = Tape()
 mons = Monsters(tape)
@@ -53,8 +41,7 @@ def run_menu():
     handshake = held = t = 0
     ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, -999, False)
-    # Scroll in the menu's Bones monster
-    story_events(tape, mons, -950)
+    story_events(tape, mons, -950) # Scroll in the menu's Bones monster
     chapters = list(get_chapters())
 
     def background_update():
@@ -62,7 +49,7 @@ def run_menu():
         # Make the camera follow the monster
         mons.tick(t)
         mons.draw_and_check_death(t, None, None)
-        tape.auto_camera_parallax(mons.x[0], mons.y[0]-64, 1, t)
+        tape.auto_camera(mons.x[0], mons.y[0]-64, 1, t)
         # Composite everything together to the render buffer
         tape.comp()
         # Flush to the display, waiting on the next frame interval
@@ -166,7 +153,6 @@ def run_game():
     # Start menu
     glow, coop, start, sav = run_menu()
 
-
     # Ready the level for playing
     t = 1;
     story_jump(tape, start, True)
@@ -199,7 +185,7 @@ def run_game():
         p2.tick(t)
         mons.tick(t)
         # Make the camera follow the action
-        tape.auto_camera_parallax(p1.x, p1.y, p1.dir, t)
+        tape.auto_camera(p1.x, p1.y, p1.dir, t)
 
         # Update coop networking
         if coop:

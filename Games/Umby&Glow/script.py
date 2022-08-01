@@ -1,16 +1,4 @@
-# Copyright © 2022 John van Leeuwen <jvl@convex.cc>
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-## Script and Level Progression ##
+## Script Loading and Level Progression ##
 
 from monsters import *
 from patterns import *
@@ -22,7 +10,7 @@ def _script():
             if line and line[0] != "#" and line[0] != "\n":
                 dist, _, ev_str = line.partition(",")
                 try:
-                    yield int(dist), eval(ev_str.strip())
+                    yield int(dist), ev_str.strip()
                 except SyntaxError:
                     print(ln+1, line)
                     raise
@@ -30,10 +18,10 @@ def _script():
 def get_chapters():
     ### Return the chapters and their starting positions ###
     pos = -300
-    for dist, entry in _script():
+    for dist, ev in _script():
         pos += dist
-        if isinstance(entry, str) and entry.startswith("CHAPTER~"):
-            yield (entry[8:], pos)
+        if ev.startswith('"CHAPTER~'):
+            yield (eval(ev)[8:], pos)
 
 _line = _script()
 _next_at, _next_event = next(_line)
@@ -50,17 +38,18 @@ def story_jump(tape, start, lobby):
     global _next_event, _next_at
     # Loop through the script finding the starting position, and setting
     # the level as needed.
-    level = None
-    pos, ev = _next_at, _next_event
-    while pos <= start:
-        if isinstance(ev, tuple):
-            level = ev # Handle level type changes
-        dist, ev = next(_line)
-        pos += dist
-    _next_at, _next_event = pos, ev
-    if level:
-        tape.feed[:] = level[0]
-        tape.spawner = level[1]
+    lvl = None
+    for dist, _next_event in _line:
+        _next_at += dist
+        if _next_event[0] == "(":
+            lvl = _next_event
+        if _next_at > start:
+            break
+    if lvl:
+        ev = eval(lvl)
+        tape.feed = ev[0]
+        tape.spawner = ev[1]
+
     # Reset the tape data to match the new details, and potentially
     # clear the starting area.
     tape.reset(start)
@@ -100,44 +89,43 @@ def add_dialog(tape, dialog):
     else:
         tape.message(0, dialog, 1)
 
-@micropython.viper
-def story_events(tape, mons, coop_px: int):
+@micropython.native
+def story_events(tape, mons, coop_px):
     ### Update story events including dialog and level type changes.
     # Update to the new px tape position: coop (furthest tape scroll of both players)
     ###
     global _dialog_c, _next_event, _next_at, _active_battle
     # Don't progress script if respawning
-    if tape.player and int(tape.player.mode) > 200:
+    if tape.player and tape.player.mode > 200:
         return
+
     # Update current dialog queue.
-    dc = int(_dialog_c)
-    if dc > 0: # Decrement the next-line counter
-        dc -= 1
-        if dc == 0:
+    if _dialog_c > 0: # Decrement the next-line counter
+        _dialog_c -= 1
+        if _dialog_c == 0:
             tape.clear_overlay()
-        _dialog_c = dc
-    if _dialog_queue and dc == 0:
+    if _dialog_queue and _dialog_c == 0:
         # "Say" next line
         position, text = _dialog_queue.pop(0)
         tape.message(position, text, 3)
         # Dialog display time (in ticks)
-        _dialog_c = 60 + int(len(text))*5//2
-
-    # Check if we are in an active battle
-    if int(_active_battle) >= 0:
-        if mons.is_alive(_active_battle):
-            return
-        _active_battle = -1 <<1|1
+        _dialog_c = 60 + len(text)*5//2
 
     # Check for monster reaction dialog
     while reactions:
         add_dialog(tape, reactions.pop(0))
 
+    # Check if we are in an active battle
+    if _active_battle >= 0:
+        if mons.is_alive(_active_battle):
+            return
+        _active_battle = -1
+
     # Check for, and potentially action, the next event
-    pos = int(tape.x[0])
+    pos = tape.x[0]
     pos = pos if pos > coop_px else coop_px # Furthest of both players
-    if pos >= int(_next_at):
-        event = _next_event
+    if pos >= _next_at:
+        event = eval(_next_event)
         # Handle level type changes
         if isinstance(event, tuple):
             tape.feed = event[0]
