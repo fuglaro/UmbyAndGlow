@@ -121,7 +121,8 @@ class Monsters:
     def __init__(self, tape):
         ### Engine for all the different monsters ###
         self._tp = tape
-        self._px = 0 # x pos for left edge of the active tape area
+        # x pos for left edge of the active tape area of coop, otherwise own
+        self._px = 0
         # Types of all the monsters
         self._tids = bytearray(0 for i in range(48))
         # x positions of all the monsters
@@ -134,7 +135,7 @@ class Monsters:
     @micropython.viper
     def port_out(self, buf: ptr8):
         ### Dump monster data to the output buffer for sending to player 2 ###
-        px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]
+        px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3] # left of own tape
         # Loop through each monster
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -143,7 +144,7 @@ class Monsters:
             x = xs[i]
             # Add monster to buffer (disabling if out of range)
             buf[16+i*3] = tids[i] if 0 < x-px <= 256 else 0
-            buf[17+i*3] = x-px
+            buf[17+i*3] = x-px if 0 < x-px <= 256 else 0
             buf[18+i*3] = ys[i]
         # Clear remainder of buffer
         for i in range(i+1, 48):
@@ -152,7 +153,7 @@ class Monsters:
     @micropython.viper
     def port_in(self, buf: ptr8):
         ### Unpack monster data from input buffer recieved from player 2 ###
-        px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]
+        px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3] # left of other tape
         self._px = px <<1|1
         # Loop through each monster
         tids = ptr8(self._tids)
@@ -242,7 +243,7 @@ class Monsters:
         ### Update Monster dynamics one game tick for all monsters ###
         tape = self._tp
         tpx = int(tape.x[0])
-        self._px = tpx <<1|1
+        self._px = tpx-72 <<1|1 # left of own tape
 
         # Loop through all the monsters, updating ticks
         tids = ptr8(self._tids)
@@ -442,7 +443,6 @@ class Monsters:
         s = t//30%2 # every other section moves, alternatively
         # Move the head
         if s or tid != _Pillar:
-            px = int(self._px)
             d = data[ii] # direction of movement (down:0/left:1/up:2/right:3)
             r = data[ii+1] # rotation direction
             if ch(x, y): # Try to find an edge from within solid foreground
@@ -481,7 +481,7 @@ class Monsters:
                 elif ys[i] < 64:
                     ys[i] = 64
                 # or too far to the right
-                elif d==3 and x > px+108:
+                elif d==3 and x > int(self._tp.x[0])+108:
                     if tid == _Pillar:
                         # Turn back the other way
                         data[ii] = 1
@@ -527,14 +527,15 @@ class Monsters:
         xs, ys = ptr32(self.x), ptr8(self.y)
         x, y = xs[i], ys[i]-64
         tr = (t+i*97)%200
+        tpx = int(tape.x[0])
         if tr==0:
             # Set new swoop location
             data[ii], data[ii+1] = x, y
             data[ii+2] = t*x*y%100-50
             data[ii+3] = (t^(x*y))%50+5
             # Dont fly too far off to the right
-            if data[ii+3] > int(self._px) + 400:
-                data[ii+3] = int(self._px) + 400
+            if data[ii+3] > tpx + 400:
+                data[ii+3] = tpx + 400
         elif tr <= 50:
             # Exececute the swoop
             xs[i] = data[ii] + data[ii+2]*tr//50
@@ -808,7 +809,7 @@ class Monsters:
                 continue
             x = xs[i]-tpx
             # Monsters in the distance get drawn to background layers
-            l = 1 if -36 <= x-px < 108 else 0
+            l = 1 if 36 <= x-px < 220 else 0    
             self._draw_monster(t, tids[i], x, ys[i]-64, l)
 
             # Check if a rocket hits this monster
