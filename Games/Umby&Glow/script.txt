@@ -302,10 +302,53 @@
 #Lots of stompers to navigate.
 # Maybe use low gravity kind of thing in underwater level.
 #
-#----
-#Space
-# Ship (vertical and left facing Like a ] shape. that fires two fireballs from just outside top and bottom arm.)
-#Mon: alien with tentacles like an octopus.
+#On going backwards home by going forwards. Arguments between worms about inviting which way they are going, and if they got turned around or are turned around.
+#
+#Lung: Well, if it isn't the wormy duo!
+#
+#Rocket ship battle. Allow bones > 40 x
+#
+#
+#
+#Space - Among the Stars
+#
+#^: Woah! It's so empty!
+#^: And so pretty!
+#@: You're right! My eyes are just starting to adjust to the stars.
+#^: Really? They're so bright!
+#^: Reminds me of all the other glow worms back home.
+#@: I miss home.
+#^: Me too, Umby.
+#@: All the more reason to retake it!
+#^: True. No use dwelling on what's lost, when you can almost feel it back in your grasp.
+#@: It still feels a fair way away to me!
+#@: Where is that alien ship anyway?
+#^: You don't see it?
+#^: It's literally right in front of us.
+#^: A fair way but the Space-Y chums at least set us on a good direction.
+#@: Nice. Forward trajectory then.
+#^: Yet again!
+#
+#- time above so with steady movement forwards, stars appear about half way (no monsters throughout).
+#
+#- time passes.
+#
+#@: Look at that alien swarm!
+#^: Looks like these numpties are getting frustrated!
+#@: No kidding!
+#^: I guess they are finding out how much they opened a can of worms...
+#@: HA! ... a can labelled WHOOPASS!
+#^: Lol! Good one, Umby!
+#@: You too, Glow!
+#@: Let's let that can of worms explode!
+#^: Boom Boom, baby!
+#
+#- (bones, E-falcon, prober)
+#
+#Prober (background moves to above/below player - then quickly jumps in foreground and brain probes).
+#
+# E-falcon: Ship (vertical and left facing Like a ] shape. that fires two fireballs from just outside top and bottom arm.)
+#Prober: alien with tentacles like an octopus.
 #Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
 #Similar to Bones but shoots fireballs.
 #
@@ -313,6 +356,7 @@
 #
 #
 # Teleport from alien spaceship to the ground.
+#
 #
 ###
 ### # TODO turn story into script
@@ -390,6 +434,7 @@
 160, "Lily VL"
 160, "Mevlan S"
 160, "Paul K"
+160, "Pugremix"
 160, "Vince B"
 160, "Thank you for playing!"
 
