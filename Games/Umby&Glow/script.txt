@@ -79,7 +79,7 @@
 200, "^: Ummm... Umby?..."
 0,   "@: Yes Glow?..."
 0,   "^: What's that rumbling?"
-0,   "@: Whatever it is, its big..."
+0,   "@: Whatever it is, it's big..."
 0,   "@: and it's invaded the wrong cave!"
 0,   "^: Right. Lets rumble!"
 
@@ -112,8 +112,8 @@
 0,   "^: What are we going to do?"
 0,   "@: Keep blasting and get moving!"
 0,   "@: Theres a forest up ahead we can use for cover."
-0,   "^: Ok. Ive got your back."
-0,   "@: Lets roll..."
+0,   "^: Ok. I've got your back."
+0,   "@: Let's roll..."
 
 70,  ([pattern_cloudy_snowy_mountains,pattern_ferns,pattern_ferns_fill,pattern_cloudy_plains,pattern_fill],(bytearray(), bytearray()),0)
 150, "CHAPTER~2: \n The_Forest"
@@ -144,7 +144,6 @@
 
 # Forest monsters
 180, ([pattern_tree_wall,pattern_mid_forest,pattern_mid_forest_fill,pattern_forest,pattern_forest_fill],(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
-
 
 800, "@: Alright Glow..."
 0,   "@: Here's what I'm thinking..."
@@ -266,8 +265,6 @@
 0,   "@: I don't know how you see so well without eyes."
 0,   "^: There's just enough wiggle room to squeeze in!"
 
-999, "CHAPTER~X: \n TEST_(TODO)"
-
 # Create rocket and start countdown (moves +500 into distance automatically)
 200, "Hurry!"
 0,   LeftDoor
@@ -289,8 +286,7 @@
 1000, "CHAPTER~4: \n Among the Stars"
 
 
-
-4400, "Ask fuglaro for more chapters"
+400, "Ask fuglaro for more chapters"
 
 ################################################################
 # Story WIP and Ideas
@@ -439,6 +435,7 @@
 160, "Thank you for playing!"
 
 # TODO: encore level with randomisation of all previous content
+999, "CHAPTER~X: \n TEST_(TODO)"
 
 4000000, "GOODBYE!"
 100, StopIteration()

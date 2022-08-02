@@ -527,7 +527,7 @@ class Monsters:
         xs, ys = ptr32(self.x), ptr8(self.y)
         x, y = xs[i], ys[i]-64
         tr = (t+i*97)%200
-        tpx = int(tape.x[0])
+        tpx = int(self._tp.x[0])
         if tr==0:
             # Set new swoop location
             data[ii], data[ii+1] = x, y

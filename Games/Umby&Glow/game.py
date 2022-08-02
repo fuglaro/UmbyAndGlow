@@ -173,7 +173,7 @@ def run_game():
 
     # Memory clearing before relaxing gc and entering game loop
     gc.collect()
-    gc.threshold(-1)
+    gc.threshold(20000)
 
     # Main gameplay loop
     savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
