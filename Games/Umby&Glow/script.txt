@@ -295,51 +295,19 @@
 ################################################################
 # Story WIP and Ideas
 #
-#Umby Space Y
-#
-#Rocket ship
-# LEFT DOOR: manages player and rockets directly. Never draws a sprite, only manipulates tape directly!
-#Rocket ship has left and right wall monsters that have specific attacks that just keep the worms in the center (need to detect which monster hits a player).
-#Left and right walls shut, keeping the player inside. Cant see outside.
-#Background layer monsters can be seen outside, along with clouds and stars. At different rates, they fall down the screen. (Use a bones that explodes on contact with ground - for use elsewhere - maybe another level? Maybe on the return home (because they are falling out of the sky? - fast but doesnt kill worm, just knocks them back and destroys land)
-#
-#Leading to rocket - boxes piled on ground. Jumping monster?
-#
-#After launch - rocket destroyed by aliens.
-#
-#
-#----
-#Rockets in background
-#Countdown to doors closing.  If you don't make it, it's reset. Doors bounce you back off. "Umby was too slow"
-#
-#Doors shut locking you in and you can see from outside that the rocket is lifting off.
-#Monsters get denser, stars start to show. Dialog at **timed intervals**. Needs timer events in dialog queue.
-#Death behaviour changes to not scroll back (based on "spaced" variable). Instead, holds worm in middle vertical spot for a while then places on platform on same horizonal position.
-#
-#Falling monsters and stars are controlled by the right door. That does all the work and timings. This way, everything outside can shake during liftoff.
-#
-#Monsters start falling down.
-#
-
-#
-#Monsters get faster.
-#
-#
+#Monster Idea: a bones that explodes on contact with ground - for use elsewhere - maybe another level? Maybe on the return home (because they are falling out of the sky? - fast but doesnt kill worm, just knocks them back and destroys land)
 #
 #----
 #Level with monster wall that chases you is after the aquarium is destroyed, and a wall of water and monsters rushes after you and you are escaping the exploding ship.
 #Lots of stompers to navigate.
+# Maybe use low gravity kind of thing in underwater level.
 #
 #----
 #Space
-# Ship (vertical and left facing Like a ] shape. that fires two fireballs from top and bottom arm.)
+# Ship (vertical and left facing Like a ] shape. that fires two fireballs from just outside top and bottom arm.)
 #Mon: alien with tentacles like an octopus.
 #Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
 #Similar to Bones but shoots fireballs.
-#
-#Umby and Glow behave differently:
-# - Glow has no gravity but still wall crawls
-# - Umby has very low gravity moving downward.
 #
 #Normal gravity returns when getting on the alien ship.
 #
@@ -362,8 +330,6 @@
 #    spaceship computer mainframe -> dolphin aquarium ->
 #    flooded spaceship -> forest -> cave
 ###
-#
-# Take your time, you don't want to be the early worm.
 #
 #"""
 #The dolphins sold our planet? What for?!
