@@ -167,8 +167,9 @@ class Player:
         self._aim_pow = 256
         if name == "Glow": # Glow's starting behaviors
             self._aim_ang = -32768
-            # Shoot hook straight up
+            # Shoot hook straight up to spawn roof
             self._launch_hook(0)
+            self._hy = 3
         elif name == "Clip": # Test mode starting behaviors
             self.mode = 199
         self._aim_x = (_sinco[(self._aim_ang//1024+200)%400]-128)*10//128
