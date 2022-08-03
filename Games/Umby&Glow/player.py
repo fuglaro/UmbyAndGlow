@@ -3,6 +3,7 @@
 from machine import Pin, reset
 from math import sqrt, floor
 from audio import *
+from patterns import sinco
 
 _FPS = const(60)
 
@@ -32,36 +33,6 @@ _aim = bytearray([64,224,64])
 _aim_fore_mask = bytearray([224,224,224])
 # BITMAP: width: 5, height: 8
 _aim_back_mask = bytearray([112,248,248,248,112])
-
-
-# Fast sine and cos lookup table.
-# If angle is in radians*65536, then use as follows:
-#     sin = (_sinco[(a//1024+200)%400]-128)/128
-#     cos = (_sinco[(a//1024-100)%400]-128)/128
-_sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
-    103, 101, 99, 97, 95, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 72, 71,
-    69, 67, 65, 64, 62, 60, 58, 57, 55, 53, 52, 50, 49, 47, 46, 44, 43, 41, 40,
-    38, 37, 35, 34, 33, 31, 30, 29, 27, 26, 25, 24, 23, 21, 20, 19, 18, 17, 16,
-    15, 14, 13, 12, 12, 11, 10, 9, 8, 8, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1,
-    1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 3,
-    4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-    21, 22, 24, 25, 26, 27, 28, 30, 31, 32, 34, 35, 37, 38, 39, 41, 42, 44, 45,
-    47, 48, 50, 52, 53, 55, 57, 58, 60, 62, 63, 65, 67, 69, 70, 72, 74, 76, 78,
-    80, 81, 83, 85, 87, 89, 91, 93, 95, 97, 99, 101, 102, 104, 106, 108, 110,
-    112, 114, 116, 118, 120, 122, 124, 126, 128, 130, 132, 134, 136, 138, 140,
-    142, 144, 146, 148, 150, 152, 154, 156, 158, 160, 162, 164, 166, 168, 170,
-    171, 173, 175, 177, 179, 181, 182, 184, 186, 188, 190, 191, 193, 195, 196,
-    198, 200, 201, 203, 205, 206, 208, 209, 211, 212, 214, 215, 217, 218, 220,
-    221, 222, 224, 225, 226, 228, 229, 230, 231, 232, 233, 235, 236, 237, 238,
-    239, 240, 241, 242, 242, 243, 244, 245, 246, 247, 247, 248, 249, 249, 250,
-    250, 251, 251, 252, 252, 253, 253, 254, 254, 254, 254, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 254, 254, 253,
-    253, 253, 252, 252, 251, 251, 250, 249, 249, 248, 247, 247, 246, 245, 244,
-    244, 243, 242, 241, 240, 239, 238, 237, 236, 235, 234, 233, 231, 230, 229,
-    228, 227, 225, 224, 223, 221, 220, 219, 217, 216, 214, 213, 211, 210, 208,
-    207, 205, 203, 202, 200, 199, 197, 195, 193, 192, 190, 188, 187, 185, 183,
-    181, 179, 177, 176, 174, 172, 170, 168, 166, 164, 162, 160, 159, 157, 155,
-    153, 151, 149, 147, 145, 143, 141, 139, 137, 135, 133, 131, 129])
 
 def _draw_trail(draw_func, x, y, rdir):
     ### Leave a rocket trail behind a position ##
@@ -172,8 +143,8 @@ class Player:
             self._hy = 3
         elif name == "Clip": # Test mode starting behaviors
             self.mode = 199
-        self._aim_x = (_sinco[(self._aim_ang//1024+200)%400]-128)*10//128
-        self._aim_y = (_sinco[(self._aim_ang//1024-100)%400]-128)*10//128
+        self._aim_x = (sinco[(self._aim_ang//1024+200)%400]-128)*10//128
+        self._aim_y = (sinco[(self._aim_ang//1024-100)%400]-128)*10//128
         self._boom_x = self._boom_y = 0 # recent explosion
         self._trail = 0 # Currently making platform from rocket trail
         self._air = 0 # Currently in jump
@@ -452,7 +423,7 @@ class Player:
         # Aiming and launching
         a_pow = int(self._aim_pow)
         if (u | d | b) or a_pow > 256:
-            _snco = ptr8(_sinco)
+            snco = ptr8(sinco)
             # CONTROLS: Aim rocket
             a_ang = int(self._aim_ang)
             if u | d:
@@ -467,29 +438,29 @@ class Player:
                 self._rocket_x, self._rocket_y = xf <<1|1, yf-512 <<1|1
                 self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
-                    (_snco[((a_ang>>10)+200)%400]-128)*a_pow>>8) <<1|1
+                    (snco[((a_ang>>10)+200)%400]-128)*a_pow>>8) <<1|1
                 self._rocket_y_vel = (
-                    (_snco[((a_ang>>10)-100)%400]-128)*a_pow>>8) <<1|1
+                    (snco[((a_ang>>10)-100)%400]-128)*a_pow>>8) <<1|1
                 a_pow = 256
                 self._rdir = (1 if int(self._aim_x) > 0 else -1) <<1|1
                 # Wait until the rocket button is released before firing another
                 self._hold = 1 <<1|1
             # Resolve rocket aim to the x by y vector form
-            self._aim_x = ((_snco[((a_ang>>10)+200)%400]-128)*a_pow//3360) <<1|1
-            self._aim_y = ((_snco[((a_ang>>10)-100)%400]-128)*a_pow//3360) <<1|1
+            self._aim_x = ((snco[((a_ang>>10)+200)%400]-128)*a_pow//3360) <<1|1
+            self._aim_y = ((snco[((a_ang>>10)-100)%400]-128)*a_pow//3360) <<1|1
             self._aim_pow = a_pow <<1|1
 
     @micropython.viper
     def _launch_hook(self, angle: int):
         ### Activate grappling hook in given aim ###
         ch = self._tp.check_tape
-        _snco = ptr8(_sinco)
+        snco = ptr8(sinco)
         x, y = int(self.x), int(self.y)
         xl, yl = x<<8, y<<8
         self._hook_ang = angle <<1|1
         # Find hook landing position
-        xs = 128-_snco[((angle>>10)+200)%400]
-        ys = 128-_snco[((angle>>10)-100)%400]
+        xs = 128-snco[((angle>>10)+200)%400]
+        ys = 128-snco[((angle>>10)-100)%400]
         xh, yh = xl, yl
         d = int(self.dir)
         while (yh >= -1 and (xl-xh)*d < 10240 and not int(ch(xh>>8, yh>>8))):
@@ -512,7 +483,7 @@ class Player:
     def _tick_play_roof(self, t: int):
         ### Handle one game tick for roof climbing play controls ###
         mode = int(self.mode)
-        _snco = ptr8(_sinco)
+        snco = ptr8(sinco)
         x, y = int(self.x), int(self.y)
         xf, yf = int(self._x), int(self._y)
         dr = int(self.dir)
@@ -562,13 +533,13 @@ class Player:
                 self.mode = 12 <<1|1
                 # Convert angular momentum to free falling momentum
                 self._x_vel = (
-                    (_snco[((ang>>10)-100)%400]-128)*leng>>15)*vel <<1|1
+                    (snco[((ang>>10)-100)%400]-128)*leng>>15)*vel <<1|1
                 self._y_vel = 0-(
-                    (_snco[((ang>>10)+200)%400]-128)*leng>>15)*vel <<1|1
+                    (snco[((ang>>10)+200)%400]-128)*leng>>15)*vel <<1|1
                 self._hold = 1 <<1|1
             # Calculate the worm position
-            self._x = (hx<<8) + ((_snco[((ang>>10)+200)%400]-128)*leng>>7) <<1|1
-            self._y = (hy<<8) + ((_snco[((ang>>10)-100)%400]-128)*leng>>7) <<1|1
+            self._x = (hx<<8) + ((snco[((ang>>10)+200)%400]-128)*leng>>7) <<1|1
+            self._y = (hy<<8) + ((snco[((ang>>10)-100)%400]-128)*leng>>7) <<1|1
             # Update motion and position variables based on swing
             self._hook_ang = ang+vel <<1|1
             self._hook_vel = vel <<1|1
@@ -652,15 +623,15 @@ class Player:
                 self._rocket_x, self._rocket_y = xf <<1|1, yf+512 <<1|1
                 self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
-                    (_snco[((a_ang>>10)+200)%400]-128)*a_pow>>8)*dr <<1|1
+                    (snco[((a_ang>>10)+200)%400]-128)*a_pow>>8)*dr <<1|1
                 self._rocket_y_vel = (
-                    (_snco[((a_ang>>10)-100)%400]-128)*a_pow>>8) <<1|1
+                    (snco[((a_ang>>10)-100)%400]-128)*a_pow>>8) <<1|1
                 a_pow = 256
                 self._rdir = dr <<1|1
             # Resolve roscket aim to the x by y vector form
             self._aim_x = (
-                (_snco[((a_ang>>10)+200)%400]-128)*a_pow//3360)*dr <<1|1
-            self._aim_y = ((_snco[((a_ang>>10)-100)%400]-128)*a_pow//3360) <<1|1
+                (snco[((a_ang>>10)+200)%400]-128)*a_pow//3360)*dr <<1|1
+            self._aim_y = ((snco[((a_ang>>10)-100)%400]-128)*a_pow//3360) <<1|1
             self._aim_pow = a_pow <<1|1
         aim_x = int(self._aim_x)
         if (l | r) and aim_x*dr > 0:
