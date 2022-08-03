@@ -614,14 +614,14 @@ class Monsters:
                 ys[xi] += data[ii+2]
     
         # Flying sequence monster spawning
-        if 2300 < timer < 10000 and timer%300==0:
+        if 2300 < timer < 10000 and timer%280==0:
             # Random position from edge of screen
             p = (timer^p1x)%448
             x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
             y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
-            if x1 <= 50: # No monsters from left of screen
+            if x1 <= 35: # No monsters from left of screen
                 return
-            mon = _Molaar if 50 < x1 < 140 else _ChargingBones
+            mon = _Molaar if 50<x1<140 else _Bones if x1<=50 else _ChargingBones
             self.add(mon, x+x1-40, y1+64)
 
         # Stop monsters hogging the respawn area or charging for too long

@@ -285,6 +285,7 @@
 
 1000, "CHAPTER~4: \n Among the Stars"
 
+999, "CHAPTER~X: \n TEST_(TODO)"
 
 400, "Ask fuglaro for more chapters"
 
@@ -435,7 +436,6 @@
 160, "Thank you for playing!"
 
 # TODO: encore level with randomisation of all previous content
-999, "CHAPTER~X: \n TEST_(TODO)"
 
 4000000, "GOODBYE!"
 100, StopIteration()
