@@ -283,7 +283,24 @@
 0,   "^: Sure thing, Umby!"
 0,   "@: Careful with the low gravity!"
 
-1000, "CHAPTER~4: \n Among the Stars"
+1000,"CHAPTER~4: \n Among the Stars"
+0,   ([pattern_nebula,pattern_none,pattern_fill,pattern_none,pattern_fill],(bytearray(), bytearray()),1) # TODO
+
+80,  "^: It's so pretty!"
+0,   "@: You're right! My eyes are just starting to adjust to the stars."
+0,   "^: Really? They're so bright!"
+0,   "^: Reminds me of all the other glow worms back home."
+0,   "@: Home... I miss home."
+0,   "^: Me too, Umby."
+0,   "@: All the more reason to retake it!"
+0,   "^: Totes. No use dwelling on what's lost, when you can almost feel it back in your grasp."
+0,   "@: It still feels a fair way away to me!"
+0,   "@: Where is that alien ship anyway?"
+0,   "^: You don't see it?"
+0,   "^: It's literally directly in front of us."
+0,   "^: A fair way, but the Space-Y chums at least set us on a good direction."
+0,   "@: So nice of them. Forwards then!"
+0,   "^: Yet again!"
 
 999, "CHAPTER~X: \n TEST_(TODO)"
 
@@ -309,22 +326,7 @@
 #
 #Space - Among the Stars
 #
-#^: Woah! It's so empty!
-#^: And so pretty!
-#@: You're right! My eyes are just starting to adjust to the stars.
-#^: Really? They're so bright!
-#^: Reminds me of all the other glow worms back home.
-#@: I miss home.
-#^: Me too, Umby.
-#@: All the more reason to retake it!
-#^: True. No use dwelling on what's lost, when you can almost feel it back in your grasp.
-#@: It still feels a fair way away to me!
-#@: Where is that alien ship anyway?
-#^: You don't see it?
-#^: It's literally right in front of us.
-#^: A fair way but the Space-Y chums at least set us on a good direction.
-#@: Nice. Forward trajectory then.
-#^: Yet again!
+
 #
 #- time above so with steady movement forwards, stars appear about half way (no monsters throughout).
 #

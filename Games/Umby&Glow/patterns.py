@@ -67,8 +67,8 @@ def shash(x: int, step: int, size: int) -> int:
 
 # Fast sine and cos lookup table.
 # If angle is in radians*65536, then use as follows:
-#     sin = (sinco[(a//1024+200)%400]-128)/128
-#     cos = (sinco[(a//1024-100)%400]-128)/128
+#     sin = (sinco[(a//1024+200)%400]-128)//128
+#     cos = (sinco[(a//1024-100)%400]-128)//128
 sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
     103, 101, 99, 97, 95, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 72, 71,
     69, 67, 65, 64, 62, 60, 58, 57, 55, 53, 52, 50, 49, 47, 46, 44, 43, 41, 40,
@@ -259,6 +259,31 @@ sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
 #        ) << (y-oY)
 #    return v
 #
+#
+#@micropython.viper
+#def pattern_quilted_diodes(x: int, oY: int) -> int:
+#    ### PATTERN [quilted_diodes]: mix between electronics and fabric.
+#    # Looks like it is ihe insides of a woven computer.
+#    ###
+#    snco = ptr32(sinco) # Note we (dangerously) use a bytearray as an int array
+#
+#    sf = 100 # size factor
+#    xm = sf*12//10 # sector
+#    x = x%xm-xm//2
+#
+#    v = 0
+#    for ya in range(oY, oY+32):
+#
+#        y = ya*int(abs(x//100))
+#
+#        p1 = -1 if snco[(x^y)%99+1]<128 else 0
+#        p2 = -1 if snco[(x*2^y*2)%99+1]<128 else 0
+#        p3 = -1 if snco[(x*4^y*4)%99+1]<128 else 0
+#        p4 = -1 if snco[(x*8^y*8)%99+1]<128 else 0
+#        v |= (
+#           0 if (p1^p2^p3^p4) else 1
+#        ) << (ya-oY)
+#    return v
 ################################################################
 
 @micropython.viper
@@ -768,9 +793,67 @@ def pattern_launch_back(x: int, oY: int) -> int:
     return v
 
 
+
+# TODO:
+
+
+@micropython.viper
+def pattern_nebula(x: int, oY: int) -> int:
+    ### PATTERN [nebula]: Lightly scattered and randomised trails of stars
+    ###
+    snco = ptr8(sinco)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+           1 if snco[((x*x)^((y+100)*(y+100)))%400] < 2 else 0
+        ) << (y-oY)
+    return v
+
+
+
+@micropython.viper
+def pattern_orbitals(x: int, oY: int) -> int:
+    ### PATTERN [orbitals]: TODO
+    ###
+    snco = ptr8(sinco)
+    sf = 100 # size factor
+    xm = sf*12//10 # sector
+    x = x%xm-xm//2
+    sz = sf*10
+
+    # Rotations
+    a = 13666
+    sina = (snco[(a+200)%400]-128)
+    cosa = (snco[(a-100)%400]-128)
+
+    # Crescenting amoount (11-80)
+    cres = 15
+    # Whether to gibbous
+    gib = 1
+
+    v = 0
+    for y in range(oY, oY+32):
+
+
+        y1 = y-50
+
+
+        # Rotate
+        xr = cosa*x//128 - sina*y1//128
+        y1 = sina*x//128 + cosa*y1//128
+        # shaded planet
+        xx = xr*xr
+        y2 = (y1)*cres
+        cresgib = xx+y2*y2//100 > sz and y1 < 0
+        cresgib = (0 if cresgib else 1) if gib else cresgib
+        v |= (
+           1 if xx+y1*y1 < sz and cresgib else 0
+        ) << (y-oY)
+    return v
+
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
 pattern_testing_back = pattern_none
-pattern_testing = pattern_fill
+pattern_testing = pattern_orbitals
 pattern_testing_fill = pattern_fill
 
 
