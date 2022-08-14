@@ -115,18 +115,18 @@ class Player:
         self.coop = coop
         self.dir = 1
         self.respawn_loc = 0 # custom respawn point
-        self.x, self.y = x, y # Unit is 1 pixel
+        self.x = x; self.y = y # Unit is 1 pixel
         self.rocket_on = 0
-        self.rocket_x, self.rocket_y = 0, 0 # Unit is 1 pixel
+        self.rocket_x = self.rocket_y = 0 # Unit is 1 pixel
         self.space = 0 # Low gravity mode
         # Internal properties
         self._tp = tape
         self._mons = mons
-        self._x, self._y = x*256, y*256 # Unit is 256th of a pixel
+        self._x = x*256; self._y = y*256 # Unit is 256th of a pixel
         self._rdir = 0
         self._moving = 0
-        self._x_vel, self._y_vel = 0, 0 # Unit is 65536 of a pixel
-        self._hx, self._hy = 0, 0 # Position where hook attaches ceiling
+        self._x_vel = self._y_vel = 0 # Unit is 65536 of a pixel
+        self._hx = self._hy = 0 # Position where hook attaches ceiling
         self._topt = 0 # Amount of ticks Umby is being cheeky above roof
         # Internal hook parameters (resolved to player x, y in tick)
         self._hook_ang = 0 # Unit is 65536th of a radian
@@ -243,11 +243,11 @@ class Player:
     def detonate(self, t):
         ### Explode the rocket, also carving space out of the ground. ###
         play(rocket_bang, 40)
-        rx, ry = self.rocket_x, self.rocket_y
-        self._boom_x, self._boom_y = rx, ry # Store for sending to coop
+        rx = self.rocket_x; ry = self.rocket_y
+        self._boom_x = rx; self._boom_y = ry # Store for sending to coop
         self._tp.blast(t, rx, ry)
         # DEATH: Check for death by rocket blast
-        dx, dy = rx-self.x, ry-self.y
+        dx = rx-self.x; dy = ry-self.y
         if dx*dx + dy*dy < 48:
             self.die(self.name + " kissed a rocket!")
         # Get ready to end rocket
@@ -257,7 +257,7 @@ class Player:
     def _tick_ai(self, t: int) -> int:
         ### Consult with the digital oracle for button presses ###
         mode = int(self.mode)
-        x, y = int(self.x), int(self.y)
+        x = int(self.x); y = int(self.y)
         d = int(self.dir) * 10
         p = int(self._tp.x[0]) + 36 # Horizontal middle
         m = int(bool(self._mons.num))
@@ -281,7 +281,8 @@ class Player:
             if y > 55:
                 self._launch_hook(0)
                 # Apply super grapple hook parameters
-                self._hx, self._hy = x <<1|1, 1 <<1|1
+                self._hx = x <<1|1
+                self._hy = 1 <<1|1
                 self._hook_len = ((y-1)<<8) <<1|1
             # Horizongal roof walking, rocket, and fall/grapple.
             return ((4 if x > p+d else 0) | (8 if x < p+d else 0)
@@ -320,7 +321,7 @@ class Player:
         self._c = c <<1|1
 
         # Update directional states
-        l, r = c&4, c&8
+        l = c&4; r = c&8
         m = 0
         if l or r:
             self.dir = (-1 if l else 1) <<1|1
@@ -352,8 +353,8 @@ class Player:
     @micropython.viper
     def _tick_play_ground(self, t: int):
         ### Handle one game tick for ground play controls ###
-        xf, yf = int(self._x), int(self._y)
-        x, y = xf>>8, yf>>8
+        xf = int(self._x); yf = int(self._y)
+        x = xf>>8; y = yf>>8
         yv = int(self._y_vel)
         c = int(self._c)
         ch = self._tp.check_tape
@@ -396,19 +397,21 @@ class Player:
 
         # Umby's rocket.
         ron = int(self.rocket_on)
-        u, d, b = c&1, c&2, c&16
+        u = c&1; d = c&2; b = c&16
         # Apply rocket dynamics if it is active
         if ron:
-            rxf, ryf = int(self._rocket_x), int(self._rocket_y)
+            rxf = int(self._rocket_x); ryf = int(self._rocket_y)
             ryv = int(self._rocket_y_vel)
             # Apply rocket motion
             rxf += int(self._rocket_x_vel)
             ryf += ryv
             ryv += 1 if self.space else 11 # Apply gravity
             # Update stored properties
-            rx, ry = rxf>>8, ryf>>8
-            self.rocket_x, self.rocket_y = rx <<1|1, ry <<1|1
-            self._rocket_x, self._rocket_y = rxf <<1|1, ryf <<1|1
+            rx = rxf>>8; ry = ryf>>8
+            self.rocket_x = rx <<1|1
+            self.rocket_y = ry <<1|1
+            self._rocket_x = rxf <<1|1
+            self._rocket_y = ryf <<1|1
             self._rocket_y_vel = ryv <<1|1
             if b: # Create trail platform when activated
                 _draw_trail(self._tp.draw_tape, rx, ry, self._rdir)
@@ -435,8 +438,10 @@ class Player:
             elif b==0 and ron==0 and a_pow > 256:
                 play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
-                self._rocket_x, self._rocket_y = xf <<1|1, yf-512 <<1|1
-                self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
+                self._rocket_x = xf <<1|1
+                self._rocket_y = yf-512 <<1|1
+                self.rocket_x = xf>>8 <<1|1
+                self.rocket_y = (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
                     (snco[((a_ang>>10)+200)%400]-128)*a_pow>>8) <<1|1
                 self._rocket_y_vel = (
@@ -455,23 +460,23 @@ class Player:
         ### Activate grappling hook in given aim ###
         ch = self._tp.check_tape
         snco = ptr8(sinco)
-        x, y = int(self.x), int(self.y)
-        xl, yl = x<<8, y<<8
+        x = int(self.x); y = int(self.y)
+        xl = x<<8; yl = y<<8
         self._hook_ang = angle <<1|1
         # Find hook landing position
         xs = 128-snco[((angle>>10)+200)%400]
         ys = 128-snco[((angle>>10)-100)%400]
-        xh, yh = xl, yl
+        xh = xl; yh = yl
         d = int(self.dir)
         while (yh >= -1 and (xl-xh)*d < 10240 and not int(ch(xh>>8, yh>>8))):
             xh += xs
             yh += ys
         # Apply grapple hook parameters
-        self._hx, self._hy = (xh>>8) <<1|1, (yh>>8) <<1|1
-        x1, y1 = xl-xh, yl-yh
+        self._hx = (xh>>8) <<1|1; self._hy = (yh>>8) <<1|1
+        x1 = xl-xh; y1 = yl-yh
         self._hook_len = int(floor(sqrt(x1*x1+y1*y1))) <<1|1
         # Now get the velocity in the grapple angle
-        xv, yv = int(self._x_vel)>>8, int(self._y_vel)>>8
+        xv = int(self._x_vel)>>8; yv = int(self._y_vel)>>8
         self._hook_vel = 0-(int(floor(sqrt(xv*xv+yv*yv)))*(1-xv*y1+yv*x1)
             >>5)//(int(self._hook_len) or 1) <<1|1
         # Start normal grappling hook mode
@@ -484,13 +489,12 @@ class Player:
         ### Handle one game tick for roof climbing play controls ###
         mode = int(self.mode)
         snco = ptr8(sinco)
-        x, y = int(self.x), int(self.y)
-        xf, yf = int(self._x), int(self._y)
+        x = int(self.x); y = int(self.y)
+        xf = int(self._x); yf = int(self._y)
         dr = int(self.dir)
         ch = self._tp.check_tape
         c = int(self._c)
-        u, d, l = c&1, c&2, c&4
-        r, b, a = c&8, c&16, c&32
+        u = c&1; d = c&2; l = c&4; r = c&8; b = c&16; a = c&32
         cd = int(ch(x, y-1))
         crd = int(ch(x+1, y-1))
         cld = int(ch(x-1, y-1))
@@ -507,7 +511,7 @@ class Player:
             ang = int(self._hook_ang)
             vel = int(self._hook_vel)
             leng = int(self._hook_len)
-            hx, hy = int(self._hx), int(self._hy)
+            hx = int(self._hx); hy = int(self._hy)
             g = (ang>>8)*(ang>>8)>>9
             vel = (# Swing speed limit
                 (3584 if vel > 3584 else -3584 if vel < -3584 else vel)
@@ -545,7 +549,7 @@ class Player:
             self._hook_vel = vel <<1|1
             self._hook_len = leng <<1|1
         elif mode == 12: # Clinging movement (without grappling hook)
-            x_vel, y_vel = int(self._x_vel), int(self._y_vel)
+            x_vel = int(self._x_vel); y_vel = int(self._y_vel)
             # CONTROLS: Activate hook
             if falling and a and hold==0 and y < 64:
                 # Activate grappling hook in aim direction
@@ -563,7 +567,7 @@ class Player:
             else:
                 # Stop falling when attached to roof
                 y_vel = 0
-            self._x_vel, self._y_vel = x_vel <<1|1, y_vel <<1|1
+            self._x_vel = x_vel <<1|1; self._y_vel = y_vel <<1|1
             # CONTROLS: Apply movement
             if t%2 and y < 64:
                 clu = int(ch(x-1, y+3))
@@ -576,14 +580,14 @@ class Player:
                     and r and (cr | cru)==0)
                 xf += -256 if lsafe else 256 if rsafe else 0
                 yf += -256 if climb else 256 if descend else 0
-            self._x, self._y = xf <<1|1, yf <<1|1
+            self._x = xf <<1|1; self._y = yf <<1|1
 
         # Glow's rocket.
         # Apply rocket dynamics if it is active
         if self.rocket_on:
             rdir = int(self._rdir)
-            rxf, ryf = int(self._rocket_x), int(self._rocket_y)
-            rxv, ryv = int(self._rocket_x_vel), int(self._rocket_y_vel)
+            rxf = int(self._rocket_x); ryf = int(self._rocket_y)
+            rxv = int(self._rocket_x_vel); ryv = int(self._rocket_y_vel)
             # Apply rocket motion
             rxf += rxv
             ryf += ryv
@@ -592,10 +596,13 @@ class Player:
             if rxv*rdir > 0:
                 ryv = ryv * 9 // 10
             # Update stored properties
-            rx, ry = rxf>>8, ryf>>8
-            self.rocket_x, self.rocket_y = rx <<1|1, ry <<1|1
-            self._rocket_x, self._rocket_y = rxf <<1|1, ryf <<1|1
-            self._rocket_x_vel, self._rocket_y_vel = rxv <<1|1, ryv <<1|1
+            rx = rxf>>8; ry = ryf>>8
+            self.rocket_x = rx <<1|1
+            self.rocket_y = ry <<1|1
+            self._rocket_x = rxf <<1|1
+            self._rocket_y = ryf <<1|1
+            self._rocket_x_vel = rxv <<1|1
+            self._rocket_y_vel = ryv <<1|1
             # Defuse if fallen through ground
             if not (80>=ry>=-1) or not (-30<=rx-int(self._tp.x[0])<=102):
                 self.rocket_on = 0 <<1|1
@@ -620,8 +627,10 @@ class Player:
             elif not b and a_pow > 256:
                 play(rocket_flight, 180)
                 self.rocket_on = 1 <<1|1
-                self._rocket_x, self._rocket_y = xf <<1|1, yf+512 <<1|1
-                self.rocket_x, self.rocket_y = xf>>8 <<1|1, (yf+512)>>8 <<1|1
+                self._rocket_x = xf <<1|1
+                self._rocket_y = yf+512 <<1|1
+                self.rocket_x = xf>>8 <<1|1
+                self.rocket_y = (yf+512)>>8 <<1|1
                 self._rocket_x_vel = (
                     (snco[((a_ang>>10)+200)%400]-128)*a_pow>>8)*dr <<1|1
                 self._rocket_y_vel = (
@@ -721,7 +730,7 @@ class Player:
         tape = self._tp
         p = int(tape.x[0])
         py = int(tape.x[1])
-        x_pos, y_pos = int(self.x) - p, int(self.y)
+        x_pos = int(self.x) - p; y_pos = int(self.y)
         m = int(self._moving)
         d = int(self.dir)
         air = int(self._air)
@@ -733,7 +742,7 @@ class Player:
         abl = t*6//_FPS%2 # aim blinker
         # Draw rocket, if active
         if self.rocket_on:
-            hx, hy = int(self.rocket_x), int(self.rocket_y)
+            hx = int(self.rocket_x); hy = int(self.rocket_y)
             rdir = int(self._rdir)
             tape.draw(1, hx-p-1, hy-7, _aim, 3, 0)#head
             tape.draw(0, hx-p+(-3 if rdir>0 else 1), hy-7, _aim, 3, 0)#tail
@@ -757,14 +766,14 @@ class Player:
             tape.mask(0, x_pos-4, by, _ug_back_mask, 9, 0)
         # Aims and hooks
         if mode == 11: # Activated grappling hook rope
-            hook_x, hook_y = int(self._hx), int(self._hy)
+            hook_x = int(self._hx); hook_y = int(self._hy)
             # Draw Glow's grappling hook rope
             for i in range(0, 8):
                 sx = x_pos + (hook_x-(x_pos+p))*i//8
                 sy = y_pos + (hook_y-y_pos)*i//8
                 tape.draw(1, sx-1, sy-6, _aim, 3, 0)
-            hx, hy = hook_x-p-1, hook_y-6
-        aim_x, aim_y = int(self._aim_x), int(self._aim_y)
+            hx = hook_x-p-1; hy = hook_y-6
+        aim_x = int(self._aim_x); aim_y = int(self._aim_y)
         # Aiming (only main player has aiming)
         if mode != 199 and not self._ai and not self.coop:
             # Rocket aim

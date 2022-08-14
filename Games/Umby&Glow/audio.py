@@ -37,7 +37,7 @@ def play(sound, duration, no_interupt=False):
     global _signal, _duration, _no_interupt, _t
     if _no_interupt and _t != _duration:
         return
-    _signal, _duration, _no_interupt, _t = sound, duration, no_interupt, 0
+    _signal = sound; _duration = duration; _no_interupt = no_interupt; _t = 0
     audio_tick()
     _audio(_ON)
 

@@ -189,7 +189,7 @@ class Monsters:
         # Create the new monster
         self.num = (int(self.num)+1) <<1|1
         tids[i] = mon_type
-        xs[i], ys[i] = x, y+64
+        xs[i] = x; ys[i] = y+64
         ii = i*5
         d[ii] = d[ii+1] = d[ii+2] = d[ii+3] = d[ii+4] = 0
 
@@ -288,14 +288,14 @@ class Monsters:
         # * some move faster than others, some with no movement (until in range)
         # * switching to charging behavior when player in range
         ###
-        xs, ys = ptr32(self.x), ptr8(self.y)
-        x, y = xs[i], ys[i]-64
+        xs = ptr32(self.x); ys = ptr8(self.y)
+        x = xs[i]; y = ys[i]-64
         tids = ptr8(self._tids)
         data = ptr32(_data)
         ii = i*5
         th = t//2
         thi = th-i%10
-        dx, dy = data[ii], data[ii+1]
+        dx = data[ii]; dy = data[ii+1]
         # Find the next position
         nx = x + (data[ii+2] if thi%20>dx else 0)
         ny = y + (data[ii+3] if thi%20>dy else 0)
@@ -304,12 +304,12 @@ class Monsters:
         ch = tape.check_tape
         if (dx | dy == 0 or ny < 0 or ny > 63 or thi%129==0
             or ((ch(nx, ny) and th%13 and not (ch(x, y))))):
-            data[ii], data[ii+1] = th%20, 20-(th%20)
+            data[ii] = th%20; data[ii+1] = 20-(th%20)
             data[ii+2] = -1 if th%2 else 1
             data[ii+3] = -1 if th%4>1 else 1
         # Otherwise continue moving
         elif th%(data[ii+4]%5+1):
-            xs[i], ys[i] = nx, ny+64
+            xs[i] = nx; ys[i] = ny+64
         # Check for charging conditions
         if (th+i)%20==0 and tids[i] == _Bones:
             plyrs = tape.players
@@ -340,7 +340,7 @@ class Monsters:
         y = ys[i]-64
         data = ptr32(_data)
         ii = i*5
-        xj, yj = x, y
+        xj = x; yj = y
         if t%2:
             ci = 0
             # Swarm minions around boss
@@ -349,7 +349,7 @@ class Monsters:
                     continue
                 ci += 1
                 dx = data[j*5+2]
-                xj, yj = xs[j], ys[j]-64
+                xj = xs[j]; yj = ys[j]-64
                 if xj < x-30 and dx == -1:
                     data[j*5+2] = 1
                 elif xj > x and dx == 1:
@@ -374,7 +374,7 @@ class Monsters:
         ###
         plyr = self._tp.player
         tids = ptr8(self._tids)
-        xs, ys = ptr32(self.x), ptr8(self.y)
+        xs = ptr32(self.x); ys = ptr8(self.y)
         ii = i*5
         s = t//16%2 # every other section moves, alternatively
         # Shoot Fireball projectiles
@@ -424,7 +424,7 @@ class Monsters:
             return
         xs = ptr32(self.x)
         ys = ptr8(self.y)
-        x, y = xs[i], ys[i]-64
+        x = xs[i]; y = ys[i]-64
         # Slowlyish charge the player position
         xs[i] += 1 if x < px else -1 if x > px else 0
         ys[i] += 1 if y < py else -1 if y > py else 0
@@ -435,8 +435,8 @@ class Monsters:
         ### Molaar behavior: crawls along edges shooting fireballs ###
         tids = ptr8(self._tids)
         tid = tids[i]
-        xs, ys = ptr32(self.x), ptr8(self.y)
-        x, y = xs[i], ys[i]-64
+        xs = ptr32(self.x); ys = ptr8(self.y)
+        x = xs[i]; y = ys[i]-64
         ch = self._tp.check_tape
         data = ptr32(_data)
         ii = i*5
@@ -454,12 +454,13 @@ class Monsters:
                 npy = 1 if d==0 else -1 if d==2 else 0
                 spx = -1 if 1<=d<=2 else 1
                 spy = 1 if d<=1 else -1
-                tpx, tpy = 0-npx, npy
+                tpx = 0-npx; tpy = npy
                 # Apply anti-clockwise/clockwise modifiers
                 rd = 1 if r else -1
                 if r:
-                    tpx, tpy = 0-tpx, 0-tpy
-                    spx, spy = spx if npx else 0-spx, spy if npy else 0-spy
+                    tpx = 0-tpx; tpy = 0-tpy
+                    spx = spx if npx else 0-spx
+                    spy = spy if npy else 0-spy
                 # Crawl around edges of platforms, or search for edges
                 cp = ch(x+npx, y+npy)
                 if not cp and (ch(x+spx, y+spy) or not ch(x+tpy, y+tpx)):
@@ -524,13 +525,13 @@ class Monsters:
         data = ptr32(_data)
         ii = i*5
         t//=2
-        xs, ys = ptr32(self.x), ptr8(self.y)
-        x, y = xs[i], ys[i]-64
+        xs = ptr32(self.x); ys = ptr8(self.y)
+        x = xs[i]; y = ys[i]-64
         tr = (t+i*97)%200
         tpx = int(self._tp.x[0])
         if tr==0:
             # Set new swoop location
-            data[ii], data[ii+1] = x, y
+            data[ii] = x; data[ii+1] = y
             data[ii+2] = t*x*y%100-50
             data[ii+3] = (t^(x*y))%50+5
             # Dont fly too far off to the right
@@ -557,7 +558,7 @@ class Monsters:
         data = ptr32(_data)
         ii = i*5
         x = xs[i]
-        p1, p2 = plyrs[0], plyrs[1]
+        p1 = plyrs[0]; p2 = plyrs[1]
         p1x = int(p1.x)
         p2x = int(p2.x)
         timer = data[ii]
@@ -795,10 +796,12 @@ class Monsters:
         r1 = r2 = 0
         if p1:
             r1 = int(p1.rocket_on)
-            r1x, r1y = int(p1.rocket_x)-tpx, int(p1.rocket_y)
+            r1x = int(p1.rocket_x)-tpx
+            r1y = int(p1.rocket_y)
         if p2:
             r2 = int(p2.rocket_on)
-            r2x, r2y = int(p2.rocket_x)-tpx, int(p2.rocket_y)
+            r2x = int(p2.rocket_x)-tpx
+            r2y = int(p2.rocket_y)
 
         # Loop through all active monsters, to draw and check for monster death
         tids = ptr8(self._tids)
@@ -833,7 +836,7 @@ class Monsters:
         # Bones class types
         if _Bones <= tid <= _ChargingBonesFriend:
             pf = 2 if not _Bones <= tid <= _BackBones else 0 if t//10 % 6 else 1
-            img, msk = self._bones, self._bones_m
+            img = self._bones; msk = self._bones_m
             pw = 7
             mx = -4
             mw = 9
@@ -845,24 +848,24 @@ class Monsters:
             tape.mask(0, mx, my, msk, 9, 0) # Mask Back
         # Skittle type
         elif tid == _Skittle:
-            img, msk = self._skittle, self._skittle_m
+            img = self._skittle; msk = self._skittle_m
             px = 0
             mx = -1
             mw = 9
         # Fireball type
         elif tid == _Fireball:
-            img, msk = self._fireball, self._fireball_m
+            img = self._fireball; msk = self._fireball_m
             px = mx = 0
         # Stomper type
         elif tid == _Stomper:
-            img, msk = self._stomper, self._stomper_m
+            img = self._stomper; msk = self._stomper_m
             m = (y*16+t)%440
             my = py = (m if m < 50 else 50 if m < 170 else 220-m
                 if m < 220 else 0)+3-y
             mw = pw = 7
         # Molaar type
         elif _Molaar <= tid <= _MolaarClimbingCharging:
-            img, msk = self._molaar_feet, self._molaar_feet_m
+            img = self._molaar_feet; msk = self._molaar_feet_m
             mw = pw = 6
             # Handle Charging
             hf = 0 if tid < _MolaarCharging else 1
@@ -882,14 +885,14 @@ class Monsters:
             tape.draw(l, x+3, y+hpy, self._molaar_tail, 4, hpf)
         # Pillar type
         elif tid == _Pillar:
-            img, msk = self._pillar_head, self._pillar_head_m
+            img = self._pillar_head; msk = self._pillar_head_m
             mw = pw = 7
         elif tid == _PillarTail:
-            img, msk = self._pillar_tail, self._pillar_tail_m
+            img = self._pillar_tail; msk = self._pillar_tail_m
             mw = pw = 7
         # Hoot type
         elif tid == _Hoot:
-            img, msk = self._hoot, self._hoot_blink
+            img = self._hoot; msk = self._hoot_blink
             px = -4
             my = py = -5
             pw = 9
