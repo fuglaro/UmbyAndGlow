@@ -416,7 +416,8 @@ class Player:
             if b: # Create trail platform when activated
                 _draw_trail(self._tp.draw_tape, rx, ry, self._rdir)
             self._trail = (1 if b else 0)<<1|1
-            if ry >= 80: # Defuse if fallen through ground
+            # Defuse if fallen through ground or outer space
+            if ry > 69 or (self.space and ry < -5):
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground
                 self.detonate(t)
