@@ -100,6 +100,16 @@ sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
 # Unused interesting patterns, and example patterns
 #
 #@micropython.viper
+#def fsqrt(v: int) -> int:
+#    if v < 2: return v
+#    a = 1337
+#    b = v//a; a = (a+b)>>1
+#    b = v//a; a = (a+b)>>1
+#    b = v//a; a = (a+b)>>1
+#    b = v//a; a = (a+b)>>1
+#    return a
+#
+#@micropython.viper
 #def pattern_template(x: int, oY: int) -> int:
 #    ### PATTERN [template]: Template for patterns. Not intended for use. ###
 #    v = 0
@@ -283,6 +293,68 @@ sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
 #        v |= (
 #           0 if (p1^p2^p3^p4) else 1
 #        ) << (ya-oY)
+#    return v
+#
+#@micropython.viper
+#def pattern_wall_panels(x: int, oY: int) -> int:
+#    ### PATTERN [wall_panels]: Play with sp to randomise (needs cleanup)
+#    ###
+#    snco = ptr8(sinco)
+#    sf = 36 # size factor
+#    xm = sf*12//10 # sector
+#    x = x%xm-xm//2
+#    sz = sf*10
+#
+#    # Rotations
+#    a = 13666
+#    sina = (snco[(a+200)%400]-128)
+#    cosa = (snco[(a-100)%400]-128)
+#
+#    # Crescenting amoount (11-80)
+#    cres = 11
+#    # Whether to gibbous
+#    gib = 1
+#
+#    v = 0
+#    f = 0 # Fill function result (computed here)
+#    for y in range(oY, oY+32):
+#
+#        # Vertical position (planet centered on top row: 0)
+#        y1 = y-20
+#
+#        # Surface pattern
+#        sp = 1 if int(fsqrt(int(abs(x*100))))*y1%x else 0
+#        #         sp = 1 if (snco[(x+200)%400]*y1)%6 else 0
+#        #         sp = 1 if (snco[(x-100)%400]*x*y1+y1)%50<24 else 0 # roses
+#
+#        # Surface pattern - intestines
+#        px = x + snco[(x-100)%400]*y1
+#        py = y1
+#        sp = 1 if (px+py)%12<6 else 0
+#
+#        # Rotate
+#        x1 = cosa*x//128 - sina*y1//128
+#        y1 = sina*x//128 + cosa*y1//128
+#
+#        # Shadowed or lit
+#        lit = 0
+#
+#        # Backlighting (32 = full circle ~ width 1)
+#        bl = 18
+#
+#        # Shaded planet
+#        xx = x1*x1
+#        y2 = (y1)*cres
+#        cresgib = xx+y2*y2//100 > sz and y1 < 0
+#        cresgib = (0 if cresgib else 1) if gib else cresgib
+#        d = xx+y1*y1
+#        v |= (
+#           sp if 1 or # TODO remove condition
+#           d<sz and cresgib else 1 if sz< d <sz+bl else lit if sz < d else 0
+#        ) << (y-oY)
+#        f |= (
+#           1 if d <sz else 0
+#        ) << (y-oY)
 #    return v
 ################################################################
 
@@ -792,11 +864,6 @@ def pattern_launch_back(x: int, oY: int) -> int:
          ) << (y-oY)
     return v
 
-
-
-# TODO:
-
-
 @micropython.viper
 def pattern_nebula(x: int, oY: int) -> int:
     ### PATTERN [nebula]: Lightly scattered and randomised trails of stars
@@ -813,47 +880,105 @@ def pattern_nebula(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_orbitals(x: int, oY: int) -> int:
-    ### PATTERN [orbitals]: TODO
+    ### PATTERN [orbitals]: Randomised planets and moons
     ###
     snco = ptr8(sinco)
-    sf = 100 # size factor
-    xm = sf*12//10 # sector
-    x = x%xm-xm//2
-    sz = sf*10
+    buff = ptr32(_buf)
+    if oY == 0:
+        st = x//128*128
+        buff[0] = xs = int(ihash(st))
+        # Find this sub-sector's random number and size factor
+        xs |= xs>>16 # 4x statisical likelihood for last 8 bits
+        sfa = 0
+        sc = 0
+        si = 0
+        while si < 16:
+            ns = sc*sc+16
+            if st + ns >= x//128*128+128:
+                sfa -= 1
+                break
+            if xs & (1<<si):
+                sfa += 1
+                sc += 1
+            else:
+                if st + ns < x:
+                    st += ns + 5
+                    sc = 0
+                    sfa = 1
+                else:
+                    break
+            si += 1
+        buff[1] = int(ihash(st))
+        buff[2] = sfa
+        buff[3] = st
+    rand1 = buff[0] # 128 pixel sector randomizer
+    rand2 = buff[1] # sub sector randomizer
+    st = buff[3] # Sector position
+    sfa = buff[2] # Sector size factor ~(1-15)
+    sf = sfa*sfa
 
-    # Rotations
-    a = 13666
+    # Randomisable parameters
+    # Vertical position (centered on top row: 0; (-20, 80))
+    yh = rand2%(90+sfa*4)-15-sfa*2
+    rand2 >>= 1
+    cres = rand2%70-11 # Crescenting amoount (11-80)
+    gib = rand2%2 # Whether to gibbous (0-1)
+    rand2 >>= 1
+    lit = rand2%2 # Shadowed or lit (0-1)
+    a = x//2 + (200 if lit or gib else 0) # Rotation (0-400)
+    rand2 >>= 1
+    bl = rand2%16 # Backlighting (0-15)
+    sfc = rand2%21 # Orbital surface curvature (0-20)
+    rand2 >>= 1
+    sfcs = rand2%17 # Orbital surface curvature sheer (0-16)
+    # Surface pattern parameters
+    rand2 >>= 1
+    drf = rand2%20+1 # drift (1-20)
+    rand2 >>= 1
+    srd = rand2%20+1 # spread (1-20)
+    rand2 >>= 1
+    fld = rand2%20+1 # fold (1-20)
+
+    bl *= sfa
+    sfc = (sfc + rand1*sfcs//16)%20
+    sz = sf*10 # sector size
+    x = x - st - sfa*2-(sfa*100//80 if sfa>6 else +4) # x relative to sector
     sina = (snco[(a+200)%400]-128)
     cosa = (snco[(a-100)%400]-128)
 
-    # Crescenting amoount (11-80)
-    cres = 15
-    # Whether to gibbous
-    gib = 1
-
     v = 0
+    f = 0 # Fill function result (computed here)
     for y in range(oY, oY+32):
-
-
-        y1 = y-50
-
-
-        # Rotate
-        xr = cosa*x//128 - sina*y1//128
+        y1 = y-yh
+        py = y1 + x + 0-snco[(x*3//2-100)%400]*(y1-sfc)//4
+        # Surface pattern
+        sp = 1 if (py*(py//srd)//drf)%(fld*2)<fld else 0
+        # Rotation
+        x1 = cosa*x//128 - sina*y1//128
         y1 = sina*x//128 + cosa*y1//128
-        # shaded planet
-        xx = xr*xr
+        # Shaded orbital
+        xx = x1*x1
         y2 = (y1)*cres
         cresgib = xx+y2*y2//100 > sz and y1 < 0
         cresgib = (0 if cresgib else 1) if gib else cresgib
+        d = xx+y1*y1
         v |= (
-           1 if xx+y1*y1 < sz and cresgib else 0
+           sp if d<sz and cresgib else 1 if sz<d<sz+bl else lit if d<sz else 0
         ) << (y-oY)
+        f |= (
+           1 if d>sz else 0
+        ) << (y-oY)
+    buff[4 if oY==0 else 5] = f|v
     return v
+@micropython.viper
+def pattern_orbitals_fill(x: int, oY: int) -> int:
+    ### PATTERN [orbitals_fill]: Associated fill pattern for orbitals.
+    ###
+    return ptr32(_buf)[4 if oY==0 else 5]
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
-pattern_testing_back = pattern_none
+pattern_testing_back = pattern_orbitals
 pattern_testing = pattern_orbitals
-pattern_testing_fill = pattern_fill
+pattern_testing_fill = pattern_orbitals_fill
 
 

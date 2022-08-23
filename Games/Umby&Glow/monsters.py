@@ -36,6 +36,7 @@ _ChargingBones = const(5) # Charging player
 _ChargingBonesFriend = const(6) # Charging other player
 _Skittle = const(7) # Bug that just flies straight to the left at player
 _Fireball = const(8) # Projectile that just flies straight to the left
+_Lazer = const(9) # Thinner longer fireball
 # Gap for Monster projectiles here
 _Stomper = const(20) # Swings up and down vertically
 _Molaar = const(21) # Crawls around edges of land, shooting fireballs
@@ -48,6 +49,7 @@ _Pillar = const(27) # Crawls with a catepillar-chain around edges of land
 _PillarTail = const(28)
 _Hoot = const(29) # Owl-like monster that blinks and swoops.
 _LeftDoor = const(30) # Door that manages countdown sequence for rocket.
+_EFalcon = const(31) # Space ship that shoots dual fireballs
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
@@ -59,6 +61,7 @@ Molaar = _Molaar
 Pillar = _Pillar
 Hoot = _Hoot
 LeftDoor = _LeftDoor
+EFalcon = _EFalcon
 boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
 # Dialog from worms in reaction to monster events
@@ -85,6 +88,12 @@ class Monsters:
     _fireball = bytearray([56,124,124,124,56,56,16,16])
     # BITMAP: width: 8, height: 8
     _fireball_m = bytearray([124,198,186,186,186,186,186,186])
+    # BITMAP: width: 8, height: 8
+    _lazer = bytearray([16,16,16,16,16,16,16,16])
+    # BITMAP: width: 8, height: 8
+    _lazer_m = bytearray([56,124,124,124,124,56,56,56])
+    # BITMAP: width: 3, height: 8
+    _lazer_shd = bytearray([40,40,40])
     #=== Stomper (swings up and down vertically)
     # BITMAP: width: 7, height: 8
     _stomper = bytearray([36,110,247,124,247,110,36])
@@ -116,7 +125,15 @@ class Monsters:
     _molaar_tail = bytearray([192,234,127,41,131,215,126,84])
     # BITMAP: width: 8, height: 8
     _block = bytearray([255,255,255,255,255,255,255,255]) # Mask (8x8 full)
-
+    #=== E-Falcon (flies up and down at the right of screen
+    # shooting dual lazers)
+    # BITMAP: width: 6, height: 8
+    _e_falcon = bytearray([129,153,165,165,189,231])
+    # BITMAP: width: 8, height: 8
+    _e_falcon_m = bytearray([129,189,255,255,255,255,255,60])
+    # BITMAP: width: 10, height: 8. frames: 2
+    _e_falcon_shd = bytearray([24,24,0,24,0,24,52,36,40,16,24,24,0,24,0,24,44,
+        36,20,8])
 
     def __init__(self, tape):
         ### Engine for all the different monsters ###
@@ -269,7 +286,7 @@ class Monsters:
             elif _ChargingBones <= typ <= _ChargingBonesFriend and t%4==1:
                 self._tick_bones_charging(t, i)
             ## Skittle
-            elif (_Skittle <= typ <= _Fireball) and t%2:
+            elif (_Skittle <= typ <= _Lazer) and t%2:
                 xs[i] -= 1 # Just fly straight left
             ## Pillar and Molaar
             elif _Molaar <= typ <= _Pillar and t%3==0:
@@ -280,6 +297,9 @@ class Monsters:
             ## LeftDoor (RocketShip manager)
             elif typ == _LeftDoor:
                 self._tick_left_door(t, i)
+            ## EFalcon
+            elif typ == _EFalcon:
+                self._tick_e_falcon(t, i)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -785,6 +805,32 @@ class Monsters:
             p1.respawn_loc = 0
 
     @micropython.viper
+    def _tick_e_falcon(self, t: int, i: int):
+        ### E Falcon behavior: flying around on the right
+        # shooting dual lazers
+        ###
+        xs = ptr32(self.x); ys = ptr8(self.y)
+        x = xs[i]
+        yy = ys[i]-60
+        tpx = int(self._tp.x[0])
+        ti = t+i*77
+        # Shoot dual lazer projectiles
+        if ti%300==10:
+            self.add(_Lazer, x, ys[i]-68)
+            self.add(_Lazer, x, ys[i]-60)
+        if ti%300<30:
+            return
+        # Shift right into firing range
+        if x < tpx+50+(i*6)%16 and ti%120>60 and ti%3==0:
+            xs[i] += 1
+        # Shift left into firing range
+        elif x > tpx+56+(i*6)%16:
+            xs[i] -= 1
+        # Fly up or down and wrap around
+        if ti%5==0:
+            ys[i] = 60 + (yy + (1 if (x+ti%600//300)%2 else -1))%72
+
+    @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
         ### Draw all the monsters checking for collisions ###
         tape = self._tp
@@ -812,8 +858,11 @@ class Monsters:
                 continue
             x = xs[i]-tpx
             # Monsters in the distance get drawn to background layers
-            l = 1 if 36 <= x-px < 220 else 0    
-            self._draw_monster(t, tids[i], x, ys[i]-64, l)
+            l = 1 if 36 <= x-px < 220 else 0
+            if tids[i] < _Hoot:
+                self._draw_monsters_a(t, tids[i], x, ys[i]-64, l)
+            else:
+                self._draw_monsters_b(t, tids[i], x, ys[i]-64, l)
 
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):
@@ -825,7 +874,7 @@ class Monsters:
                 r2 = 0 # Done with this rocket
 
     @micropython.viper
-    def _draw_monster(self, t: int, tid: int, x: int, y: int, l: int):
+    def _draw_monsters_a(self, t: int, tid: int, x: int, y: int, l: int):
         ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
@@ -856,6 +905,10 @@ class Monsters:
         elif tid == _Fireball:
             img = self._fireball; msk = self._fireball_m
             px = mx = 0
+        elif tid == _Lazer:
+            img = self._lazer; msk = self._lazer_m
+            px = mx = 0
+            tape.draw(0, x+1, y+py, self._lazer_shd, 3, 0)
         # Stomper type
         elif tid == _Stomper:
             img = self._stomper; msk = self._stomper_m
@@ -890,15 +943,6 @@ class Monsters:
         elif tid == _PillarTail:
             img = self._pillar_tail; msk = self._pillar_tail_m
             mw = pw = 7
-        # Hoot type
-        elif tid == _Hoot:
-            img = self._hoot; msk = self._hoot_blink
-            px = -4
-            my = py = -5
-            pw = 9
-            mw = 7 if t%120<10 or 20<t%120<30 else 0
-            # Draw open eyes
-            tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
         else:
             return
 
@@ -906,6 +950,36 @@ class Monsters:
         tape.draw(l, x+px, y+py, img, pw, pf)
         tape.mask(l, x+mx, y+my, msk, mw, 0)
 
+    @micropython.viper
+    def _draw_monsters_b(self, t: int, tid: int, x: int, y: int, l: int):
+        ### Draw a single monster ###
+        tape = self._tp
+        pf = 0 # Animation frame number
+        mx = px = -3
+        my = py = -4
+        mw = pw = 8
+
+        # Hoot type
+        if tid == _Hoot:
+            img = self._hoot; msk = self._hoot_blink
+            px = -4
+            my = py = -5
+            pw = 9
+            mw = 7 if t%120<10 or 20<t%120<30 else 0
+            # Draw open eyes
+            tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
+        # E-Falcon Type
+        elif tid == _EFalcon:
+            img = self._e_falcon; msk = self._e_falcon_m
+            mx = -4
+            pw = 6
+            tape.draw(0, x-1, y+py, self._e_falcon_shd, 10, t%16//8)
+        else:
+            return
+
+        # Draw the common layers
+        tape.draw(l, x+px, y+py, img, pw, pf)
+        tape.mask(l, x+mx, y+my, msk, mw, 0)
 
     @micropython.viper
     def _kill(self, t: int, mon: int, player, tag):
