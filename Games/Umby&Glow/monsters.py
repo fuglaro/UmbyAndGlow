@@ -50,6 +50,8 @@ _PillarTail = const(28)
 _Hoot = const(29) # Owl-like monster that blinks and swoops.
 _LeftDoor = const(30) # Door that manages countdown sequence for rocket.
 _EFalcon = const(31) # Space ship that shoots dual fireballs
+_Prober = const(32) # Cephalopod - background flies then hovers and brain probes
+_Probing = const(33) # Prober during brain drain
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
@@ -62,6 +64,7 @@ Pillar = _Pillar
 Hoot = _Hoot
 LeftDoor = _LeftDoor
 EFalcon = _EFalcon
+Prober = _Prober
 boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
 # Dialog from worms in reaction to monster events
@@ -134,6 +137,17 @@ class Monsters:
     # BITMAP: width: 10, height: 8. frames: 2
     _e_falcon_shd = bytearray([24,24,0,24,0,24,52,36,40,16,24,24,0,24,0,24,44,
         36,20,8])
+    #=== Prober (flies in the background until hovering near worm,
+    # above or below depending on worm position, and to the right slightly,
+    # then in a short time snaps out a brain probe!)
+    # BITMAP: width: 7, height: 8, frames: 2
+    _prober = bytearray([93,227,147,158,147,227,93,93,251,139,142,139,251,93])
+    # BITMAP: width: 9, height: 8, frames: 2
+    _tentacles = bytearray([110,75,225,189,133,31,211,70,124,232,47,161,253,
+        197,23,223,130,254])
+    # BITMAP: width: 9, height: 8, frames: 2
+    _tentacles_up = bytearray([118, 210, 135, 189, 161, 248, 203, 98, 62, 23,
+        244, 133, 191, 163, 232, 251, 65, 127])
 
     def __init__(self, tape):
         ### Engine for all the different monsters ###
@@ -300,6 +314,9 @@ class Monsters:
             ## EFalcon
             elif typ == _EFalcon:
                 self._tick_e_falcon(t, i)
+            ## Prober
+            elif typ == _Prober:
+                self._tick_prober(t, i)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -680,6 +697,7 @@ class Monsters:
     def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         ### Key events during the rocket launch sequence ###
         tape = self._tp
+        camshk = -2
         # Handle countdown finishing
         if timer == 1300:
             if p1x < x or (p2.coop and p2x < x):
@@ -697,18 +715,19 @@ class Monsters:
                 msg = "Ready to Launch!"
                 tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
                 # Shut the rocket doors
+                rdrtp = tape.redraw_tape
                 for xi in range(x-80, x):
-                    tape.redraw_tape(2, xi, pattern_fill, pattern_fill)
+                    rdrtp(2, xi, pattern_fill, pattern_fill)
                 for xi in range(x+80, x+160):
-                    tape.redraw_tape(2, xi, pattern_fill, pattern_fill)
+                    rdrtp(2, xi, pattern_fill, pattern_fill)
                 for xi in range(0, 216):
-                    tape.redraw_tape(0, xi, pattern_none, None)
+                    rdrtp(0, xi, pattern_none, None)
                 # Set repawn point to be within rocket
                 p1.respawn_loc = x + 40
         # Handle launch stage 1 (cam shaking)
         elif timer == 1400:
             tape.clear_overlay()
-            tape.cam_shake = 3
+            camshk = 3
         elif timer == 1450:
             reactions.extend(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
                 "@: Brace yourself, Glow!",
@@ -741,13 +760,13 @@ class Monsters:
             _data[ii+1] = 7
         elif timer == 2800:
             _data[ii+2] = 2
-            tape.cam_shake = 2
+            camshk = 2
         elif timer == 3000:
             _data[ii+2] = 3
-            tape.cam_shake = 1
+            camshk = 1
         elif timer == 3200:
             _data[ii+2] = 4
-            tape.cam_shake = 0
+            camshk = 0
 
         elif timer == 6000:
             reactions.extend(["@: This ship is taking a beating!",
@@ -781,28 +800,31 @@ class Monsters:
 
         # Rocket explosions
         elif timer == 10200:
-            tape.cam_shake = 1
+            camshk = 1
             reactions.extend(["^: Umby?!", "@: Glow... WOW...",
                 "^: I think this ship is coming apart!",
                 "@: I think so too..."])
         elif timer == 10300:
-            tape.cam_shake = 2
+            camshk = 2
         elif timer == 10400:
-            tape.cam_shake = 3
+            camshk = 3
         elif timer == 10500:
-            tape.cam_shake = 4
+            camshk = 4
             reactions.extend(["^: What do we do?!", "@: I don't know!",
                 "@: Hold on???", "^: I'm trying!"])
             tape.feed = [pattern_none,pattern_none,pattern_fill,
                 pattern_none,pattern_fill]
         elif timer == 10600:
-            tape.cam_shake = 5
+            camshk = 5
         elif timer == 10700:
-            tape.cam_shake = 7
+            camshk = 7
             reactions.extend(["^: AAAAAGGGH!", "@: AAAAAGGGH!"])
         elif timer == 11300:
-            tape.cam_shake = 0
+            camshk = 0
             p1.respawn_loc = 0
+
+        if camshk != -1:
+            tape.cam_shake = camshk
 
     @micropython.viper
     def _tick_e_falcon(self, t: int, i: int):
@@ -829,6 +851,42 @@ class Monsters:
         # Fly up or down and wrap around
         if ti%5==0:
             ys[i] = 60 + (yy + (1 if (x+ti%600//300)%2 else -1))%72
+
+    @micropython.viper
+    def _tick_prober(self, t: int, i: int):
+        ### E Falcon behavior: flying around on the right
+        # shooting dual lazers
+        ###
+        tids = ptr8(self._tids)
+        data = ptr32(_data)
+        xs = ptr32(self.x); ys = ptr8(self.y)
+        x = xs[i]; y = ys[i]-64
+        plx = int(self._tp.player.x)
+        ply = int(self._tp.player.y)
+        ti = t//8+i*77
+        # Move and wait for turn to attack
+        dx = plx+20+ti%16
+        dy = ply+ti%48-32
+        # Move to attack if its our turn
+        mi = i
+        while mi >= 0 and (tids[mi] != _Prober or mi == i):
+            if mi == 0:
+                dx = plx+10
+                dy = ply+(8 if ply<32 else -8)
+            mi -= 1
+        xs[i] += 0 if dx==x or t%(y-dy) else (-1 if dx<x else 1)
+        ys[i] += 0 if dy==y or t%(x-dx) else (-1 if dy<y else 1)
+        # Attack if its our turn
+        if mi == -1:
+            ii = i*5
+            # Charge
+            if dx == xs[i] and dy == ys[i]-64:
+                data[ii] += 1
+            else:
+                data[ii] = 0
+            # Fire
+            if data[ii] == 90:
+                tids[i] = _Probing
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
@@ -860,9 +918,9 @@ class Monsters:
             # Monsters in the distance get drawn to background layers
             l = 1 if 36 <= x-px < 220 else 0
             if tids[i] < _Hoot:
-                self._draw_monsters_a(t, tids[i], x, ys[i]-64, l)
+                self._draw_monsters_a(t, i, tids[i], x, ys[i]-64, l)
             else:
-                self._draw_monsters_b(t, tids[i], x, ys[i]-64, l)
+                self._draw_monsters_b(t, i, tids[i], x, ys[i]-64, l)
 
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):
@@ -874,7 +932,7 @@ class Monsters:
                 r2 = 0 # Done with this rocket
 
     @micropython.viper
-    def _draw_monsters_a(self, t: int, tid: int, x: int, y: int, l: int):
+    def _draw_monsters_a(self, t: int, i: int, tid: int, x: int, y: int, l: int):
         ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
@@ -951,7 +1009,7 @@ class Monsters:
         tape.mask(l, x+mx, y+my, msk, mw, 0)
 
     @micropython.viper
-    def _draw_monsters_b(self, t: int, tid: int, x: int, y: int, l: int):
+    def _draw_monsters_b(self, t: int, i: int, tid: int, x: int, y: int, l: int):
         ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
@@ -968,12 +1026,30 @@ class Monsters:
             mw = 7 if t%120<10 or 20<t%120<30 else 0
             # Draw open eyes
             tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
-        # E-Falcon Type
+        # E-Falcon type
         elif tid == _EFalcon:
             img = self._e_falcon; msk = self._e_falcon_m
             mx = -4
             pw = 6
             tape.draw(0, x-1, y+py, self._e_falcon_shd, 10, t%16//8)
+        # Prober type
+        elif _Prober <= tid <= _Probing:
+            ti = t+i*77
+            plx = int(self._tp.player.x)-int(tape.x[0])
+            ply = int(self._tp.player.y)
+            img = self._prober; msk = self._block
+            x1 = x-plx; y1 = y-ply
+            l = 0 if x1*x1+y1*y1 > 256 and tid == _Prober else l
+            pf = 1 if l else ti%48//24
+            pw = 7
+            mx = -3
+            mw = 9
+            # Draw the tenticles
+            up = 0 if ply > y else 8
+            tape.draw(0 if tid == _Prober else 1,
+                x-11+ti%90//45, y-up+ti%36//12-1,
+                self._tentacles_up if up else self._tentacles, 9, ti%20//10)
+            tape.mask(0, x-11, y-up, self._block, 8, 0)
         else:
             return
 

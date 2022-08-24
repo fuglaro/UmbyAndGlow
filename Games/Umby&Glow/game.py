@@ -1,16 +1,16 @@
 ## Game Play including main loop ##
 
 import gc
-gc.threshold(8000) # Aggressive garbace collection while initialising.
+gc.threshold(4000) # Aggressive garbace collection while initialising.
 gc.enable()
+from monsters import Monsters
+from player import Player, bU, bD, bL, bR, bB, bA
+from tape import Tape, display_update, EMULATED
 from os import mkdir
 from time import ticks_ms
 from audio import audio_tick
 from comms import comms, inbuf, outbuf
-from monsters import Monsters
-from player import Player, bU, bD, bL, bR, bB, bA
 from script import get_chapters, story_events, story_jump, state
-from tape import Tape, display_update, EMULATED
 
 _FPS = const(60)
 

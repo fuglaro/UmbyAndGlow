@@ -876,8 +876,6 @@ def pattern_nebula(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
-
-
 @micropython.viper
 def pattern_orbitals(x: int, oY: int) -> int:
     ### PATTERN [orbitals]: Randomised planets and moons
@@ -977,7 +975,7 @@ def pattern_orbitals_fill(x: int, oY: int) -> int:
     return ptr32(_buf)[4 if oY==0 else 5]
 
 # TESTING (see file: Umby&Glow.py to activate pattern testing)
-pattern_testing_back = pattern_orbitals
+pattern_testing_back = pattern_nebula
 pattern_testing = pattern_orbitals
 pattern_testing_fill = pattern_orbitals_fill
 

@@ -417,7 +417,8 @@ class Player:
                 _draw_trail(self._tp.draw_tape, rx, ry, self._rdir)
             self._trail = (1 if b else 0)<<1|1
             # Defuse if fallen through ground or outer space
-            if ry > 69 or (self.space and ry < -5):
+            if ry > 69 or (self.space and ry < -5) or not (
+                    -30<=rx-int(self._tp.x[0])<=102):
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground
                 self.detonate(t)
@@ -604,7 +605,7 @@ class Player:
             self._rocket_y = ryf <<1|1
             self._rocket_x_vel = rxv <<1|1
             self._rocket_y_vel = ryv <<1|1
-            # Defuse if fallen through ground
+            # Defuse if out of range
             if not (80>=ry>=-1) or not (-30<=rx-int(self._tp.x[0])<=102):
                 self.rocket_on = 0 <<1|1
             if ch(rx, ry): # Explode rocket if hit the ground

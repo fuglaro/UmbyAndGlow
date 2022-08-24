@@ -310,38 +310,37 @@
 1000,"^: Umby, check out that alien swarm!"
 0,   "@: Looks like they've organised a welcome squad!"
 0,   "^: No kidding!"
-0,   "@: They've finally realised that they have really opened a can of worms!"
+0,   "@: They've finally realised that they've really opened a can of worms!"
 0,   "^: LOL! ... a can labelled KAPOW!"
-0,   "@: Well then, Glow... let's really let that can of worms explode!"
-0,   "^: Boom Boom! Umby!"
+0,   "@: HA! Well... let's make that can of worms properly explode!"
+0,   "^: Boom! Boom!, Umby!"
 
 999, "CHAPTER~X: \n TEST_(TODO)"
-80,  ([pattern_nebula,pattern_orbitals,pattern_orbitals_fill,pattern_orbitals,pattern_orbitals_fill],(bytearray([EFalcon]), bytearray([20])),1)
 
+# Incoming E-Falcon
+80,  ([pattern_nebula,pattern_orbitals,pattern_orbitals_fill,pattern_orbitals,pattern_orbitals_fill],(bytearray([Bones, EFalcon]), bytearray([10, 40])),1)
 
+# E-Falcon swarm
+800, "^: Here comes the swarm!"
+0,   "@: We've got this, Glow!"
+0,   ([pattern_nebula,pattern_orbitals,pattern_orbitals_fill,pattern_orbitals,pattern_orbitals_fill],(bytearray([Bones, EFalcon]), bytearray([10, 150])),1)
 
-400, "Ask fuglaro for more chapters"
+0,   ([pattern_nebula,pattern_orbitals,pattern_orbitals_fill,pattern_orbitals,pattern_orbitals_fill],(bytearray([]), bytearray([])),1)
+
+# Calmer second wave with Probers
+300, "^: What are those things incoming?!"
+0,   "@: They look like alien cephalopods!"
+0,   "^: They look NASTY!"
+0,   ([pattern_nebula,pattern_orbitals,pattern_orbitals_fill,pattern_orbitals,pattern_orbitals_fill],(bytearray([Bones, EFalcon, Prober]), bytearray([10, 30, 20])),1)
+
+600, "ALIEN SPACE SHIIIIP"
+
+4000, "Ask fuglaro for more chapters"
 
 ################################################################
 # Story WIP and Ideas
 #
 #Space - Among the Stars
-#
-
-#
-#- time above so with steady movement forwards, stars appear about half way (no monsters throughout).
-#
-#- time passes.
-#
-
-#
-#- (bones, E-falcon, prober)
-#
-#Prober (background moves to above/below player - then quickly jumps in foreground and brain probes).
-#
-# E-falcon: Ship (vertical and left facing Like a ] shape. that fires two fireballs from just outside top and bottom arm.)
-#Prober: alien with tentacles like an octopus.
-#Head is separate sprite to tentacles. Both animate separately, and their position animates relative to each other.
 #
 #Normal gravity returns when getting on the alien ship.
 #
