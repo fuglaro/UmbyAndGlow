@@ -842,6 +842,7 @@ class Monsters:
             self.add(_Lazer, x, ys[i]-60)
         if ti%300<30:
             return
+        x += ti//120*77%32 - 16
         # Shift right into firing range
         if x < tpx+50+(i*6)%16 and ti%120>60 and ti%3==0:
             xs[i] += 1
