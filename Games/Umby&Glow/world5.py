@@ -11,37 +11,42 @@ class W:
         return v
 
     @micropython.viper
+    def _orbitals_prep(self, x: int, oY: int) -> int:
+        buff = ptr32(_buf)
+        st = x//128*128
+        buff[0] = xs = int(ihash(st))
+        # Find this sub-sector's random number and size factor
+        xs |= xs>>16 # 4x statisical likelihood for last 8 bits
+        sfa = 0
+        sc = 0
+        si = 0
+        while si < 16:
+            ns = sc*sc+16
+            if st + ns >= x//128*128+128:
+                sfa -= 1
+                break
+            if xs & (1<<si):
+                sfa += 1
+                sc += 1
+            else:
+                if st + ns < x:
+                    st += ns + 5
+                    sc = 0
+                    sfa = 1
+                else:
+                    break
+            si += 1
+        buff[1] = int(ihash(st))
+        buff[2] = sfa
+        buff[3] = st
+
+    @micropython.viper
     def pattern_orbitals(self, x: int, oY: int) -> int:
         ### PATTERN [orbitals]: Randomised planets and moons ###
         snco = ptr8(sinco)
         buff = ptr32(_buf)
         if oY == 0:
-            st = x//128*128
-            buff[0] = xs = int(ihash(st))
-            # Find this sub-sector's random number and size factor
-            xs |= xs>>16 # 4x statisical likelihood for last 8 bits
-            sfa = 0
-            sc = 0
-            si = 0
-            while si < 16:
-                ns = sc*sc+16
-                if st + ns >= x//128*128+128:
-                    sfa -= 1
-                    break
-                if xs & (1<<si):
-                    sfa += 1
-                    sc += 1
-                else:
-                    if st + ns < x:
-                        st += ns + 5
-                        sc = 0
-                        sfa = 1
-                    else:
-                        break
-                si += 1
-            buff[1] = int(ihash(st))
-            buff[2] = sfa
-            buff[3] = st
+            self._orbitals_prep(x, oY)
         rand1 = buff[0] # 128 pixel sector randomizer
         rand2 = buff[1] # sub sector randomizer
         st = buff[3] # Sector position

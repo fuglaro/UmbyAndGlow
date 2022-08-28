@@ -23,9 +23,9 @@ def _load_world(tape, mons, world, feed): # Load world
         try:
             with open(f"/Games/Umby&Glow/mons{world}.py") as fp:
                 exec(fp.read())
+            gc.collect()
         except OSError:
             pass
-        gc.collect()
         _loaded = world
     tape.feed = eval(feed)
     # Reset any offscreen background changes
