@@ -13,12 +13,16 @@ This is also a useful place to place testing code for fast testing and developme
 View patterns easily for quick iteration of level design.
 
 ```python
-from patterns import *
+from utils import *
+from array import array
+_buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+with open("/Games/Umby&Glow/world6.py") as fp:
+    exec(fp.read())
 from tape import Tape, display_update
 tape = Tape()
-tape.feed = [pattern_testing_back,
-            pattern_none, pattern_fill,
-            pattern_testing, pattern_testing_fill]
+tape.feed = [w.pattern_biomechanical_hall_wall,
+            w.pattern_alien_totem_plants, pattern_fill,
+            w.pattern_alien_totem_floor, pattern_fill]
 tape.reset(0)
 t = 0
 while True:
@@ -27,10 +31,6 @@ while True:
     tape.offset_vertically(t//10%23)
     tape.comp()
     display_update()
-
-pattern_testing_back = pattern_none
-pattern_testing = pattern_none
-pattern_testing_fill = pattern_fill
 ```
 
 #### Comms Testing
