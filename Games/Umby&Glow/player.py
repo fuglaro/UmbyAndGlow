@@ -3,7 +3,7 @@
 from machine import Pin, reset
 from math import sqrt, floor
 from audio import *
-from patterns import sinco
+from utils import sinco
 
 _FPS = const(60)
 

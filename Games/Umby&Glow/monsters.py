@@ -2,8 +2,26 @@
 
 from array import array
 from audio import play, rocket_kill, rocket_bang
-from patterns import (pattern_fill, pattern_none,
-    pattern_windows, pattern_room, pattern_door)
+from patterns import (pattern_none, pattern_fill, pattern_room)
+
+@micropython.viper
+def pattern_door(x: int, oY: int) -> int:
+    ### PATTERN [door]:- low height mid tunnel ###
+    return -1 if oY else 33554431
+
+@micropython.viper
+def pattern_windows(x: int, oY: int) -> int:
+    ### PATTERN [windows]:- wall with windows ###
+    # window-edges
+    we = (12 if 10 < x%24 < 14 else 5 if 9 < x%24 < 15 else
+        3 if 8 < x%24 < 16 else 2 if 7 < x%24 < 17 else
+        1 if 5 < x%24 < 19 else 0)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if y < 10+we else 1 if y > 30-we else 0
+        ) << (y-oY)
+    return v
 
 ### Bones is a monster that flyes about then charges the player.
 # Bones looks a bit like a skull.
@@ -697,7 +715,7 @@ class Monsters:
     def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         ### Key events during the rocket launch sequence ###
         tape = self._tp
-        camshk = -2
+        camshk = -1
         # Handle countdown finishing
         if timer == 1300:
             if p1x < x or (p2.coop and p2x < x):

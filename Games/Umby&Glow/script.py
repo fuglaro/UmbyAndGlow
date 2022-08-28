@@ -2,6 +2,37 @@
 
 from monsters import *
 from patterns import *
+import gc
+from utils import *
+from array import array
+# Simple pattern cache used across the writing of a single column of the tape.
+# Since the tape patterns must be stateless across columns (for rewinding), this
+# should not store data across columns.
+_buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+
+w = None # World
+_loaded = None
+def _load_world(tape, world, feed): # Load world
+    global _loaded
+    orig = [id(tape.feed[0]), id(tape.feed[1]), id(tape.feed[2])]
+    if _loaded != world:
+        global w
+        tape.feed = None
+        w = None
+        gc.collect()
+        with open(f"/Games/Umby&Glow/world{world}.py") as fp:
+            exec(fp.read())
+        _loaded == world
+    tape.feed = eval(feed)
+    # Reset any offscreen background changes
+    if tape.feed[0] != orig[0]:
+        start = tape.bx[0]
+        for i in range(start+72, start+144):
+            tape.redraw_tape(0, i, tape.feed[0], None)
+    if tape.feed[1:2] != orig[1:2]:
+        start = tape.midx[0]
+        for i in range(start+72, start+144):
+            tape.redraw_tape(1, i, tape.feed[1], tape.feed[2])
 
 def _script():
     ### Returns iterator that feeds out script events ###
@@ -26,10 +57,10 @@ state = [_next_at] # Last event for save state
 
 def _load_lvl(tape, ev):
     ### Load level patterns, monsters and player dynamics ###
-    tape.feed = ev[0]
-    tape.spawner = ev[1]
+    _load_world(tape, ev[0], ev[1])
+    tape.spawner = ev[2]
     for plyr in tape.players:
-        plyr.space = ev[2]
+        plyr.space = ev[3]
 
 def story_jump(tape, start, lobby):
     ### Prepare everything for the level of gameplay

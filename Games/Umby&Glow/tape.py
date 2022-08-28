@@ -3,7 +3,7 @@
 from array import array
 from machine import Pin, SPI
 from time import sleep_ms, ticks_ms
-from patterns import ihash
+from utils import ihash
 
 # Font by Auri (@Auri#8401)
 _font = (
@@ -127,6 +127,7 @@ class Tape:
         # Care must be taken to NOT modify this externally.
         self.x = memoryview(self._tape_scroll)[3:5]
         self.midx = memoryview(self._tape_scroll)[1:2]
+        self.bx = memoryview(self._tape_scroll)[0:1]
         # Alphabet for writing text - 3x5 text size (4x6 with spacing)
         # Custom emojis: @ = Umby and ^ = Glow
         self._abc = _font + bytearray([128,240,48,0,248,192])
