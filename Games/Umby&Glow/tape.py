@@ -65,8 +65,8 @@ def _gen_bang(blast_x, blast_y, blast_size, invert):
 
 class Tape:
     def __init__(self):
-        self._tape = array('I', (0 for i in range(72*3*2*5+72*2*2)))
-        self._tape_scroll = array('i', [0, 0, 0, 0, 0, 0, 0])
+        self._tape = array('l', (0 for i in range(72*3*2*5+72*2*2)))
+        self._tape_scroll = array('l', [0, 0, 0, 0, 0, 0, 0])
         self.x = memoryview(self._tape_scroll)[3:5]
         self.midx = memoryview(self._tape_scroll)[1:2]
         self.bx = memoryview(self._tape_scroll)[0:1]
@@ -77,14 +77,14 @@ class Tape:
         # The patterns to feed into each tape section
         self.feed = [None, None, None, None, None]
         self.cam_shake = 0
-        self._stage = array('I', (0 for i in range(72*2*3+132*2)))
+        self._stage = array('l', (0 for i in range(72*2*3+132*2)))
         self.spawner = (bytearray([]), bytearray([]))
         def _pass(*arg):
             pass
         self.mons_clear = _pass
         self.mons_add = _pass
         # How far along the tape spawning has completed
-        self._x = array('I', [0])
+        self._x = array('l', [0])
         self.player = None # Player at this device
         self.players = [] # Player register for interactions
         self.clear_overlay()

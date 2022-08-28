@@ -40,7 +40,7 @@ EFalcon = _EFalcon
 Prober = _Prober
 boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
-_data = array('I', 0 for i in range(48*5))
+_data = array('l', 0 for i in range(48*5))
 
 class Monsters:
     # BITMAP: width: 7, height: 8, frames: 3
@@ -114,7 +114,7 @@ class Monsters:
         # Types of all the monsters
         self._tids = bytearray(0 for i in range(48))
         # x positions of all the monsters
-        self.x = array('I', 0 for i in range(48))
+        self.x = array('l', 0 for i in range(48))
         # y positions start at 64 pixels above top of screen
         self.y = bytearray(0 for i in range(48))
         # Number of monsters active (local monsters only)

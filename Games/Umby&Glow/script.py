@@ -4,7 +4,7 @@ from monsters import *
 import gc
 from utils import *
 from array import array
-_buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+_buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
 
 w = None # World
 _loaded = None

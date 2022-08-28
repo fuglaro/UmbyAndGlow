@@ -15,7 +15,7 @@ View patterns easily for quick iteration of level design.
 ```python
 from utils import *
 from array import array
-_buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+_buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
 with open("/Games/Umby&Glow/world6.py") as fp:
     exec(fp.read())
 from tape import Tape, display_update
