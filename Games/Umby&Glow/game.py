@@ -60,7 +60,7 @@ def _run_menu():
         if bU() and bD():
             return
         ch[3] = (ch[3] + (-1 if not bU() else 1)) % len(chapters)
-        msg = "Chapter " + chapters[ch[3]][0]
+        msg = chapters[ch[3]][0]
         tape.clear_overlay()
         tape.message(0, msg, 3)
 

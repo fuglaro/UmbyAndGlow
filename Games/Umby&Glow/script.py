@@ -49,8 +49,8 @@ def get_chapters():
     pos = -145
     for dist, ev in _script():
         pos += dist
-        if ev.startswith('"CHAPTER~'):
-            yield (eval(ev)[8:], pos)
+        if ev.startswith('"CHAPTER~') or ev.startswith('"~'):
+            yield (eval(ev), pos)
 
 _line = _script()
 _next_at, _next_event = next(_line)

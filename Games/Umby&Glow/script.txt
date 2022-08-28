@@ -408,8 +408,8 @@
 ################################################################
 
 ## Credits ##
-200, ([pattern_toplit_wall,pattern_none,pattern_fill,pattern_room,pattern_fill],(bytearray(), bytearray()), 0)
-200, "Credits"
+200, ("1", "[w.pattern_toplit_wall,pattern_none,pattern_fill,pattern_room,pattern_fill]",(bytearray(), bytearray()), 0)
+200, "~CREDITS~"
 160, "A convex.cc game by John VL"
 160, "For my Mum, who taught me how to tinker."
 160, "Hardware, Reference, and Dev Platform: ------------------"
