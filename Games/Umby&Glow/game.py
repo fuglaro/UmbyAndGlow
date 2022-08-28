@@ -1,7 +1,5 @@
-## Game Play including main loop ##
-
 import gc
-gc.threshold(2000) # Aggressive garbace collection while initialising.
+gc.threshold(2000)
 gc.enable()
 from monsters import Monsters
 gc.collect()
@@ -23,24 +21,7 @@ mons = Monsters(tape)
 tape.mons_clear = mons.clear
 tape.mons_add = mons.add
 
-def load_save(sav, load):
-    ### Load the progress from the file "sav" if "load" is True ###
-    start = 3
-    if load:
-        try:
-            with open(sav, "r") as f:
-                start = int(f.read()) - 145
-        except:
-            pass
-    return start if start > 3 else 3
-
-def run_menu():
-    ### Loads a starting menu and returns the selections.
-    # @returns: a tuple of the following values:
-    #     * Umby (0), Glow (1)
-    #     * 1P (0), 2P (1)
-    #     * Player start location
-    ###
+def _run_menu():
     handshake = held = t = 0
     ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, mons, -999, False)
@@ -48,32 +29,24 @@ def run_menu():
     chapters = list(get_chapters())
 
     def background_update():
-        ### Update the menu's background landscape ###
         # Make the camera follow the monster
         mons.tick(t)
         mons.draw_and_check_death(t, None, None)
         tape.auto_camera(mons.x[0], mons.y[0]-64, 1, t)
-        # Composite everything together to the render buffer
         tape.comp()
-        # Flush to the display, waiting on the next frame interval
         display_update()
         if not EMULATED:
-            # Composite everything together to the render buffer
-            # for the half-frame to achieve twice the frame rate as
-            # engine tick to help smooth dimming pixels
+            # Greyscale half-frame
             tape.comp()
             display_update()
         tape.clear_stage()
 
-    ## Main menu ##
-
-    def sel(i):
-        ### Menu arrows for a particular selection ###
+    def sel(i): # Menu arrows
         return ((" " if ch[i] else "<")
             + ("--" if i == ch[4] else "  ")
             + (">" if ch[i] else " "))
+
     def update_main_menu():
-        ### Draw the main selection menu ###
         ch[4] = (ch[4] + (1 if not bD() else -1 if not bU() else 0)) % 3
         if not (bL() and bR()):
             ch[ch[4]] = 0 if not bL() else 1
@@ -84,12 +57,9 @@ def run_menu():
         tape.message(0, msg, 3)
 
     def update_chapter_menu():
-        ### Draw the (secret) character selection menu ###
         if bU() and bD():
             return
-        # Find the next chapter
         ch[3] = (ch[3] + (-1 if not bU() else 1)) % len(chapters)
-        # Display the selected chapter
         msg = "Chapter " + chapters[ch[3]][0]
         tape.clear_overlay()
         tape.message(0, msg, 3)
@@ -97,32 +67,36 @@ def run_menu():
     menu = update_main_menu
     menu()
     while menu:
-        # Update menu selection (U/D/L/R)
         if held == 0 and not (bU() and bD() and bL() and bR()):
             menu()
             held = 1
         elif bU() and bD() and bL() and bR() and bB() and bA():
             held = 0
-        # Check for accepting for next stage (A)
         if not bA() and held != 2:
-            # Secret chapter menu (DOWN+B+A)
             if not (bD() or bA() or bB()):
+                # Secret chapter menu (DOWN+B+A)
                 menu = update_chapter_menu
                 menu()
                 held = 2
             else:
-                # Find the starting position (of this player)
                 try:
                     mkdir("/Saves")
                 except:
                     pass
                 sav = "/Saves/Umby&Glow-"+("glow" if ch[0] else "umby")+".sav"
+                # Find the starting position (of this player)
                 if ch[3] == -1:
-                    start = load_save(sav, ch[2])
-                else: # Start at selected chapter
+                    start = 3
+                    if ch[2]:
+                        try:
+                            with open(sav, "r") as f:
+                                start = int(f.read()) - 145
+                        except:
+                            pass
+                    start = start if start > 3 else 3
+                else: # Chapter selection
                     start = chapters[ch[3]][1]
                 menu = None
-        # Update background
         background_update()
         t += 1
 
@@ -152,34 +126,24 @@ def run_menu():
     background_update()
     tape.clear_overlay()
     return ch[0], ch[1], start, sav
+glow, coop, start, sav = _run_menu()
+del _run_menu
 
 @micropython.native
 def run_game():
-    ### Initialise the game and run the game loop ###
-    # Basic setup
-    # Start menu
-    glow, coop, start, sav = run_menu()
-
-    # Select character, or testing mode by holding Right+B+A (release R last)
-    name = "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby"
-    p2name = "Umby" if glow else "Glow"
-    prof = not bL() # Activate profiling by holding Right direction
-    p1 = Player(tape, mons, name, start+10, 20)
-    p2 = Player(tape, mons, p2name, start+10, 20, ai=not coop, coop=coop)
+    prof = not bL() # Activate profiling by holding Left direction
+    # Select character, or testing mode by holding Up+B+A (release Up last)
+    p1 = Player(tape, mons, "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby", start+10, 20)
+    p2 = Player(tape, mons, "Umby" if glow else "Glow", start+10, 20, ai=not coop, coop=coop)
     tape.player = p1
     tape.players.append(p1)
     tape.players.append(p2)
-    # Ready the level for playing
-    t = 1;
     story_jump(tape, mons, start, True)
-    # Initialise coop send data
-    p1.port_out(outbuf)
-
-    # Memory clearing before relaxing gc and entering game loop
+    p1.port_out(outbuf) # Initialise coop send-buffer
     gc.collect()
 
     # Main gameplay loop
-    savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
+    t = savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
     mons2 = Monsters(tape)
     ch = tape.check
@@ -202,11 +166,8 @@ def run_game():
                 p1.port_out(outbuf)
                 mons.port_out(outbuf)
 
-        # Half frame render
+        # Half frame greyscale render
         if not EMULATED:
-            # Composite everything together to the render buffer
-            # for the half-frame to achieve twice the frame rate as
-            # engine tick to help smooth dimming pixels
             if not prof:
                 tape.comp()
                 display_update()

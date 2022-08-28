@@ -1,8 +1,7 @@
 class W:
     @micropython.viper
     def pattern_nebula(self, x: int, oY: int) -> int:
-        ### PATTERN [nebula]: Lightly scattered and randomised trails of stars
-        ###
+        ### PATTERN [nebula]: Lightly scattered and clustered stars ###
         snco = ptr8(sinco)
         v = 0
         for y in range(oY, oY+32):
@@ -13,8 +12,7 @@ class W:
 
     @micropython.viper
     def pattern_orbitals(self, x: int, oY: int) -> int:
-        ### PATTERN [orbitals]: Randomised planets and moons
-        ###
+        ### PATTERN [orbitals]: Randomised planets and moons ###
         snco = ptr8(sinco)
         buff = ptr32(_buf)
         if oY == 0:
@@ -105,14 +103,12 @@ class W:
         return v
     @micropython.viper
     def pattern_orbitals_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [orbitals_fill]: Associated fill pattern for orbitals.
-        ###
+        ### PATTERN [orbitals_fill]: Associated fill pattern for orbitals ###
         return ptr32(_buf)[4 if oY==0 else 5]
 
     @micropython.viper
     def pattern_hull(self, x: int, oY: int) -> int:
-        ### PATTERN [pattern_hull]: Alien ship exterior wall
-        ###
+        ### PATTERN [pattern_hull]: Alien ship exterior wall ###
         snco = ptr8(sinco)
         xm = 36+(x//36%128)
         x1 = x%xm-xm//2

@@ -1,16 +1,10 @@
-## Maths utility functions ##
-
 @micropython.viper
 def abs(v: int) -> int:
-    ### Fast bitwise abs ###
     m = v >> 31
     return (v + m) ^ m
 
 @micropython.viper
 def ihash(x: uint) -> int:
-    ### 32 bit deterministic semi-random hash fuction
-    # Credit: Thomas Wang
-    ###
     x = (x ^ 61) ^ (x >> 16)
     x += (x << 3)
     x ^= (x >> 4)
@@ -19,15 +13,6 @@ def ihash(x: uint) -> int:
 
 @micropython.viper
 def shash(x: int, step: int, size: int) -> int:
-    ### (smooth) deterministic semi-random hash.
-    # For x, this will get two random values, one for the nearest
-    # interval of 'step' before x, and one for the nearest interval
-    # of 'step' after x. The result will be the interpolation between
-    # the two random values for where x is positioned along the step.
-    # @param x: the position to retrieve the interpolated random value.
-    # @param step: the interval between random samples.
-    # @param size: the maximum magnitude of the random values.
-    ###
     a = int(ihash(x//step)) % size
     b = int(ihash(x//step + 1)) % size
     return a + (b-a) * (x%step) // step
@@ -42,10 +27,6 @@ def fsqrt(v: int) -> int:
     b = v//a; a = (a+b)>>1
     return a
 
-# Fast sine and cos lookup table.
-# If angle is in radians*65536, then use as follows:
-#     sin = (sinco[(a//1024+200)%400]-128)//128
-#     cos = (sinco[(a//1024-100)%400]-128)//128
 sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
     103, 101, 99, 97, 95, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 72, 71,
     69, 67, 65, 64, 62, 60, 58, 57, 55, 53, 52, 50, 49, 47, 46, 44, 43, 41, 40,
@@ -71,19 +52,14 @@ sinco = bytearray([127, 125, 123, 121, 119, 117, 115, 113, 111, 109, 107, 105,
     181, 179, 177, 176, 174, 172, 170, 168, 166, 164, 162, 160, 159, 157, 155,
     153, 151, 149, 147, 145, 143, 141, 139, 137, 135, 133, 131, 129])
 
-## Common Use Patterns ##
-
 @micropython.viper
 def pattern_none(x: int, oY: int) -> int:
-    ### PATTERN [none]: empty ###
     return 0
 
 @micropython.viper
 def pattern_fill(x: int, oY: int) -> int:
-    ### PATTERN [fill]: completely filled ###
-    return -1 # 1 for all bits
+    return -1 # all bits on
 
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
-    ### PATTERN [room]:- basic flat roof and high floor ###
-    return -128 if oY else 7
+    return -128 if oY else 7 # High roof and floor

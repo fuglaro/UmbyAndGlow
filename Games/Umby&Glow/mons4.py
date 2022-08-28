@@ -2,10 +2,28 @@ _Bones = const(1)
 _BackBones = const(2)
 _ChargingBones = const(5)
 _Molaar = const(21)
-_LeftDoor = const(30) # Door that manages countdown sequence for rocket.
+_LeftDoor = const(30)
+
+@micropython.viper
+def pattern_door(x: int, oY: int) -> int:
+    ### PATTERN [door]: low height mid tunnel ###
+    return -1 if oY else 33554431
+
+@micropython.viper
+def pattern_windows(x: int, oY: int) -> int:
+    ### PATTERN [windows]: wall with windows ###
+    # window-edges
+    we = (12 if 10 < x%24 < 14 else 5 if 9 < x%24 < 15 else
+        3 if 8 < x%24 < 16 else 2 if 7 < x%24 < 17 else
+        1 if 5 < x%24 < 19 else 0)
+    v = 0
+    for y in range(oY, oY+32):
+        v |= (
+            1 if y < 10+we else 1 if y > 30-we else 0
+        ) << (y-oY)
+    return v
 
 def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
-    ### Key events during the rocket launch sequence ###
     tape = self._tp
     camshk = -1
     data = self.data
@@ -139,7 +157,6 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
 
 @micropython.viper
 def _tick_left_door(self, t: int, i: int):
-    ### Hidden monster that manages the rocket launch sequence ###
     tape = self._tp
     rx = int(tape.x[0]) + 140
     mx = int(tape.midx[0]) + 140
@@ -175,7 +192,7 @@ def _tick_left_door(self, t: int, i: int):
     if timer < 9700:
         if timer < 1300:
             if rx > x-20:
-                ptrn = (pattern_door if rx<x else
+                ptrn = (self.ticks[9991] if rx<x else
                     pattern_room if rx<x+80 else pattern_fill)
                 tape.redraw_tape(2, rx, ptrn, pattern_fill)
             x1 = x-20-rx+mx
@@ -191,7 +208,7 @@ def _tick_left_door(self, t: int, i: int):
                 tape.redraw_tape(2, x+timer%80, pattern_room, None)
         # Keep redrawing the rocket ship windows when in flight
         if timer >= 1600:
-            tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
+            tape.redraw_tape(1, timer, self.ticks[9992], pattern_fill)
 
     # Keep background monsters in range and falling
     if timer%(8-data[ii+1])==0:
@@ -251,5 +268,7 @@ def _tick_left_door(self, t: int, i: int):
 
 mons.ticks = {
     _LeftDoor: _tick_left_door,
-    999: _left_door_events
+    999: _left_door_events,
+    9991: pattern_door,
+    9992: pattern_windows
 }

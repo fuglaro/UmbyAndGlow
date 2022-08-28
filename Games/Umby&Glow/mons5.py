@@ -3,9 +3,6 @@ _EFalcon = const(31)
 
 @micropython.viper
 def _tick_e_falcon(self, t: int, i: int):
-    ### E Falcon behavior: flying around on the right
-    # shooting dual lazers
-    ###
     xs = ptr32(self.x); ys = ptr8(self.y)
     x = xs[i]
     yy = ys[i]-60

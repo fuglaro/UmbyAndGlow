@@ -2,7 +2,6 @@ _Hoot = const(29)
 
 @micropython.viper
 def _tick_hoot(self, t: int, i: int):
-    ### Hoot behavior: lurking then swooping every now and then ###
     if t%2:
         data = ptr32(self.data)
         ii = i*5

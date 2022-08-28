@@ -359,6 +359,7 @@
 #
 #Normal gravity returns when getting on the alien ship.
 #
+# Mothership: Molaar, WyvernBones (shorter dragonbones)
 #Lung: Well, if it isn't the wormy duo!
 #
 #----

@@ -1,5 +1,3 @@
-## Players and input ##
-
 from machine import Pin, reset
 from math import sqrt, floor
 from audio import *
@@ -35,7 +33,6 @@ _aim_fore_mask = bytearray([224,224,224])
 _aim_back_mask = bytearray([112,248,248,248,112])
 
 def _draw_trail(draw_func, x, y, rdir):
-    ### Leave a rocket trail behind a position ##
     @micropython.viper
     def trail(x: int, oY: int) -> int:
         ry = int(y)
@@ -44,71 +41,7 @@ def _draw_trail(draw_func, x, y, rdir):
         draw_func(2, i, trail, None)
 
 class Player:
-    ### Umby and Glow ###
-
-    ### Umby: One of the players you can play with.
-    # Activate by creating object with name == "Umby"
-    # Umby is an earth worm. They can jump, aim, and fire rockets.
-    # Umby can also make platforms by releasing rocket trails.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Hitting their head on a platform or a roof, while jumping, will
-    # also kill them.
-    #
-    # Umby's rockets start with aiming a target, then the launch
-    # process begins and charges up. When the button is then
-    # released the rocket launches. When the rocket hits the
-    # ground it clears a blast radius, or kills Umby, if hit.
-    # During flight, further presses of the rocket button
-    # will leave a rocket trail that will act as a platform.
-    ###
-
-    ### Glow: One of the players you can play with.
-    # Activate by creating object with name == "Glow"
-    # Glow is a cave dwelling glow worm. They can crawl along the roof,
-    # fall at will, swing with a grappling hook, and fire rockets.
-    # Unlike Umby, Rockets are self propelled and accelerate into a horizontal
-    # flight, They are launched backwards and downwards in the oppostite
-    # direction of the grappling hook aim, but accelerate horizontally
-    # into the opposite direction of the rocket aim at launch.
-    # Unlike Umby, Glow has two aims pointing in opposite directions,
-    # one for the grappling hook, and one for the rocket aim. Aim can only
-    # be moved up or down, and will switch to the horizontal direction for
-    # the last direction Glow pressed.
-    # Monsters, traps, and falling offscreen will kill them.
-    # Glow is not good with mud, and if hits the ground, including at a bad angle
-    # when on the grappling hook, will get stuck. This will cause it to be
-    # difficult to throw the grappling hook, and may leave Glow with the only
-    # option of sinking throug the abyse into the mud.
-    # This means glow can sometimes fall through thin platforms like Umby's
-    # platforms and then crawl underneath.
-    # Umby also has some specific modes:
-    #     * 0: auto attach grapple hook to ceiling.
-    #     * 1: grapple hook activated.
-    #     * 2: normal movement
-    #
-    # Glow's rockets start with aiming a target, then the launch
-    # process begins and charges up. When the button is then
-    # released the rocket launches. When the rocket hits the
-    # ground it clears a blast radius, or kills Glow, if hit.
-    # See the class doc strings for more details.
-    ###
-
-    ### Clip: Secret test mode you can play with.
-    # Invincible orb that can float anywhere and then
-    # transform into Umby or Glow (name will stay as "Clip")
-    # Activate by creating object with name == "Clip"
-
     def __init__(self, tape, mons, name, x, y, ai=False, coop=False):
-        # Modes:
-        #     199: Testing (Clip)
-        #     200: Frozen (immune)
-        #     201: Respawning to Umby
-        #     202: Respawning to Glow
-        # ----0-9: Umby modes----
-        #       0: Crawling (along ground)
-        # --10-19: Glow modes----
-        #      11: Swinging from grapple
-        #      12: Clinging (from ceiling)
         self.mode = 0
         self.name = name # Umby, Glow, or Clip
         self._ai = ai
@@ -151,7 +84,6 @@ class Player:
 
     @micropython.viper
     def port_out(self, buf: ptr8):
-        ### Dump player data to the output buffer for sending to player 2 ###
         px = int(self._tp.x[0]) - 72
         buf[0] = px>>24
         buf[1] = px>>16
@@ -179,9 +111,6 @@ class Player:
 
     @micropython.viper
     def port_in(self, buf: ptr8) -> int:
-        ### Unpack player data from input buffer recieved from player 2,
-        # returning the other player's tape position
-        ###
         px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]
         m = buf[11]
         if m&16:
@@ -210,20 +139,12 @@ class Player:
     @property
     @micropython.viper
     def immune(self) -> int:
-        ### Returns if Umby is in a mode that can't be killed,
-        # or killed by this engine.
-        ###
         return 1 if 199 <= int(self.mode) <= 202 or self._ai or self.coop else 0
 
     @micropython.native
     def die(self, death_message, respawn=None):
-        ### Start respawn sequence.
-        # @param death_message: message to display
-        # @param respawn: respawn point to move to, or default (1px=256)
-        ###
         if self.immune:
             return
-        ### Put Player into a respawning state ###
         self._x_vel = 0 # Reset speed
         self._y_vel = 0 # Reset fall speed
         self.mode = 201 if 0 <= self.mode <= 9 else 202
@@ -241,7 +162,6 @@ class Player:
 
     @micropython.native
     def detonate(self, t):
-        ### Explode the rocket, also carving space out of the ground. ###
         play(rocket_bang, 40)
         rx = self.rocket_x; ry = self.rocket_y
         self._boom_x = rx; self._boom_y = ry # Store for sending to coop
@@ -304,9 +224,6 @@ class Player:
 
     @micropython.viper
     def tick(self, t: int):
-        ### Updated Player for one game tick.
-        # @param t: the current game tick count
-        ###
         mode = int(self.mode)
         y = int(self._y)
         # If repesentation of coop Thumby, skip tick
@@ -352,7 +269,6 @@ class Player:
 
     @micropython.viper
     def _tick_play_ground(self, t: int):
-        ### Handle one game tick for ground play controls ###
         xf = int(self._x); yf = int(self._y)
         x = xf>>8; y = yf>>8
         yv = int(self._y_vel)

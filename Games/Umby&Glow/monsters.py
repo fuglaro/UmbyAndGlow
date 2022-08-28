@@ -1,75 +1,30 @@
-## Monster types including their AI ##
-
 from array import array
 from audio import play, rocket_kill, rocket_bang
 from utils import (pattern_none, pattern_fill, pattern_room)
 
-@micropython.viper
-def pattern_door(x: int, oY: int) -> int:
-    ### PATTERN [door]:- low height mid tunnel ###
-    return -1 if oY else 33554431
-
-@micropython.viper
-def pattern_windows(x: int, oY: int) -> int:
-    ### PATTERN [windows]:- wall with windows ###
-    # window-edges
-    we = (12 if 10 < x%24 < 14 else 5 if 9 < x%24 < 15 else
-        3 if 8 < x%24 < 16 else 2 if 7 < x%24 < 17 else
-        1 if 5 < x%24 < 19 else 0)
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            1 if y < 10+we else 1 if y > 30-we else 0
-        ) << (y-oY)
-    return v
-
-### Bones is a monster that flyes about then charges the player.
-# Bones looks a bit like a skull.
-# It will fly in a random direction, in a jaggard manner,
-# until it hits a wall in which case
-# it will change direction again. There is a small chance that
-# Bones will fly over walls and ground and Bones will continue until
-# surfacing. If Bones goes offscreen to the left + 72 pixels, it will die;
-# offscreen to the top or bottom, it will change direction.
-# It will also change direction on occasion.
-# When the player is within a short range, Bones will charge the player
-# and will not stop.
-###
-### Molaar is a pillar-head style land crawler but only goes
-# counter-clockwise (around land), and also jumps high on flat surfaces.
-# Jump direction is randomly forwards or backwards.
-# Also turns downwards if roof crawling and goes offscreen to the right.
-# Made of head, feet and tail. Middle of feet is the center of the monster.
-# Head shifts relative to feet based on direction, and the head shifts
-# When charging to shoot left. Also has tail that moves up when standing or
-# Jumping, and down when climbing or clinging.
-###
-# All monsters will diw if they go offscreen to the left + 72 pixels but
-# some monsters have avoidance tactics.
-_Bones = const(1) # Random flying about
-_BackBones = const(2) # Background bones (non interactive)
-_BonesBoss = const(3) # Main monster of the Boss Bones swarm
-_DragonBones = const(4) # Head monster of the Dragon Bones chain
-_ChargingBones = const(5) # Charging player
-_ChargingBonesFriend = const(6) # Charging other player
-_Skittle = const(7) # Bug that just flies straight to the left at player
-_Fireball = const(8) # Projectile that just flies straight to the left
-_Lazer = const(9) # Thinner longer fireball
-# Gap for Monster projectiles here
-_Stomper = const(20) # Swings up and down vertically
-_Molaar = const(21) # Crawls around edges of land, shooting fireballs
-_MolaarHanging = const(22) # Mode: hanging from roof
-_MolaarClimbing = const(23) # Mode: climbing upwards
-_MolaarCharging = const(24) # Mode: charing fireball
-_MolaarHangingCharging = const(25) # Mode: charing fireball and roof hanging
-_MolaarClimbingCharging = const(26) # Mode: charing fireball and climbing up
-_Pillar = const(27) # Crawls with a catepillar-chain around edges of land
+_Bones = const(1)
+_BackBones = const(2)
+_BonesBoss = const(3)
+_DragonBones = const(4)
+_ChargingBones = const(5)
+_ChargingBonesFriend = const(6)
+_Skittle = const(7)
+_Fireball = const(8)
+_Lazer = const(9)
+_Stomper = const(20)
+_Molaar = const(21)
+_MolaarHanging = const(22)
+_MolaarClimbing = const(23)
+_MolaarCharging = const(24)
+_MolaarHangingCharging = const(25)
+_MolaarClimbingCharging = const(26)
+_Pillar = const(27)
 _PillarTail = const(28)
-_Hoot = const(29) # Owl-like monster that blinks and swoops.
-_LeftDoor = const(30) # Door that manages countdown sequence for rocket.
-_EFalcon = const(31) # Space ship that shoots dual fireballs
-_Prober = const(32) # Cephalopod - background flies then hovers and brain probes
-_Probing = const(33) # Prober during brain drain
+_Hoot = const(29)
+_LeftDoor = const(30)
+_EFalcon = const(31)
+_Prober = const(32)
+_Probing = const(33)
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
@@ -85,23 +40,18 @@ EFalcon = _EFalcon
 Prober = _Prober
 boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
-# Additional hidden bahaviour state for all monsters,
-# (do not use for draw behavior as it won't propagate to coop)
 _data = array('I', 0 for i in range(48*5))
 
 class Monsters:
-    #=== Bones & BossBones: Janky flying, charging in range. (and boss swarm)
     # BITMAP: width: 7, height: 8, frames: 3
     _bones = bytearray([28,54,147,110,147,54,28,28,190,159,110,159,190,28,28,
         242,139,222,139,242,28])
     # BITMAP: width: 9, height: 8
     _bones_m = bytearray([28,62,247,243,239,243,247,62,28])
-    #=== Skittle (flies straight across screen to the left)
     # BITMAP: width: 8, height: 8
     _skittle = bytearray([56,84,56,124,56,124,56,16])
     # BITMAP: width: 9, height: 8
     _skittle_m = bytearray([56,124,254,124,254,124,254,124,56])
-    #=== Fireball (flies straight across screen to the left)
     # BITMAP: width: 8, height: 8
     _fireball = bytearray([56,124,124,124,56,56,16,16])
     # BITMAP: width: 8, height: 8
@@ -112,12 +62,10 @@ class Monsters:
     _lazer_m = bytearray([56,124,124,124,124,56,56,56])
     # BITMAP: width: 3, height: 8
     _lazer_shd = bytearray([40,40,40])
-    #=== Stomper (swings up and down vertically)
     # BITMAP: width: 7, height: 8
     _stomper = bytearray([36,110,247,124,247,110,36])
     # BITMAP: width: 7, height: 8
     _stomper_m = bytearray([239,255,255,254,255,255,239])
-    #=== Pillar (catepillar-chain crawls across the edge of the foreground)
     # BITMAP: width: 7, height: 8
     _pillar_head = bytearray([2,62,228,124,228,62,2])
     # BITMAP: width: 7, height: 8
@@ -126,25 +74,21 @@ class Monsters:
     _pillar_tail = bytearray([66,189,66,90,66,189,66])
     # BITMAP: width: 7, height: 8
     _pillar_tail_m = bytearray([126,255,255,255,255,255,126])
-    #=== Hoot (blinks and swoops like an owl)
     # BITMAP: width: 9, height: 8
     _hoot = bytearray([114,142,156,248,112,248,156,142,114])
     # BITMAP: width: 7, height: 8
     _hoot_blink = bytearray([112,96,0,0,0,96,112])
-    #=== Molaar (crawls counter-clockwise around land, jumps high, and shoots)
-    # BITMAP: width: 8, height: 8, frames: 2 (default head, charging head)
+    # BITMAP: width: 8, height: 8, frames: 2
     _molaar_head = bytearray([44,70,100,78,107,73,38,30,
         102,195,230,134,203,137,230,126])
     # BITMAP: width: 6, height: 8
     _molaar_feet = bytearray([120,52,36,36,44,24])
     # BITMAP: width: 6, height: 8
     _molaar_feet_m = bytearray([60,126,255,255,126,60])
-    # BITMAP: width: 4, height: 8, frames: 2 (up tail, down tail)
+    # BITMAP: width: 4, height: 8, frames: 2
     _molaar_tail = bytearray([192,234,127,41,131,215,126,84])
     # BITMAP: width: 8, height: 8
     _block = bytearray([255,255,255,255,255,255,255,255]) # Mask (8x8 full)
-    #=== E-Falcon (flies up and down at the right of screen
-    # shooting dual lazers)
     # BITMAP: width: 6, height: 8
     _e_falcon = bytearray([129,153,165,165,189,231])
     # BITMAP: width: 8, height: 8
@@ -152,9 +96,6 @@ class Monsters:
     # BITMAP: width: 10, height: 8. frames: 2
     _e_falcon_shd = bytearray([24,24,0,24,0,24,52,36,40,16,24,24,0,24,0,24,44,
         36,20,8])
-    #=== Prober (flies in the background until hovering near worm,
-    # above or below depending on worm position, and to the right slightly,
-    # then in a short time snaps out a brain probe!)
     # BITMAP: width: 7, height: 8, frames: 2
     _prober = bytearray([93,227,147,158,147,227,93,93,251,139,142,139,251,93])
     # BITMAP: width: 9, height: 8, frames: 2
@@ -165,7 +106,6 @@ class Monsters:
         244, 133, 191, 163, 232, 251, 65, 127])
 
     def __init__(self, tape):
-        ### Engine for all the different monsters ###
         self._tp = tape
         self.data = _data
         self.ticks = None # Extra loadable monster behavior
@@ -177,14 +117,13 @@ class Monsters:
         self.x = array('I', 0 for i in range(48))
         # y positions start at 64 pixels above top of screen
         self.y = bytearray(0 for i in range(48))
-        # Number of monsters active
-        self.num = 0 # Note this won't be updated if object driven by network
+        # Number of monsters active (local monsters only)
+        self.num = 0
         # Dialog from worms in reaction to monster events
         self.reactions = []
 
     @micropython.viper
     def port_out(self, buf: ptr8):
-        ### Dump monster data to the output buffer for sending to player 2 ###
         px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3] # left of own tape
         # Loop through each monster
         tids = ptr8(self._tids)
@@ -202,7 +141,6 @@ class Monsters:
 
     @micropython.viper
     def port_in(self, buf: ptr8):
-        ### Unpack monster data from input buffer recieved from player 2 ###
         px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3] # left of other tape
         self._px = px <<1|1
         # Loop through each monster
@@ -217,14 +155,10 @@ class Monsters:
 
     @micropython.native
     def is_alive(self, mon):
-        ### Check if a specific monster is alive ###
         return bool(self._tids[mon])
 
     @micropython.viper
     def add(self, mon_type: int, x: int, y: int) -> int:
-        ### Add a monster of the given type.
-        # @returns: the index of the spawned monster, or -1
-        ###
         # Find an empty monster slot
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -282,7 +216,6 @@ class Monsters:
 
     @micropython.viper
     def clear(self):
-        ### Remove all monsters ###
         tids = ptr8(self._tids)
         for i in range(48):
             tids[i] = 0
@@ -290,11 +223,9 @@ class Monsters:
 
     @micropython.viper
     def tick(self, t: int):
-        ### Update Monster dynamics one game tick for all monsters ###
         tape = self._tp
         tpx = int(tape.x[0])
         self._px = tpx-72 <<1|1 # left of own tape
-
         # Loop through all the monsters, updating ticks
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -304,30 +235,23 @@ class Monsters:
             # Check for standard death conditions
             if xs[i] < tpx - 72: # Too far left, destroy monster
                 self._hit_monster(t, i, None)
-
-            ## Handle each monster type ##
+            # Handle each monster type #
             typ = tids[i]
-            # Bones and BonesBoss
             if _Bones <= typ <= _BackBones and t%2==0:
                 self._tick_bones(t, i)
             elif typ == _BonesBoss:
                 self._tick_bones_boss(t, i)
-            ## DragonBones
             elif typ == _DragonBones:
                 self._tick_dragon_bones(t, i)
-            ## Charging Bones
             elif _ChargingBones <= typ <= _ChargingBonesFriend and t%4==1:
                 self._tick_bones_charging(t, i)
-            ## Skittle
             elif (_Skittle <= typ <= _Lazer) and t%2:
                 xs[i] -= 1 # Just fly straight left
-            ## Pillar and Molaar
             elif _Molaar <= typ <= _Pillar and t%3==0:
-                self._tick_pillar(t, i)
-            ## Prober
+                self._tick_crawler(t, i)
             elif typ == _Prober:
                 self._tick_prober(t, i)
-            ## Extra behaviors
+            ## Dynamically loaded behaviors
             elif self.ticks:
                 tic = self.ticks.get(typ, None)
                 if tic:
@@ -335,11 +259,6 @@ class Monsters:
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
-        ### Bones behavior
-        # * janky movement mostly avoiding walls,
-        # * some move faster than others, some with no movement (until in range)
-        # * switching to charging behavior when player in range
-        ###
         xs = ptr32(self.x); ys = ptr8(self.y)
         x = xs[i]; y = ys[i]-64
         tids = ptr8(self._tids)
@@ -378,12 +297,6 @@ class Monsters:
 
     @micropython.viper
     def _tick_bones_boss(self, t: int, i: int):
-        ### BonesBoss behavior
-        # * Moves slowly towards 10px to the left of the last Bones
-        # * Spawns 20 Bones quickly
-        # * Spawns up to 10 Bones slowly
-        # * Rallies all Bones in the 30 pixel range to the left
-        ###
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
         ys = ptr8(self.y)
@@ -406,7 +319,6 @@ class Monsters:
                     data[j*5+2] = 1
                 elif xj > x and dx == 1:
                     data[j*5+2] = -1
-
                 # Movement of central boss brain itself.
                 if t//20%20==ci:
                     # Make sure the minion moves a little
@@ -421,9 +333,6 @@ class Monsters:
 
     @micropython.viper
     def _tick_dragon_bones(self, t: int, i: int):
-        ### Dragon with a bones head, and a chain of Pillar tails,
-        # Also shoots fireballs
-        ###
         plyr = self._tp.player
         tids = ptr8(self._tids)
         xs = ptr32(self.x); ys = ptr8(self.y)
@@ -461,7 +370,6 @@ class Monsters:
 
     @micropython.viper
     def _tick_bones_charging(self, t: int, i: int):
-        ### Charging Bones behavior ###
         # Find the player position to charge
         plyrs = self._tp.players
         tids = ptr8(self._tids)
@@ -482,9 +390,7 @@ class Monsters:
         ys[i] += 1 if y < py else -1 if y > py else 0
 
     @micropython.viper
-    def _tick_pillar(self, t: int, i: int):
-        ### Pillar behavior: catepillar crawling around edges of foreground ###
-        ### Molaar behavior: crawls along edges shooting fireballs ###
+    def _tick_crawler(self, t: int, i: int):
         tids = ptr8(self._tids)
         tid = tids[i]
         xs = ptr32(self.x); ys = ptr8(self.y)
@@ -542,7 +448,6 @@ class Monsters:
                     else:
                         # Turn down
                         data[ii] = 0
-
         # Update mode (and bail) for Molaar
         if _Molaar <= tid <= _MolaarClimbingCharging:
             _old_tid = tids[i]
@@ -557,7 +462,6 @@ class Monsters:
                     self.add(_Fireball, x-9, y +
                         (3 if _old_tid==_MolaarHangingCharging else -4))
             return
-
         # Move the tail (for Pillar)
         for j in range(i-1, -1, -1):
             if tids[j] == _Pillar or tids[j] == _DragonBones:
@@ -573,9 +477,6 @@ class Monsters:
 
     @micropython.viper
     def _tick_prober(self, t: int, i: int):
-        ### E Falcon behavior: flying around on the right
-        # shooting dual lazers
-        ###
         tids = ptr8(self._tids)
         data = ptr32(_data)
         xs = ptr32(self.x); ys = ptr8(self.y)
@@ -609,12 +510,10 @@ class Monsters:
 
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
-        ### Draw all the monsters checking for collisions ###
         tape = self._tp
         ch = tape.check
         tpx = int(tape.x[0])
         px = int(self._px) - tpx
-
         # Extract the states and positions of the rockets
         r1 = r2 = 0
         if p1:
@@ -625,7 +524,6 @@ class Monsters:
             r2 = int(p2.rocket_on)
             r2x = int(p2.rocket_x)-tpx
             r2y = int(p2.rocket_y)
-
         # Loop through all active monsters, to draw and check for monster death
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -640,7 +538,6 @@ class Monsters:
                 self._draw_monsters_a(t, i, tids[i], x, ys[i]-64, l)
             else:
                 self._draw_monsters_b(t, i, tids[i], x, ys[i]-64, l)
-
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):
                 self._hit_monster(t, i, p1)
@@ -652,33 +549,26 @@ class Monsters:
 
     @micropython.viper
     def _draw_monsters_a(self, t: int, i: int, tid: int, x: int, y: int, l: int):
-        ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
         mx = px = -3
         my = py = -4
         mw = pw = 8
-
-        # Bones class types
         if _Bones <= tid <= _ChargingBonesFriend:
             pf = 2 if not _Bones <= tid <= _BackBones else 0 if t//10 % 6 else 1
             img = self._bones; msk = self._bones_m
             pw = 7
             mx = -4
             mw = 9
-            # Just draw main mask for BackBones
             if tid == _BackBones:
                 tape.draw(0, x+px, y+py, img, pw, pf)
                 return
-            # Draw additional mask
             tape.mask(0, mx, my, msk, 9, 0) # Mask Back
-        # Skittle type
         elif tid == _Skittle:
             img = self._skittle; msk = self._skittle_m
             px = 0
             mx = -1
             mw = 9
-        # Fireball type
         elif tid == _Fireball:
             img = self._fireball; msk = self._fireball_m
             px = mx = 0
@@ -686,21 +576,17 @@ class Monsters:
             img = self._lazer; msk = self._lazer_m
             px = mx = 0
             tape.draw(0, x+1, y+py, self._lazer_shd, 3, 0)
-        # Stomper type
         elif tid == _Stomper:
             img = self._stomper; msk = self._stomper_m
             m = (y*16+t)%440
             my = py = (m if m < 50 else 50 if m < 170 else 220-m
                 if m < 220 else 0)+3-y
             mw = pw = 7
-        # Molaar type
         elif _Molaar <= tid <= _MolaarClimbingCharging:
             img = self._molaar_feet; msk = self._molaar_feet_m
             mw = pw = 6
-            # Handle Charging
             hf = 0 if tid < _MolaarCharging else 1
             hpx = 0 if tid < _MolaarCharging else 2
-            # Switch to non-charging equvalent
             tid -= 0 if tid < _MolaarCharging else 3
             # Draw head
             hpx += -5 if tid==_Molaar else -2 if tid==_MolaarClimbing else -9
@@ -713,7 +599,6 @@ class Monsters:
             hpf = 0 if tid==_Molaar else 1
             hpy += 1 if t%20<6 else 0 # Gait
             tape.draw(l, x+3, y+hpy, self._molaar_tail, 4, hpf)
-        # Pillar type
         elif tid == _Pillar:
             img = self._pillar_head; msk = self._pillar_head_m
             mw = pw = 7
@@ -722,21 +607,16 @@ class Monsters:
             mw = pw = 7
         else:
             return
-
-        # Draw the common layers
         tape.draw(l, x+px, y+py, img, pw, pf)
         tape.mask(l, x+mx, y+my, msk, mw, 0)
 
     @micropython.viper
     def _draw_monsters_b(self, t: int, i: int, tid: int, x: int, y: int, l: int):
-        ### Draw a single monster ###
         tape = self._tp
         pf = 0 # Animation frame number
         mx = px = -3
         my = py = -4
         mw = pw = 8
-
-        # Hoot type
         if tid == _Hoot:
             img = self._hoot; msk = self._hoot_blink
             px = -4
@@ -745,13 +625,11 @@ class Monsters:
             mw = 7 if t%120<10 or 20<t%120<30 else 0
             # Draw open eyes
             tape.draw(0, x+mx, y+my, msk, 0 if mw else 7, 0)
-        # E-Falcon type
         elif tid == _EFalcon:
             img = self._e_falcon; msk = self._e_falcon_m
             mx = -4
             pw = 6
             tape.draw(0, x-1, y+py, self._e_falcon_shd, 10, t%16//8)
-        # Prober type
         elif _Prober <= tid <= _Probing:
             ti = t+i*77
             plx = int(self._tp.player.x)-int(tape.x[0])
@@ -771,8 +649,6 @@ class Monsters:
             tape.mask(0, x-11, y-up, self._block, 8, 0)
         else:
             return
-
-        # Draw the common layers
         tape.draw(l, x+px, y+py, img, pw, pf)
         tape.mask(l, x+mx, y+my, msk, mw, 0)
 
@@ -789,11 +665,10 @@ class Monsters:
 
     @micropython.viper
     def _hit_monster(self, t: int, mon: int, player):
-        ### Trigger for a player shooting a monster ###
+        ### Triggered when a player hits a monster ###
         tids = ptr8(self._tids)
         tid = tids[mon]
         tag = "_RIP_"
-
         # Monster specific damage behaviors
         if tid == _Pillar: # Direct hit!
             for j in range(mon-1, -1, -1):
@@ -801,7 +676,6 @@ class Monsters:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail: # Destroy entire chain
                     self._kill(t, j, player, "_RIP_")
-
         elif tid == _PillarTail or tid == _DragonBones:
             tag = "_OUCH!_"
             # Destroy last tail segment instead
@@ -813,7 +687,6 @@ class Monsters:
         elif tid == _LeftDoor:
             # LeftDoor can't die
             return
-
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)
 

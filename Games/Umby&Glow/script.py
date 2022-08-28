@@ -4,9 +4,6 @@ from monsters import *
 import gc
 from utils import *
 from array import array
-# Simple pattern cache used across the writing of a single column of the tape.
-# Since the tape patterns must be stateless across columns (for rewinding), this
-# should not store data across columns.
 _buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
 
 w = None # World
@@ -42,16 +39,13 @@ def _load_world(tape, mons, world, feed): # Load world
             tape.redraw_tape(1, i, tape.feed[1], tape.feed[2])
 
 def _script():
-    ### Returns iterator that feeds out script events ###
     with open("/Games/Umby&Glow/script.txt") as fp:
-        ### Feeds out the script line by line ###
         for line in fp:
             if line and line[0] != "#" and line[0] != "\n":
                 dist, _, ev_str = line.partition(",")
                 yield int(dist), ev_str.strip()
 
 def get_chapters():
-    ### Return the chapters and their starting positions ###
     pos = -145
     for dist, ev in _script():
         pos += dist
@@ -63,24 +57,14 @@ _next_at, _next_event = next(_line)
 state = [_next_at] # Last event for save state
 
 def _load_lvl(tape, mons, ev):
-    ### Load level patterns, monsters and player dynamics ###
     _load_world(tape, mons, ev[0], ev[1])
     tape.spawner = ev[2]
     for plyr in tape.players:
         plyr.space = ev[3]
 
 def story_jump(tape, mons, start, lobby):
-    ### Prepare everything for the level of gameplay
-    # at the given position including the story position,
-    # the feed patterns for each layer, and the monster spawner.
-    # Note this can only jump forwards in the script.
-    # @param tape: The tape to manipulate.
-    # @param start: The starting x position of the tape.
-    # @param lobby: Whether to draw the starting platform
-    ###
     global _next_event, _next_at
-    # Loop through the script finding the starting position, and setting
-    # the level as needed.
+    # Scan script finding the starting position
     if _next_at <= start:
         lvl = None
         for dist, _next_event in _line:
@@ -93,14 +77,12 @@ def story_jump(tape, mons, start, lobby):
         if lvl:
             _load_lvl(tape, mons, eval(lvl))
 
-    # Reset the tape data to match the new details, and potentially
-    # clear the starting area.
+    # Reset the tape data to match the new details
     tape.reset(start)
     if lobby:
         # Fill the visible tape with the starting platform
         for i in range(start, start+72):
             tape.redraw_tape(2, i, pattern_room, pattern_fill)
-        # Draw starting instructions
         tape.write(1, "THAT WAY!", start//2+19, 26)
         tape.write(1, "------>", start//2+37, 32)
 
@@ -110,39 +92,32 @@ _active_battle = -1
 
 @micropython.native
 def add_dialog(tape, dialog):
-    ### Say dialog or narration ###
     char = dialog[0]
     pos = 1 if char == '^' else 2 if char == '@' else 0
-    # Handle worm dialog
-    if pos:
-        # Queue up the dialog in chunks of at most 2 lines each.
+    if pos: # Worm dialog
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in dialog.split(' '):
             if (int(len(lines[-1])) + int(len(word)) + 1)*4 > 72:
                 lines.append("")
             lines[-1] += (" " if lines[-1] else "") + word
-        # Queue up each 2 lines dialog
+        # Queue up each 2 lines of dialog
         while lines:
             line = lines.pop(0)
             if lines:
                 line += " " + lines.pop(0)
             _dialog_queue.append((pos, line))
-    # Handle naration
-    else:
+    else: # Narration
         tape.message(0, dialog, 1)
 
 @micropython.native
 def story_events(tape, mons, coop_px):
-    ### Update story events including dialog and level type changes.
-    # Update to the new px tape position: coop (furthest tape scroll of both players)
-    ###
     global _dialog_c, _next_event, _next_at, _active_battle
     # Don't progress script if respawning
     if tape.player and tape.player.mode > 200:
         return
 
-    # Update current dialog queue.
+    # Update current dialog queue
     if _dialog_c > 0: # Decrement the next-line counter
         _dialog_c -= 1
         if _dialog_c == 0:

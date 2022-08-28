@@ -1,5 +1,3 @@
-## 2 player network communication ##
-
 from machine import Pin, UART
 
 _rxPin = Pin(1, Pin.IN)
@@ -29,16 +27,6 @@ def _check_checksum() -> int:
 
 @micropython.native
 def comms():
-    ### Communicate with the other Thumby.
-    # Each call might not complete a full message and might instead
-    # only recieve some bytes. This will send the inbuf
-    # if it is this Thumby's turn to send, otherwise it will receive
-    # data into the outbuf. This will only recieve a message after
-    # trying to send a message. If the communication channel is not
-    # responsive, this will attempt to reattemp sending data once
-    # every 60 calls.
-    # @returns: True if a complete message was just recieved
-    ###
     global _echo, _wait, _uanyc
     res = 0
     # Sending will echo back on the wire (from half duplex) so
