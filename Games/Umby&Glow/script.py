@@ -1,7 +1,6 @@
 ## Script Loading and Level Progression ##
 
 from monsters import *
-from patterns import *
 import gc
 from utils import *
 from array import array

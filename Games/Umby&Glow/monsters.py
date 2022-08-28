@@ -2,7 +2,7 @@
 
 from array import array
 from audio import play, rocket_kill, rocket_bang
-from patterns import (pattern_none, pattern_fill, pattern_room)
+from utils import (pattern_none, pattern_fill, pattern_room)
 
 @micropython.viper
 def pattern_door(x: int, oY: int) -> int:
