@@ -11,102 +11,27 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Game loading screen and setup ##
-
-# Speed up the CPU speed
 from machine import freq
-freq(125000000) # Safe to up to 133000000, if needed.
+freq(133000000)
 
-# Prepare for loading the game libraries
 from sys import path
 path.append("/Games/Umby&Glow")
 
-
-##
-# PATTERN TESTING: view patterns easily for quick iteration of level design
-#from patterns import *
-#from tape import Tape, display_update
-#tape = Tape()
-#tape.feed = [pattern_testing_back,
-#            pattern_none, pattern_fill,
-#            pattern_testing, pattern_testing_fill]
-#tape.reset(0)
-#t = 0
-#while True:
-#    t += 1
-#    tape.scroll_tape(1 if t%4==0 else 0, 1 if t%2==0 else 0, 1)
-#    tape.offset_vertically(t//10%23)
-#    tape.comp()
-#    display_update()
-
-##
-# COMMS TESTING: (test 2 player coop comms in WebIDE emulayer or with 1 device)
-#@micropython.native
-#def _comms():
-#    ### Fakes 2 play comms (relays p1 data, offset horizontally) ###
-#    inbuf[:] = outbuf[:]
-#    px = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
-#    px += 10
-#    inbuf[0] = px>>24
-#    inbuf[1] = px>>16
-#    inbuf[2] = px>>8
-#    inbuf[3] = px
-#    return 1
-#import comms
-#comms.comms = _comms
-
-##
-# AUDIO TESTING: (set the audio to play then quit)
-#from audio import *
-#from time import sleep_ms
-#play(rocket_bang, 40, True)
-#for i in range(250):
-#    audio_tick()
-#    sleep_ms(1000//60)
-#raise Exception("STOP")
-##
-
-##
-# SCRIPT TESTING: find invalid lines easily
-#from patterns import *
-#from monsters import *
-#with open("/Games/Umby&Glow/script.txt") as fp:
-#    for ln, line in enumerate(fp):
-#        if line and line[0] != "#" and line[0] != "\n":
-#            dist, _, ev_str = line.partition(",")
-#            try:
-#                int(dist), eval(ev_str.strip())
-#            except SyntaxError:
-#                print(ln+1, line)
-#                raise
-##
-
-
-from machine import Pin, SPI
-from ssd1306 import SSD1306_SPI
-
-def _load_title_screen():
-    # Title graphics.
-    # BITMAP: width: 72, height: 40
-    title = bytearray([3,3,3,3,131,131,3,3,135,135,5,13,13,9,9,9,11,27,27,147,149,55,43,109,83,79,71,223,137,135,155,173,175,151,15,145,187,157,199,107,45,99,203,155,155,157,157,223,111,55,57,31,15,7,3,7,13,7,3,129,193,255,65,65,3,3,7,13,27,115,69,207,
-           0,0,0,0,63,127,64,64,127,63,0,120,124,4,120,4,124,120,0,127,127,68,124,124,0,124,124,64,124,252,0,0,0,129,65,65,128,0,0,0,0,0,8,28,28,8,20,0,8,0,8,0,0,0,164,169,2,0,128,161,163,167,174,124,248,240,0,2,169,164,0,0,
-           0,0,0,14,7,3,3,1,49,249,253,221,181,189,189,57,1,1,3,3,7,7,7,7,7,7,7,3,3,1,0,0,0,115,206,132,139,208,60,68,128,0,0,0,248,252,12,4,4,4,204,204,64,0,252,252,0,0,131,199,79,203,143,15,199,195,0,200,18,196,192,0,
-           0,0,32,96,96,112,56,24,152,88,173,111,207,128,134,205,67,225,161,225,161,225,193,193,129,130,2,5,2,7,7,2,0,0,128,128,128,0,0,0,128,128,128,192,67,167,230,204,136,140,143,7,0,0,143,143,136,0,7,143,72,207,135,0,7,15,8,7,8,15,7,0,
-           96,188,246,91,239,251,246,250,255,255,167,171,155,255,135,219,131,255,131,159,227,255,135,171,187,255,255,255,251,131,251,255,131,223,131,255,135,171,187,255,131,255,131,219,167,255,255,255,135,187,179,255,135,219,131,255,131,159,227,255,135,171,187,255,254,252,248,248,240,240,224,224])
-
-    # Setup basic display access
+class _TITLE:
+    from ssd1306 import SSD1306_SPI
+    from machine import Pin, SPI
     display = SSD1306_SPI(72, 40,
         SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
-    if "rate" not in dir(display): # Load the emulator display if using the IDE API
-        from thumbyGraphics import display
-        display.display.buffer[:] = title
-        display.update()
-    else: # Otherwise use the raw one if on the thumby device
-        # Load the nice memory-light display drivers
-        display.buffer[:] = title
-        display.show()
-_load_title_screen()
+    @micropython.viper
+    def ptr(buf) -> int:
+        return int(ptr16(buf))
+    try:
+        import emulator
+        emulator.screen_breakpoint(ptr(display.buffer))
+    except ImportError:
+        pass
+    display.buffer[:] = bytearray(b'\x03\x03\x03\x03\x83\x83\x03\x03\x87\x87\x05\r\r\t\t\t\x0b\x1b\x1b\x93\x957+mSOG\xdf\x89\x87\x9b\xad\xaf\x97\x0f\x91\xbb\x9d\xc7k-c\xcb\x9b\x9b\x9d\x9d\xdfo79\x1f\x0f\x07\x03\x07\r\x07\x03\x81\xc1\xffAA\x03\x03\x07\r\x1bsE\xcf\x00\x00\x00\x00?\x7f@@\x7f?\x00x|\x04x\x04|x\x00\x7f\x7fD||\x00||@|\xfc\x00\x00\x00\x81AA\x80\x00\x00\x00\x00\x00\x08\x1c\x1c\x08\x14\x00\x08\x00\x08\x00\x00\x00\xa4\xa9\x02\x00\x80\xa1\xa3\xa7\xae|\xf8\xf0\x00\x02\xa9\xa4\x00\x00\x00\x00\x00\x0e\x07\x03\x03\x011\xf9\xfd\xdd\xb5\xbd\xbd9\x01\x01\x03\x03\x07\x07\x07\x07\x07\x07\x07\x03\x03\x01\x00\x00\x00s\xce\x84\x8b\xd0<D\x80\x00\x00\x00\xf8\xfc\x0c\x04\x04\x04\xcc\xcc@\x00\xfc\xfc\x00\x00\x83\xc7O\xcb\x8f\x0f\xc7\xc3\x00\xc8\x12\xc4\xc0\x00\x00\x00 ``p8\x18\x98X\xado\xcf\x80\x86\xcdC\xe1\xa1\xe1\xa1\xe1\xc1\xc1\x81\x82\x02\x05\x02\x07\x07\x02\x00\x00\x80\x80\x80\x00\x00\x00\x80\x80\x80\xc0C\xa7\xe6\xcc\x88\x8c\x8f\x07\x00\x00\x8f\x8f\x88\x00\x07\x8fH\xcf\x87\x00\x07\x0f\x08\x07\x08\x0f\x07\x00`\xbc\xf6[\xef\xfb\xf6\xfa\xff\xff\xa7\xab\x9b\xff\x87\xdb\x83\xff\x83\x9f\xe3\xff\x87\xab\xbb\xff\xff\xff\xfb\x83\xfb\xff\x83\xdf\x83\xff\x87\xab\xbb\xff\x83\xff\x83\xdb\xa7\xff\xff\xff\x87\xbb\xb3\xff\x87\xdb\x83\xff\x83\x9f\xe3\xff\x87\xab\xbb\xff\xfe\xfc\xf8\xf8\xf0\xf0\xe0\xe0')
+    display.show()
+del _TITLE
 
-# Launch the game
-# (loads while title screen is displayed - thanks to Doogle!)
 import game

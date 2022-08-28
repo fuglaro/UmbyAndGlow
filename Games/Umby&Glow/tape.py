@@ -22,26 +22,31 @@ _FPS = const(60)
 from ssd1306 import SSD1306_SPI
 display = SSD1306_SPI(72, 40,
     SPI(0, sck=Pin(18), mosi=Pin(19)), dc=Pin(17), res=Pin(20), cs=Pin(16))
-EMULATED = "rate" not in dir(display)
-_REFRESH = _FPS if EMULATED else _FPS*2 
-if EMULATED: # Load the emulator display if using the IDE API
-    from thumbyGraphics import display as emu_dpy
-    emu_dpy.setFPS(_FPS)
-    display_update = emu_dpy.update
-    _display_buffer = emu_dpy.display.buffer
-else: # Otherwise use the raw one if on the thumby device
-    # Load the nice memory-light display drivers
-    _display_buffer = display.buffer
-    timer = ticks_ms()
-    fwait = 1000//_REFRESH
-    @micropython.native
-    def display_update():
-        global timer
-        t = ticks_ms()
-        nwait = timer - ticks_ms()
-        sleep_ms(0 if nwait <= 0 else nwait if nwait < fwait else fwait)
-        display.show()
-        timer = ticks_ms() + fwait
+
+# Setup emulator, if running
+EMULATED = False
+@micropython.viper
+def ptr(buf) -> int:
+    return int(ptr16(buf))
+try:
+    import emulator
+    emulator.screen_breakpoint(ptr(display.buffer))
+    EMULATED = True
+except ImportError:
+    pass
+
+# Setup the display
+_display_buffer = display.buffer
+timer = ticks_ms()
+_fwait = 1000//(_FPS if EMULATED else _FPS*2)
+@micropython.native
+def display_update():
+    global timer
+    t = ticks_ms()
+    nwait = timer - ticks_ms()
+    sleep_ms(0 if nwait <= 0 else nwait if nwait < _fwait else _fwait)
+    display.show()
+    timer = ticks_ms() + _fwait
 
 def _gen_bang(blast_x, blast_y, blast_size, invert):
     ### PATTERN (DYNAMIC) [bang]: explosion blast pattern generator
