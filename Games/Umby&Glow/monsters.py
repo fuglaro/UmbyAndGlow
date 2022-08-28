@@ -85,9 +85,6 @@ EFalcon = _EFalcon
 Prober = _Prober
 boss_types = [_BonesBoss, _DragonBones, _LeftDoor]
 
-# Dialog from worms in reaction to monster events
-reactions = []
-
 # Additional hidden bahaviour state for all monsters,
 # (do not use for draw behavior as it won't propagate to coop)
 _data = array('I', 0 for i in range(48*5))
@@ -170,6 +167,8 @@ class Monsters:
     def __init__(self, tape):
         ### Engine for all the different monsters ###
         self._tp = tape
+        self.data = _data
+        self.ticks = None # Extra loadable monster behavior
         # x pos for left edge of the active tape area of coop, otherwise own
         self._px = 0
         # Types of all the monsters
@@ -180,6 +179,8 @@ class Monsters:
         self.y = bytearray(0 for i in range(48))
         # Number of monsters active
         self.num = 0 # Note this won't be updated if object driven by network
+        # Dialog from worms in reaction to monster events
+        self.reactions = []
 
     @micropython.viper
     def port_out(self, buf: ptr8):
@@ -323,18 +324,14 @@ class Monsters:
             ## Pillar and Molaar
             elif _Molaar <= typ <= _Pillar and t%3==0:
                 self._tick_pillar(t, i)
-            ## Hoot
-            elif typ == _Hoot and t%2==1:
-                self._tick_hoot(t, i)
-            ## LeftDoor (RocketShip manager)
-            elif typ == _LeftDoor:
-                self._tick_left_door(t, i)
-            ## EFalcon
-            elif typ == _EFalcon:
-                self._tick_e_falcon(t, i)
             ## Prober
             elif typ == _Prober:
                 self._tick_prober(t, i)
+            ## Extra behaviors
+            elif self.ticks:
+                tic = self.ticks.get(typ, None)
+                if tic:
+                    tic(self, t, i)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -573,303 +570,6 @@ class Monsters:
                     d = ys[i]-ys[j]
                     ys[j] += 1 if d > 0 else -1 if d < 0 else 0
                 i = j # Each section follows the other
-
-    @micropython.viper
-    def _tick_hoot(self, t: int, i: int):
-        ### Hoot behavior: lurking then swooping every now and then ###
-        data = ptr32(_data)
-        ii = i*5
-        t//=2
-        xs = ptr32(self.x); ys = ptr8(self.y)
-        x = xs[i]; y = ys[i]-64
-        tr = (t+i*97)%200
-        tpx = int(self._tp.x[0])
-        if tr==0:
-            # Set new swoop location
-            data[ii] = x; data[ii+1] = y
-            data[ii+2] = t*x*y%100-50
-            data[ii+3] = (t^(x*y))%50+5
-            # Dont fly too far off to the right
-            if data[ii+3] > tpx + 400:
-                data[ii+3] = tpx + 400
-        elif tr <= 50:
-            # Exececute the swoop
-            xs[i] = data[ii] + data[ii+2]*tr//50
-            ys[i] = 64 + data[ii+1] + (data[ii+3]-data[ii+1])*tr//50
-            # Add curve to swoop
-            ys[i] += 20 - ((20-tr)*(20-tr)//20 if tr < 20
-                else (tr-30)*(tr-30)//20 if tr >= 30 else 0)
-
-    @micropython.viper
-    def _tick_left_door(self, t: int, i: int):
-        ### Hidden monster that manages the rocket launch sequence ###
-        tape = self._tp
-        rx = int(tape.x[0]) + 140
-        mx = int(tape.midx[0]) + 140
-        plyrs = tape.players
-        tids = ptr8(self._tids)
-        xs = ptr32(self.x)
-        ys = ptr8(self.y)
-        data = ptr32(_data)
-        ii = i*5
-        x = xs[i]
-        p1 = plyrs[0]; p2 = plyrs[1]
-        p1x = int(p1.x)
-        p2x = int(p2.x)
-        timer = data[ii]
-        alive = int(plyrs[0].mode) < 200
-
-        # Start the countdown timer when both players close
-        if timer < 0 and p1x > x-500 and p2x > x-500 and alive:
-            data[ii] = 0
-        # Update the countdown timer if player not respawning
-        elif 100 <= timer < 1300 and (timer-100)%120 == 0 and alive:
-            tape.clear_overlay()
-            msg = "T-Minus " + str((1300-timer)//120)
-            tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
-        else:
-            self._left_door_events(timer, p1, p1x, p2, p2x, ii, x)
-
-        # Increase the timer if active
-        if timer >= 0:
-            data[ii] += 1
-
-        # Repair spaceship (until 12000)
-        if timer < 9700:
-            if timer < 1300:
-                if rx > x-20:
-                    ptrn = (pattern_door if rx<x else
-                        pattern_room if rx<x+80 else pattern_fill)
-                    tape.redraw_tape(2, rx, ptrn, pattern_fill)
-                x1 = x-20-rx+mx
-                if rx > x:
-                    tape.redraw_tape(1, x1, pattern_fill, pattern_fill)
-                if mx-20 > x1:
-                    tape.redraw_tape(1, mx-20, pattern_fill, pattern_fill)
-            else: # Spaceship repairs
-                x1 = timer%20
-                tape.redraw_tape(2, x-x1-1 if x1<10 else x+x1+70,
-                    pattern_fill, None)
-                if int(p1.mode) > 200:
-                    tape.redraw_tape(2, x+timer%80, pattern_room, None)
-            # Keep redrawing the rocket ship windows when in flight
-            if timer >= 1600:
-                tape.redraw_tape(1, timer, pattern_windows, pattern_fill)
-
-        # Keep background monsters in range and falling
-        if timer%(8-data[ii+1])==0:
-            for xi in range(48):
-                if tids[xi] != _BackBones:
-                    continue
-                if xs[xi] > x+88:
-                    xs[xi] = x+88
-                elif xs[xi] < x-8:
-                    xs[xi] = x-8
-                if ys[xi] > 104:
-                    ys[xi] = 74
-                ys[xi] += data[ii+2]
-    
-        # Flying sequence monster spawning
-        if 2300 < timer < 10000 and timer%280==0:
-            # Random position from edge of screen
-            p = (timer^p1x)%448
-            x1 = p if p<160 else 0 if p<224 else p-224 if p<384 else 159
-            y1 = 0 if p<160 else p-160 if p<224 else 63 if p<384 else p-384
-            if x1 <= 35: # No monsters from left of screen
-                return
-            mon = _Molaar if 50<x1<140 else _Bones if x1<=50 else _ChargingBones
-            self.add(mon, x+x1-40, y1+64)
-
-        # Stop monsters hogging the respawn area or charging for too long
-        xi = timer//2%48
-        if tids[xi] == _ChargingBones:
-            if xs[xi] == p1x or ys[xi] == int(p1.y):
-                if int(p1.mode) > 200:
-                    if xs[xi] == p1x:
-                        xs[xi] += 30 if xi%2 else -30
-                    else:
-                        ys[xi] += 30 if xi//2%2 else -30
-                tids[xi] = _Bones
-                data[xi*5+4] = 2
-        # Keep monsters in area
-        if tids[xi] == _Bones:
-            if xs[xi] > x+120:
-                xs[xi] == x+120
-            elif xs[xi] < x-20:
-                xs[xi] == x-20
-
-        # Ship breaking apart
-        if 10600 < timer < 11300:
-            if timer%5==0:
-                play(rocket_bang, 40)
-                tape.blast(timer//5,
-                    (timer^p1x)%216+int(self.x[0])-72, (timer*p1x)%64)
-            # Clearing out background monsters
-            if tids[timer%48] != _LeftDoor:
-                tids[timer%48] = 0
-                self.num = int(self.num) - 1 <<1|1
-        elif timer == 11300:
-            tids[i] = 0
-            self.num = int(self.num) - 1 <<1|1
-
-    def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
-        ### Key events during the rocket launch sequence ###
-        tape = self._tp
-        camshk = -1
-        # Handle countdown finishing
-        if timer == 1300:
-            if p1x < x or (p2.coop and p2x < x):
-                # One of the players failed failed to board
-                name = p1.name if p1x < x else p2.name
-                msg = name + " failed to board!"
-                p1.die(msg, (x-600)*256)
-                _data[ii] = -9
-            else:
-                # Players boarded!
-                tape.feed = [pattern_none,pattern_fill,pattern_fill,
-                    pattern_fill,pattern_fill]
-                tape.spawner = (bytearray([]), bytearray([]))
-                tape.clear_overlay()
-                msg = "Ready to Launch!"
-                tape.message(0, msg + " \n \n \n \n \n " + msg, 3)
-                # Shut the rocket doors
-                rdrtp = tape.redraw_tape
-                for xi in range(x-80, x):
-                    rdrtp(2, xi, pattern_fill, pattern_fill)
-                for xi in range(x+80, x+160):
-                    rdrtp(2, xi, pattern_fill, pattern_fill)
-                for xi in range(0, 216):
-                    rdrtp(0, xi, pattern_none, None)
-                # Set repawn point to be within rocket
-                p1.respawn_loc = x + 40
-        # Handle launch stage 1 (cam shaking)
-        elif timer == 1400:
-            tape.clear_overlay()
-            camshk = 3
-        elif timer == 1450:
-            reactions.extend(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
-                "@: Brace yourself, Glow!",
-                "^: I'm stuck good to this beam.",
-                "^: Brace yourself too, Umby!",
-                "@: The G-Force is only increasing. I'm well planted!"])
-            # Release background monsters
-            for xi in range(20):
-                self.add(_BackBones, x+xi*4, 10)
-            _data[ii+2] = 1 # Start lifting off
-
-        # Lift off acceleration sequence
-        elif timer == 1800:
-            _data[ii+2] = 1
-        elif timer == 1900:
-            _data[ii+1] = 1
-        elif timer == 2000:
-            _data[ii+1] = 2
-        elif timer == 2100:
-            _data[ii+1] = 3
-        elif timer == 2200:
-            _data[ii+1] = 4
-        elif timer == 2300:
-            _data[ii+1] = 5
-            reactions.extend(["^: Monsters!", "@: They're getting in!",
-                "^: Let's fight!"])
-        elif timer == 2400:
-            _data[ii+1] = 6
-        elif timer == 2600:
-            _data[ii+1] = 7
-        elif timer == 2800:
-            _data[ii+2] = 2
-            camshk = 2
-        elif timer == 3000:
-            _data[ii+2] = 3
-            camshk = 1
-        elif timer == 3200:
-            _data[ii+2] = 4
-            camshk = 0
-
-        elif timer == 6000:
-            reactions.extend(["@: This ship is taking a beating!",
-                "^: It's not going to take much more!"])
-
-        # Reach orbit
-        elif timer == 8800:
-            _data[ii+2] = 3
-            reactions.extend(["@: Looks like we are easing into orbit",
-                "^: Finally!"])
-        elif timer == 9000:
-            _data[ii+2] = 2
-        elif timer == 9200:
-            _data[ii+2] = 1
-        elif timer == 9400:
-            _data[ii+1] = 6
-        elif timer == 9500:
-            _data[ii+1] = 5
-        elif timer == 9600:
-            _data[ii+1] = 4
-            p1.space = p2.space = 1
-            reactions.extend(["^: Woah!", "@: Low Gravity!", "^: Cool!"])
-        elif timer == 9700:
-            _data[ii+1] = 3
-        elif timer == 9800:
-            _data[ii+1] = 2
-        elif timer == 9900:
-            _data[ii+1] = 1
-        elif timer == 10000:
-            _data[ii+2] = 0
-
-        # Rocket explosions
-        elif timer == 10200:
-            camshk = 1
-            reactions.extend(["^: Umby?!", "@: Glow... WOW...",
-                "^: I think this ship is coming apart!",
-                "@: I think so too..."])
-        elif timer == 10300:
-            camshk = 2
-        elif timer == 10400:
-            camshk = 3
-        elif timer == 10500:
-            camshk = 4
-            reactions.extend(["^: What do we do?!", "@: I don't know!",
-                "@: Hold on???", "^: I'm trying!"])
-            tape.feed = [pattern_none,pattern_none,pattern_fill,
-                pattern_none,pattern_fill]
-        elif timer == 10600:
-            camshk = 5
-        elif timer == 10700:
-            camshk = 7
-            reactions.extend(["^: AAAAAGGGH!", "@: AAAAAGGGH!"])
-        elif timer == 11300:
-            camshk = 0
-            p1.respawn_loc = 0
-
-        if camshk != -1:
-            tape.cam_shake = camshk
-
-    @micropython.viper
-    def _tick_e_falcon(self, t: int, i: int):
-        ### E Falcon behavior: flying around on the right
-        # shooting dual lazers
-        ###
-        xs = ptr32(self.x); ys = ptr8(self.y)
-        x = xs[i]
-        yy = ys[i]-60
-        tpx = int(self._tp.x[0])
-        ti = t+i*77
-        # Shoot dual lazer projectiles
-        if ti%300==10:
-            self.add(_Lazer, x, ys[i]-68)
-            self.add(_Lazer, x, ys[i]-60)
-        if ti%300<30:
-            return
-        x += ti//120*77%32 - 16
-        # Shift right into firing range
-        if x < tpx+50+(i*6)%16 and ti%120>60 and ti%3==0:
-            xs[i] += 1
-        # Shift left into firing range
-        elif x > tpx+56+(i*6)%16:
-            xs[i] -= 1
-        # Fly up or down and wrap around
-        if ti%5==0:
-            ys[i] = 60 + (yy + (1 if (x+ti%600//300)%2 else -1))%72
 
     @micropython.viper
     def _tick_prober(self, t: int, i: int):

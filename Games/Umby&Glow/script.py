@@ -12,17 +12,25 @@ _buf = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
 
 w = None # World
 _loaded = None
-def _load_world(tape, world, feed): # Load world
+def _load_world(tape, mons, world, feed): # Load world
     global _loaded
     orig = [id(tape.feed[0]), id(tape.feed[1]), id(tape.feed[2])]
     if _loaded != world:
         global w
         tape.feed = None
+        mons.ticks = None
         w = None
         gc.collect()
         with open(f"/Games/Umby&Glow/world{world}.py") as fp:
             exec(fp.read())
-        _loaded == world
+        gc.collect()
+        try:
+            with open(f"/Games/Umby&Glow/mons{world}.py") as fp:
+                exec(fp.read())
+        except OSError:
+            pass
+        gc.collect()
+        _loaded = world
     tape.feed = eval(feed)
     # Reset any offscreen background changes
     if tape.feed[0] != orig[0]:
@@ -55,14 +63,14 @@ _line = _script()
 _next_at, _next_event = next(_line)
 state = [_next_at] # Last event for save state
 
-def _load_lvl(tape, ev):
+def _load_lvl(tape, mons, ev):
     ### Load level patterns, monsters and player dynamics ###
-    _load_world(tape, ev[0], ev[1])
+    _load_world(tape, mons, ev[0], ev[1])
     tape.spawner = ev[2]
     for plyr in tape.players:
         plyr.space = ev[3]
 
-def story_jump(tape, start, lobby):
+def story_jump(tape, mons, start, lobby):
     ### Prepare everything for the level of gameplay
     # at the given position including the story position,
     # the feed patterns for each layer, and the monster spawner.
@@ -84,7 +92,7 @@ def story_jump(tape, start, lobby):
             if _next_at > start:
                 break
         if lvl:
-            _load_lvl(tape, eval(lvl))
+            _load_lvl(tape, mons, eval(lvl))
 
     # Reset the tape data to match the new details, and potentially
     # clear the starting area.
@@ -148,8 +156,8 @@ def story_events(tape, mons, coop_px):
         _dialog_c = 60 + len(text)*5//2
 
     # Check for monster reaction dialog
-    while reactions:
-        add_dialog(tape, reactions.pop(0))
+    while mons.reactions:
+        add_dialog(tape, mons.reactions.pop(0))
 
     # Check if we are in an active battle
     if _active_battle >= 0:
@@ -165,7 +173,7 @@ def story_events(tape, mons, coop_px):
         event = eval(_next_event)
         # Handle level type changes
         if isinstance(event, tuple):
-            _load_lvl(tape, event)
+            _load_lvl(tape, mons, event)
         # Handle script dialog and naration
         elif isinstance(event, str):
             add_dialog(tape, event)

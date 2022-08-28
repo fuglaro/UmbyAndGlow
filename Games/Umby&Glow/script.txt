@@ -242,7 +242,6 @@
 # Launch area (close to rocket, only monsters are stompers)
 900, ("4","[w.pattern_cloudy_snowy_mountains,w.pattern_launch_back,pattern_fill,w.pattern_launch_area,w.pattern_launch_area_fill]",(bytearray([Stomper]), bytearray([20])),0)
 
-
 200,  "^: Umby, we are major mulch machines!"
 0,    "@: No time to dawdle, Glow."
 0,    "@: Looks like they're getting ready for something..."

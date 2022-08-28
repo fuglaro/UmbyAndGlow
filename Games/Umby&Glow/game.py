@@ -1,16 +1,20 @@
 ## Game Play including main loop ##
 
 import gc
-gc.threshold(4000) # Aggressive garbace collection while initialising.
+gc.threshold(2000) # Aggressive garbace collection while initialising.
 gc.enable()
 from monsters import Monsters
+gc.collect()
 from player import Player, bU, bD, bL, bR, bB, bA
+gc.collect()
 from tape import Tape, display_update, EMULATED
+gc.collect()
 from os import mkdir
 from time import ticks_ms
 from audio import audio_tick
 from comms import comms, inbuf, outbuf
 from script import get_chapters, story_events, story_jump, state
+gc.collect()
 
 _FPS = const(60)
 
@@ -39,7 +43,7 @@ def run_menu():
     ###
     handshake = held = t = 0
     ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
-    story_jump(tape, -999, False)
+    story_jump(tape, mons, -999, False)
     story_events(tape, mons, -950) # Scroll in the menu's Bones monster
     chapters = list(get_chapters())
 
@@ -167,13 +171,12 @@ def run_game():
     tape.players.append(p2)
     # Ready the level for playing
     t = 1;
-    story_jump(tape, start, True)
+    story_jump(tape, mons, start, True)
     # Initialise coop send data
     p1.port_out(outbuf)
 
     # Memory clearing before relaxing gc and entering game loop
     gc.collect()
-    gc.threshold(20000)
 
     # Main gameplay loop
     savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
