@@ -333,10 +333,10 @@
 # Gap between planets and mothership
 600, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_none,pattern_fill]",(bytearray([]), bytearray([])),1)
 
-999, "CHAPTER~X: \n TEST_(TODO)"
+0, "CHAPTER~X: \n TEST_(TODO)"
 
-# Mothership
-100, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_hull,w.pattern_hull]",(bytearray([]), bytearray([])),1)
+# Mothership hull
+140, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_hull,w.pattern_hull]",(bytearray([Stomper]), bytearray([120])),1)
 0,   "^: Umby, we finally made it!"
 0,   "@: We are on fire, Glow!"
 0,   "^: How do we get onboard?"
@@ -344,9 +344,22 @@
 0,   "^: That's just the kind of destruction I'm looking for!"
 0,   "@: Nice. Then let's worm our way in with maximum destruction!"
 
+# Mothership
+400, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([]), bytearray([])),0)
+0,   "^: Woah! Gravity!"
+0,   "@: Must be artificial gravity, and from this spaceship."
+0,   "^: Whatever it is, it feels good!"
+0,   "^: I like knowing which way is up, Umby."
+0,   "@: Ditto Glow."
+0,   "@: I like knowing which way is down!"
+
+100, "CHAPTER~5: \n Dolphins"
+
+140, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([Prober, Bones, Skittle]), bytearray([10, 20, 30])),0)
 
 
 
+# TODO CHAPTER 5 start
 700, "@:ALIEN SPACE SHIIIIP"
 
 
@@ -362,6 +375,7 @@
 # Mothership: Molaar, WyvernBones (shorter dragonbones)
 #Lung: Well, if it isn't the wormy duo!
 #
+# Lung: Actually, it's all been very above board. Look, you have to look at it from their perspective. The aliens wanted to enquire about the property, and who were they going to go to? Us worms are always hiding away in dirt and caves. Next up might be the Humans, but they have been the worst tenants - never looking after the place, so the next on the list were Octopuses and Dolphins. The Octopuses aparently drove a pretty hard bargan, and it was the Dolphins that caved.
 #----
 #Level with monster wall that chases you is after the aquarium is destroyed, and a wall of water and monsters rushes after you and you are escaping the exploding ship.
 #Lots of stompers to navigate.
