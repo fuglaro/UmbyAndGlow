@@ -1,11 +1,7 @@
 class W:
     @micropython.viper
     def pattern_cloudy_snowy_mountains(self, x: int, oY: int) -> int:
-        ### PATTERN [cloudy_snowy_mountains]:
-        # Distant snowy mountains background with clouds
-        ###
-        # buff: [ripple-modifier, snow-capping, cloud-height, cloud-level]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [ripple-modifier, snow-capping, cloud-height, cloud-level]
         xa = x*8
         if oY == 0:
             u = int(shash(xa,32,16))
@@ -28,11 +24,7 @@ class W:
 
     @micropython.viper
     def pattern_cloudy_plains(self, x: int, oY: int) -> int:
-        ### PATTERN [cloudy_plains]:
-        # Puffy clouds with fairly-flat ground (foreground)
-        ###
-        # buff: [cloud-height, cloud-level, ground height]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [cloud-height, cloud-level, ground height]
         if oY == 0:
             e = (x+10)%64-10
             e = 10+e if e < 0 else 10-e if e<10 else 0
@@ -49,7 +41,6 @@ class W:
 
     @micropython.viper
     def pattern_ferns(self, x: int, oY: int) -> int:
-        ### PATTERN [ferns]: Midbackground jungle-fern ground cover ###
         buff = ptr32(_buf)
         if oY == 0:
             buff[0] = int(shash(x,64,40))+int(shash(x,32,48))+int(shash(x,4,8))-10
@@ -61,9 +52,6 @@ class W:
         return v
     @micropython.viper
     def pattern_ferns_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [ferns_fill]: Associated fill layer for ferns.
-        # Just has thicker leaves
-        ###
         buff = ptr32(_buf)
         v = 0
         for y in range(oY, oY+32):
@@ -74,14 +62,10 @@ class W:
 
     @micropython.viper
     def pattern_fence_top(self, x: int, oY: int) -> int:
-        ### PATTERN [fence_top]: 4 pixel thick  ###
         return 0 if oY else -268435456
 
     @micropython.viper
     def pattern_chain_link_fence(self, x: int, oY: int) -> int:
-        ### PATTERN [chain_link_fence]:
-        # chain link fence on bottom half with bar across the top
-        ###
         if oY==0: # Top bar with post tops
             return -268435456 if x%151>=4 else -16777216
         # Chain mess

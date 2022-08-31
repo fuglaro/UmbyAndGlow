@@ -638,6 +638,41 @@ Alien bug that flies straight in from the right towards the player.
 
 Alien trap that goes up then down vertically over set intervals.
 
+### Games/Umby&Glow/script.txt
+
+Story and script data file which manages all level progression.
+
+Script - the story through the dialog of the characters.
+Script data includes the (additive) tape scroll amount for when
+each line of the script occurs and the dialog itself.
+Each entry is usually one line of dialog, but can also include naration
+or other messaging, or even level details. Each line of script
+includes a prefix indicating the character that says the line:
+* "@:" -> Umby says this (overlay at bottom of screen)
+* "^:" -> Glow says this (overlay at top of screen)
+* "" (no prefix) -> Narration (written to middle of background)
+
+ The script can also include level changes which takes the form of a
+ tuple with the following form:
+```python
+    (feed, spawner, mode)
+```
+E.g:
+```python
+    # Level: Cave filled with Bones
+    ("4", # World number 4
+     # (back, mid-back, mid-back-fill, foreground, foreground-fill)
+     "[w.pattern_toplit_wall,
+       w.pattern_stalagmites, w.pattern_stalagmites_fill,
+       w.pattern_cave, w.pattern_cave_fill]",
+     # Reset monster spawner to the new level
+     (bytearray([Bones]), bytearray([200])),
+     # Player environment dynamics behavior (0-normal, 1-sace))
+     0
+    )
+```
+Or as a number, which will load the relevant monster directly.
+
 ### Games/Umby&Glow/comms.py
 
 2 player network communication
@@ -769,6 +804,126 @@ Pattens functions take two arguments:
 
 Most patterns are dynamically loaded from `world*.py` files as the game
 progresses.
+
+### Pattern Descriptions
+
+#### alien_totem_floor
+
+Floor and roofing matching the style of alien_totem_plants.
+
+#### alien_totem_plants
+
+Garden of alien plants good for mid background
+
+#### biomechanical_hall_wall
+
+Alien background wall with repetative feel.
+
+#### cave
+
+Cave system with ceiling and ground. Ceiling is never less
+than 5 deep. Both have a random terrain and can intersect.
+Comes with an associated fill pattern that makes the ceiling
+seem semi-reflective and gives the ground vertical line shading.
+
+#### chain_link_fence
+
+A chain link fence on bottom half with bar across the top, and posts.
+
+#### cloudy_plains
+
+Puffy clouds with fairly-flat ground (foreground).
+
+#### cloudy_snowy_mountains
+
+Distant snowy mountains background with clouds.
+
+#### door
+
+Low height flat tunnel.
+
+#### fence_top
+
+A 4 pixel thick horizontal line that matches the top of chain_link_fence.
+
+#### ferns
+
+Midbackground jungle-fern ground cover.
+Also comes with ferns_fill which just has thinker leaves.
+
+#### forest
+
+Forest foreground including trees, ferns, and vines.
+Comes with an associated fill pattern.
+
+#### forest_ferns
+
+Midbackground jungle-fern ground cover. Comes with an associated fill layer
+that just has thicker leaves.
+
+#### hull
+
+Alien ship exterior wall.
+
+#### launch_area
+
+Rocket ship launching area (surrounding area).
+High flat ground with boxes and hanging platforms.
+Comes with an associated full pattern which includes box decoration,
+box shadows, and ground pattern
+
+#### launch_back
+
+Distant background boxes and rockets.
+
+#### launch_pad
+
+Similar to launch_area but no boxes and no crane platform variance.
+
+#### mid_forest
+
+Dense trees and high ground fern cover. Intended for mid background layer.
+Includes trees, ferns, and rays of sunlight.
+Comes with an associated fill pattern which cuts out trees and ferns,
+and also gives trees shadows, and adds shadow fern patterns.
+
+#### nebula
+
+Lightly scattered and clustered stars.
+
+#### orbitals
+
+Randomised planets and moons. Comes with an associated orbitals_fill pattern.
+
+#### stalagmites
+
+Stalagmite columns coming from the ground and associated
+stalactite columns hanging from the ceiling.
+These undulate in height in clustered waves.
+Comes with an associated fill pattern.
+Stalagmites are shaded in a symetric manner while
+stalactites have shadows to the left. This is just for visual richness.
+
+#### toplit_wall
+
+Organic background with roof shine.
+
+#### tree_branches
+
+Forest tree top branches (foreground closed ceiling). Comes with an associated
+fill pattern.
+
+#### tree_wall
+
+Background of dense forest.
+
+#### tunnel
+
+Thin tunnel a little bit bigger than worm height, that rolls up and down.
+
+#### windows
+
+Background wall with square windows with rounded corners.
 
 ### Example Pattern Library
 

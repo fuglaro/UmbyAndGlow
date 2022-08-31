@@ -16,12 +16,10 @@ bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 ## Umby and Glow artwork ##
 # BITMAP: width: 3, height: 8, frames: 6
 _u_art = bytearray([1,6,0,0,7,0,0,6,1,0,7,0,3,7,4,4,7,3])
-# Umby's shadow
 _u_sdw = bytearray([51,127,0,0,255,0,0,127,51,0,255,0,35,127,28,28,127,35])
 _u_sdw_air = bytearray([3,15,0,0,15,0,0,15,3,0,15,0,3,15,12,12,15,3]) # When falling
 # BITMAP: width: 3, height: 8, frames: 6
 _g_art = bytearray([16,76,0,0,92,0,0,76,16,0,92,0,24,92,4,4,92,24])
-# Umby's shadow
 _g_sdw = bytearray([89,159,64,64,159,64,64,159,89,64,159,64,89,159,70,70,159,89])
 # BITMAP: width: 9, height: 8
 _ug_back_mask = bytearray([120,254,254,255,255,255,254,254,120])

@@ -1,11 +1,7 @@
 class W:
     @micropython.viper
     def pattern_cloudy_snowy_mountains(self, x: int, oY: int) -> int:
-        ### PATTERN [cloudy_snowy_mountains]:
-        # Distant snowy mountains background with clouds
-        ###
-        # buff: [ripple-modifier, snow-capping, cloud-height, cloud-level]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [ripple-modifier, snow-capping, cloud-height, cloud-level]
         xa = x*8
         if oY == 0:
             u = int(shash(xa,32,16))
@@ -28,11 +24,7 @@ class W:
 
     @micropython.viper
     def pattern_launch_area(self, x: int, oY: int) -> int:
-        ### PATTERN [launch_area]:
-        # High flat ground with boxes and hanging platforms.
-        ###
-        # buff: [box-height, platform height, chain pattern]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [box-height, platform height, chain pattern]
         if oY == 0:
             bx = int(shash(x//9,8,12))
             br = int(shash(x//9,1,4))
@@ -67,10 +59,6 @@ class W:
         return v
     @micropython.viper
     def pattern_launch_area_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [launch_area_fill]:
-        # Associated fill pattern for launch_area includes:
-        # box decoration, box shadows, and ground pattern.
-        ###
         buff = ptr32(_buf)
         xb = (x-4)%9
         bsq = x%9==1 or x%9==7
@@ -96,11 +84,7 @@ class W:
 
     @micropython.viper
     def pattern_launch_pad(self, x: int, oY: int) -> int:
-        ### PATTERN [launch_pad]:
-        # Similar to launch area but no boxes and no crane platform variance.
-        ###
-        # buff: [box-height, platform height, chain pattern]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [box-height, platform height, chain pattern]
         if oY == 0:
             pr = int(ihash(x//42)) # For 0-3 platforms with 5 pixel gaps
             plnum = pr&3 or 1 # Num platforms
@@ -130,10 +114,6 @@ class W:
         return v
     @micropython.viper
     def pattern_launch_pad_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [launch_pad_fill]:
-        # Associated fill pattern for launch_pad includes:
-        # Ground pattern only.
-        ###
         v = 0
         for y in range(oY, oY+32):
             v |= (
@@ -143,11 +123,7 @@ class W:
 
     @micropython.viper
     def pattern_launch_back(self, x: int, oY: int) -> int:
-        ### PATTERN [launch_back]:
-        # Distant background boxes and rockets.
-        ###
-        # buff: [box height, rocket middle]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [box height, rocket middle]
         if oY == 0:
             bx = int(shash(x//8,4,12))
             br = int(shash(x//8,1,4))

@@ -1,11 +1,6 @@
 class W:
     @micropython.viper
     def pattern_cave(self, x: int, oY: int) -> int:
-        ### PATTERN [cave]:
-        # Cave system with ceiling and ground. Ceiling is never less
-        # than 5 deep. Both have a random terrain and can intersect.
-        ###
-        # buff: [ground-height, ceiling-height, ground-fill-on]
         buff = ptr32(_buf)
         if oY == 0:
             buff[0] = int(shash(x,32,48)) + int(shash(x,16,24)) + int(shash(x,4,16))
@@ -19,11 +14,6 @@ class W:
         return v
     @micropython.viper
     def pattern_cave_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [cave_fill]:
-        # Fill pattern for the cave. The ceiling is semi-reflective
-        # at the plane at depth 5. The ground has vertical lines.
-        ###
-        # buff: [ground-height, ceiling-height, ground-fill-on]
         buff = ptr32(_buf)
         v = 0
         for y in range(oY, oY+32):
@@ -36,13 +26,7 @@ class W:
 
     @micropython.viper
     def pattern_stalagmites(self, x: int, oY: int) -> int:
-        ### PATTERN [stalagmites]:
-        # Stalagmite columns coming from the ground and associated
-        # stalactite columns hanging from the ceiling.
-        # These undulate in height in clustered waves.
-        ###
-        # buff: [ceiling-height, fill-shading-offset]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [ceiling-height, fill-shading-offset]
         if oY == 0:
             t1 = (x%256)-128
             t2 = (x%18)-9
@@ -57,13 +41,6 @@ class W:
         return v
     @micropython.viper
     def pattern_stalagmites_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [stalagmites_fill]:
-        # Associated shading pattern for the stalagmite layer.
-        # Stalagmites are shaded in a symetric manner while
-        # stalactites have shadows to the left. This is just for
-        # visual richness.
-        ###
-        # buff: [ceiling-height, fill-shading-offset]
         buff = ptr32(_buf)
         v = 0
         for y in range(oY, oY+32):
@@ -74,7 +51,6 @@ class W:
 
     @micropython.viper
     def pattern_toplit_wall(self, x: int, oY: int) -> int:
-        ### PATTERN [toplit_wall]: organic background with roof shine ###
         v = 0
         p = x-500
         for y in range(oY, oY+32):
@@ -85,12 +61,7 @@ class W:
 
     @micropython.viper
     def pattern_tunnel(self, x: int, oY: int) -> int:
-        ### PATTERN [cave]:
-        # Cave system with ceiling and ground. Ceiling is never less
-        # than 5 deep. Both have a random terrain and can intersect.
-        ###
-        # buff: [ground-height]
-        buff = ptr32(_buf)
+        buff = ptr32(_buf) # [ground-height]
         if oY == 0:
             buff[0] = 10 + int(shash(x,32,24))+int(shash(x,24,8))+int(shash(x,7,2))
         v = 0

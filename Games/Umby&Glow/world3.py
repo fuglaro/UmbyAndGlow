@@ -1,19 +1,17 @@
 class W:
     @micropython.viper
     def pattern_tree_wall(self, x: int, oY: int) -> int:
-        ### PATTERN [tree_wall]: Background of dense forest ###
         xa = x*x*40//((x%40+20)+1)
         return ((
                 int(0x00000FFF)<<((xa+oY)%64-16) |
                 uint(0xFFF00000)>>(32-(xa)%32)
             ) if xa%12 > 4 # Tree middle
-            else -1 if (xa-1)%12 > 2 # Tree edges
-            else 0 # Tree gaps
+            else -1 if (xa-1)%12 > 2 # Bark
+            else 0 # Gaps
         )
 
     @micropython.viper
     def pattern_forest_ferns(self, x: int, oY: int) -> int:
-        ### PATTERN [ferns]: Midbackground jungle-fern ground cover ###
         buff = ptr32(_buf)
         if oY < 32:
             buff[2] = int(shash(x,40,30))+int(shash(x,16,24))+10 # Fern pattern
@@ -25,9 +23,6 @@ class W:
         return v
     @micropython.viper
     def pattern_forest_ferns_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [ferns_fill]: Associated fill layer for ferns.
-        # Just has thicker leaves
-        ###
         buff = ptr32(_buf)
         v = 0
         oY -= 15
@@ -39,7 +34,6 @@ class W:
 
     @micropython.viper
     def pattern_tree_branches(self, x: int, oY: int) -> int:
-        ### PATTERN [tree_branches]: Forest tree top branches (foreground closed ceiling) ###
         buff = ptr32(_buf)
         if oY == 0:
             buff[3] = int(shash(x,32,30)) + int(shash(x,5,6)) - 10
@@ -52,9 +46,6 @@ class W:
         return v
     @micropython.viper
     def pattern_tree_branches_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [tree_branches_fill]:
-        # Associated fill pattern for forest tree tops
-        ###
         buff = ptr32(_buf)
         br = buff[3]
         v = 0
@@ -66,7 +57,6 @@ class W:
 
     @micropython.viper
     def pattern_forest(self, x: int, oY: int) -> int:
-        ### PATTERN [forest]: Forest foreground ###
         buff = ptr32(_buf)
         if oY == 0:
             buff[0] = x+int(shash(x,50,80)) # Tree width / gap variance
@@ -78,7 +68,6 @@ class W:
             | int(self.pattern_tree_branches(x, oY))) # Branches and vines
     @micropython.viper
     def pattern_forest_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [forest_fill]: Associated fill pattern for forest. ###
         buff = ptr32(_buf)
         xb = buff[0]
         xa = buff[1]
@@ -93,9 +82,6 @@ class W:
 
     @micropython.viper
     def pattern_mid_forest(self, x: int, oY: int) -> int:
-        ### PATTERN [mid_forest]: Dense trees and high ground fern cover.
-        # Intended for mid background layer.
-        ###
         buff = ptr32(_buf)
         if oY == 0:
             buff[0] = x+int(shash(x,50,80)) # Tree width / gap variance
@@ -111,10 +97,6 @@ class W:
             ) | int(self.pattern_forest_ferns(x, oY+10)) # Gaps and Ferms
     @micropython.viper
     def pattern_mid_forest_fill(self, x: int, oY: int) -> int:
-        ### PATTERN [mid_forest_fill]: Associated fill pattern to mid_forest.
-        # Cuts out trees and ferns and also gives trees shadows and
-        # adds shadow fern patterns.
-        ###
         buff = ptr32(_buf)
         xb = buff[0]
         xa = buff[1]

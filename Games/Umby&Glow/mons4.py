@@ -6,16 +6,13 @@ _LeftDoor = const(30)
 
 @micropython.viper
 def pattern_door(x: int, oY: int) -> int:
-    ### PATTERN [door]: low height mid tunnel ###
     return -1 if oY else 33554431
 
 @micropython.viper
 def pattern_windows(x: int, oY: int) -> int:
-    ### PATTERN [windows]: wall with windows ###
-    # window-edges
     we = (12 if 10 < x%24 < 14 else 5 if 9 < x%24 < 15 else
         3 if 8 < x%24 < 16 else 2 if 7 < x%24 < 17 else
-        1 if 5 < x%24 < 19 else 0)
+        1 if 5 < x%24 < 19 else 0) # edges
     v = 0
     for y in range(oY, oY+32):
         v |= (

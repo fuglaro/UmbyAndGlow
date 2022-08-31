@@ -5,8 +5,7 @@ _uart = UART(0, baudrate=115200, rx=_rxPin, tx=Pin(0, Pin.OUT), timeout=0,
     txbuf=164, rxbuf=328)
 Pin(2, Pin.OUT).value(1)
 
-# Read and write (and dump) buffers for comms messages.
-# Don't use the last byte as it is the checksum.
+# Read/write buffers (last byte is checksum)
 _echobuf = bytearray(0 for x in range(160))
 inbuf = bytearray(0 for x in range(160))
 outbuf = bytearray(0 for x in range(160))
@@ -29,29 +28,24 @@ def _check_checksum() -> int:
 def comms():
     global _echo, _wait, _uanyc
     res = 0
-    # Sending will echo back on the wire (from half duplex) so
-    # swallow up the echo since its not from the connected Thumby.
+    # Discard echo rebounding back on the wire (from half duplex)
     _echo -= _uart.readinto(_echobuf, _echo) or 0
-    if _echo == 0 and _wait > 0:
-        # Listen for some of the real response message from the other Thumby
+    if _echo == 0 and _wait > 0: # Read
         _wait -= _uart.readinto(memoryview(inbuf)[160-_wait:], _wait) or 0
-        # If the message arrives in full and intact, return success
         if not _wait and _check_checksum():
-            res = 1
+            res = 1 # Message recieved
     # Check if it is our turn to send
     if _echo == 0 and _wait == 0 and _rxPin.value:
-        # Wipe and junk or half messages
+        # Wipe junk or half messages
         while _uart.any():
             _uart.readinto(_echobuf)
-        # Now send the next message with a checksum
         _prep_checksum()
-        _uart.write(outbuf)
-        # Get ready to recieve the self-echo then the real response 
+        _uart.write(outbuf) # Send
+        # Ready for echo and then reply
         _echo = _wait = 160
-    # Check if we are waiting for a message, but the line is empty
     elif _wait != 0 and not _uart.any():
-        _uanyc += 1 # Increment counter
-        # After listening for nothing 60 times, abandon and send again
+        _uanyc += 1
+        # If noreply 60 times, abort and send again
         if _uanyc > 60:
             _echo = _wait = _uanyc = 0
     return res
