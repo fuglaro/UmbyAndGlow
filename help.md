@@ -72,7 +72,6 @@ raise Exception("STOP")
 For scanning for syntax errors in script.txt quickly.
 
 ```python
-from patterns import *
 from monsters import *
 with open("/Games/Umby&Glow/script.txt") as fp:
     for ln, line in enumerate(fp):
@@ -80,7 +79,7 @@ with open("/Games/Umby&Glow/script.txt") as fp:
             dist, _, ev_str = line.partition(",")
             try:
                 int(dist), eval(ev_str.strip())
-            except SyntaxError:
+            except (SyntaxError, ValueError):
                 print(ln+1, line)
                 raise
 ```
