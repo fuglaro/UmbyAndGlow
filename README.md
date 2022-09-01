@@ -10,6 +10,8 @@ Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of th
 ## TODO
 * Make Glow's diffused rocket leave a tiny platform!
 * Implement remainder of script
+* Reduce gc threshold during init to 2000
+* Initial test
 * Full game description and overview (for arcade_description.txt file)
   * quick cave emulator vid of Umby crawling, jumping, shooting to destroy, and shooting a platform. (Play on ground level as earthworm Umby, and make platforms!)
   * quick cave emulator vid of Glow clinging, swinging, digging, and shooting. (Play from the roof as glow-worm Glow, and cling, swing, pummel, and tunnel!
@@ -19,7 +21,7 @@ Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of th
   * snap of Dragon (Boss Battles!)
   * snap of Space (1 Epic journey!)
 * Make demo video (WIP: https://drive.google.com/file/d/1NM4SpyZwK2Xgj_-J5FfPJtdIFm1kZSmK)
+* Full tests
 * Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
-* Reduce gc threshold during init to 2000
 
 Please see the credits in the source [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
