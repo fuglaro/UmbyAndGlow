@@ -92,13 +92,12 @@ class W:
             cresgib = xx+y2*y2//100 > sz and y1 < 0
             cresgib = (0 if cresgib else 1) if gib else cresgib
             d = xx+y1*y1
-            v |= (
-               sp if d<sz and cresgib else 1 if sz<d<sz+bl else lit if d<sz else 0
-            ) << (y-oY)
+            v |= (1 if d<sz+bl else 0) << (y-oY)
             f |= (
-               1 if d>sz else 0
+                1 if d>sz else 0 if (sp if d<sz and cresgib else
+                    1 if sz<d<sz+bl else lit if d<sz else 0) else 1
             ) << (y-oY)
-        buff[4 if oY==0 else 5] = f|v
+        buff[4 if oY==0 else 5] = f
         return v
     @micropython.viper
     def pattern_orbitals_fill(self, x: int, oY: int) -> int:

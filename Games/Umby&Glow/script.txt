@@ -301,13 +301,13 @@
 0, "CHAPTER~X: \n TEST_(TODO)"
 
 # Mothership hull
-140, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_hull,w.pattern_hull]",(bytearray([Stomper]), bytearray([120])),1)
+140, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_fill,w.pattern_hull]",(bytearray([Stomper]), bytearray([120])),1)
 0,   "^: Umby, we finally made it!"
 0,   "@: We are on fire, Glow!"
 0,   "^: How do we get onboard?"
 0,   "@: Let's blast a hole through the hull."
-0,   "^: That's just the kind of destruction I'm looking for!"
-0,   "@: Nice. Then let's worm our way in with maximum destruction!"
+0,   "^: That's just the kind of destruction I'm after!"
+0,   "@: Nice. Then let's worm our way in, with maximum destruction!"
 
 # Mothership biohall
 400, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([]), bytearray([])),0)
@@ -688,7 +688,7 @@
 0,   "@, And let's go see if those aliens are still a problem."
 
 # Ship hull
-200, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_hull,w.pattern_hull]",(bytearray([]), bytearray([])),0)
+200, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_fill,w.pattern_hull]",(bytearray([]), bytearray([])),0)
 
 # Forest
 80,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
