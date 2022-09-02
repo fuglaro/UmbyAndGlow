@@ -5,11 +5,13 @@ from utils import (pattern_none, pattern_fill, pattern_room)
 _Bones = const(1)
 _BackBones = const(2)
 _BonesBoss = const(3)
-_ChargingBones = const(5)
-_ChargingBonesFriend = const(6)
-_Skittle = const(7)
-_Fireball = const(8)
-_Lazer = const(9)
+_DragonBones = const(4)
+_Wyvern = const(5)
+_ChargingBones = const(6)
+_ChargingBonesFriend = const(7)
+_Skittle = const(10)
+_Fireball = const(11)
+_Lazer = const(12)
 _Stomper = const(20)
 _Molaar = const(21)
 _MolaarHanging = const(22)
@@ -25,8 +27,6 @@ _EFalcon = const(31)
 _Prober = const(32)
 _Probing = const(33)
 _FallingBones = const(34)
-_DragonBones = const(40)
-_Wyvern = const(41)
 _BackPillar = const(50)
 _BackBatty = const(51)
 _CPU = const(80)
@@ -38,6 +38,8 @@ _CamShake3 = const(91)
 _SuperShake = const(92)
 Bones = _Bones
 BonesBoss = _BonesBoss
+DragonBones = _DragonBones
+Wyvern = _Wyvern
 ChargingBones = _ChargingBones
 Skittle = _Skittle
 Fireball = _Fireball
@@ -48,8 +50,6 @@ Hoot = _Hoot
 LeftDoor = _LeftDoor
 EFalcon = _EFalcon
 Prober = _Prober
-DragonBones = _DragonBones
-Wyvern = _Wyvern
 BackPillar = _BackPillar
 BackBatty = _BackBatty
 CPU = _CPU
@@ -209,7 +209,7 @@ class Monsters:
             d[ii+4] = x//4 # Movement rate type
         elif mon_type == _Skittle:
             ys[i] = 64 + int(self._tp.player.y) # Target player 1
-        elif mon_type == _Pillar or mon_type == _DragonBones:
+        elif mon_type == _Pillar or _DragonBones <= mon_type <= _Wyvern:
             # Make all the sections in the chain
             k = i
             for j in range(16 if mon_type == _DragonBones else 5):
@@ -222,7 +222,7 @@ class Monsters:
             if mon_type == _Pillar:
                 # Set the turn direction (1=clockwise)
                 d[k*5+1] = x%2
-            elif mon_type == _DragonBones:
+            elif _DragonBones <= mon_type <= _Wyvern:
                 d[k*5+4] = 1 # Movement rate
             i = k
         elif mon_type == _Molaar:
@@ -264,7 +264,7 @@ class Monsters:
                 self._tick_bones(t, i)
             elif typ == _BonesBoss:
                 self._tick_bones_boss(t, i)
-            elif typ == _DragonBones:
+            elif _DragonBones <= typ <= _Wyvern:
                 self._tick_dragon_bones(t, i)
             elif _ChargingBones <= typ <= _ChargingBonesFriend and t%4==1:
                 self._tick_bones_charging(t, i)
@@ -376,7 +376,7 @@ class Monsters:
         ht = 0 # has tail?
         mon = i
         for j in range(i-1, -1, -1):
-            if tids[j] == _Pillar or tids[j] == _DragonBones:
+            if tids[j] == _Pillar or _DragonBones <= tids[j] <= _Wyvern:
                 break # Another head, we are done on this chain
             elif tids[j] == _PillarTail:
                 s = (s+1)%2 # Alternating sections move
@@ -487,7 +487,7 @@ class Monsters:
             return
         # Move the tail (for Pillar)
         for j in range(i-1, -1, -1):
-            if tids[j] == _Pillar or tids[j] == _DragonBones:
+            if tids[j] == _Pillar or _DragonBones <= tids[j] <= _Wyvern:
                 break # Another head, we are done on this chain
             elif tids[j] == _PillarTail:
                 s = (s+1)%2 # Alternating sections move
@@ -699,7 +699,7 @@ class Monsters:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail: # Destroy entire chain
                     self._kill(t, j, player, "_RIP_")
-        elif tid == _PillarTail or tid == _DragonBones:
+        elif tid == _PillarTail or _DragonBones <= tid <= _Wyvern:
             tag = "_OUCH!_"
             # Destroy last tail segment instead
             for j in range(mon-1, -1, -1):
