@@ -495,7 +495,7 @@ class Player:
                 rsafe = ((crd | cd | int(ch(x+2, y-1)) | int(ch(x+2, y)))
                     and r and (cr | cru)==0)
                 xf += -256 if lsafe else 256 if rsafe else 0
-                yf += -256 if climb else 256 if descend else 0
+                yf += 256 if descend else -256 if climb else 0
             self._x = xf <<1|1; self._y = yf <<1|1
 
         # Glow's rocket.
