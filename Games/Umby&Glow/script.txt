@@ -805,6 +805,7 @@
 160, "TinyCircuits"
 160, "TinyCircuits Thumby Discord Channel"
 160, "Auri"
+160, "Adrian 2 Cool"
 160, "AyreGuitar"
 160, "-BBH-"
 160, "DarkGizmo"
