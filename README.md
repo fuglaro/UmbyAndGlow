@@ -8,7 +8,6 @@ Coop side scrolling platformer for the Thumby device - Umby the earthworm and Gl
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
 
 ## TODO
-* Make Glow's diffused rocket leave a tiny platform!
 * Implement remainder of script
 * Reduce gc threshold during init to 2000
 * Initial test
