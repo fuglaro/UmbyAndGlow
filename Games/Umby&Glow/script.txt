@@ -298,8 +298,6 @@
 # Gap between planets and mothership
 600, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_none,pattern_fill]",(bytearray([]), bytearray([])),1)
 
-0, "CHAPTER~X: \n TEST_(TODO)"
-
 # Mothership hull
 140, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_fill,w.pattern_hull]",(bytearray([Stomper]), bytearray([120])),1)
 0,   "^: Umby, we finally made it!"
@@ -312,10 +310,10 @@
 # Mothership biohall
 400, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([]), bytearray([])),0)
 0,   "^: Woah! Gravity!"
-0,   "@: Must be artificial gravity, and from this spaceship."
+0,   "@: Must be artificialddsddwdawsdd, and from this spaceship."
 0,   "^: Whatever it is, it feels good!"
 0,   "^: I like knowing which way is up, Umby."
-0,   "@: Ditto Glow."
+0,   "@: Ditto, Glow."
 0,   "@: I like knowing which way is down!"
 
 100, "CHAPTER~5: \n Mothership"
@@ -333,47 +331,35 @@
 0,   "^: Can we bust things up a little?"
 0,   "@: Glow, I wouldn't have it any other way!"
 
-
-
-
-# TODO TODO TODO - Monster: Wyvern (shorter dragonbones)
 140, Wyvern
 0,   Wyvern
 
-200, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([Prober, Bones, Skittle, Wyvern]), bytearray([10, 20, 30, 10])),0)
+200, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([Wyvern, Prober, Bones, Skittle]), bytearray([2, 20, 30, 40])),0)
 
-
-
-
-# TODO TODO TODO - vents (horizontal bars) with Skittle
-1000,"TODO - VENTS"
+# Vents
+800, ("6","[w.pattern_biomechanical_hall_wall,pattern_none,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Skittle, Bones]), bytearray([40,10])),0)
 
 80, "^: Where to now, Umby?"
 0, "@: Let's head through those vents."
 0, "^: Sure thing!"
 
-
-
-
-# Mothership lab
-# TODO TODO TODO - lab (alien totem floor and add platforms, and floating blocks (scale up (and overlap with stretched) nebula, then apply pattern_biomechanical_hall_wall paint))
-400, ("6","pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,pattern_fill]",(bytearray([Prober, Bones]), bytearray([20, 40])),0)
-0,   "TODO - LAB"
+# Lab
+400, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,w.pattern_biomechanical_lab_fill]",(bytearray([Prober, Bones]), bytearray([5, 40])),0)
 
 140, "^: What is this place?"
-0,   "^: Is this a lab?"
+0,   "^: Is this a cargo bay?"
 0,   "@: I have no idea, but it's definitely not a computer mainframe"
 0,   "@: Let's keep going."
 
-
-
-
-# TODO TODO TODO - vents (horizontal bars) with Skittle
-1000,"TODO - VENTS"
+# Vents
+1000, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Skittle, Bones]), bytearray([40,10])),0)
 
 80,  "^: Umby, more vents!"
-0,   "@: Maybe these will be more fruitful..."
+0,   "@: Maybe these will lead somewhere more fruitful..."
 
+
+
+0, "CHAPTER~X: \n TEST_(TODO)"
 
 
 
