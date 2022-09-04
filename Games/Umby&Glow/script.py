@@ -93,8 +93,10 @@ _active_battle = -1
 @micropython.native
 def add_dialog(tape, dialog):
     char = dialog[0]
-    pos = 1 if char == '^' else 2 if char == '@' else 0
-    if pos: # Worm dialog
+    pos = 1 if char == '^' else 2 if char == '@' else 3 if char == '|' else 0
+    if char == '|':
+        dialog = dialog[1:]
+    if pos: # Worm dialog or overlay
         # Split the text into lines that fit on screen.
         lines = [""]
         for word in dialog.split(' '):
@@ -125,7 +127,7 @@ def story_events(tape, mons, coop_px):
     if _dialog_queue and _dialog_c == 0:
         # "Say" next line
         position, text = _dialog_queue.pop(0)
-        tape.message(position, text, 3)
+        tape.message(position%3, text, 3)
         # Dialog display time (in ticks)
         _dialog_c = 60 + len(text)*5//2
 
