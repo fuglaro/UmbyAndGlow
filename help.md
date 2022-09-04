@@ -20,13 +20,14 @@ with open("/Games/Umby&Glow/world6.py") as fp:
     exec(fp.read())
 from tape import Tape, display_update
 tape = Tape()
-tape.feed = [w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]
+tape.feed = [w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,
+    pattern_fill,w.pattern_alien_totem_floor,pattern_fill]
 tape.reset(0)
 t = 0
 while True:
     t += 1
     tape.scroll_tape(1 if t%4==0 else 0, 1 if t%2==0 else 0, 1)
-    tape.offset_vertically(t//10%23)
+    tape.offset_vertically(t//10%25)
     tape.comp()
     display_update()
 ```
@@ -823,10 +824,33 @@ give organic texture.
 
 Alien background wall with repetative feel.
 
-#### boimechanical_lab
+#### biomechanical_lab
 
 Alien spaceship room with random platforms that comes with an
-associated fill pattern that gives and organic texture.
+associated biomechanical_fill pattern that gives an organic texture.
+
+#### biomechanical_mainframe
+
+Alien computer mainframe room. Thick flat floor and cpu built
+with organic blocks filled in with the associated biomechanical_fill
+pattern.
+
+#### cable
+
+Single line of cabling (see cabling)
+
+#### cabled_room
+
+Same as cabling but includes a thick solid roof and floor.
+
+#### cabling
+
+3 lines of thick cable that randomly zig zags up and down across each
+other. Comes with an associated fill pattern that gives an organic feel.
+
+#### cathedral
+
+Cathedral style repetative background wall.
 
 #### cave
 
@@ -903,6 +927,15 @@ Lightly scattered and clustered stars.
 #### orbitals
 
 Randomised planets and moons. Comes with an associated orbitals_fill pattern.
+
+#### quilted_diodes
+
+Background that is a mix between electronics and fabric and looks like
+the insides of a woven computer.
+
+#### slim_room
+
+A single pixel line at top and bottom.
 
 #### stalagmites
 
@@ -1037,41 +1070,6 @@ def pattern_panels(x: int, oY: int) -> int:
     for y in range(oY, oY+32):
         v |= (
             1 if (x*y)%100 == 0 else 0
-        ) << (y-oY)
-    return v
-
-@micropython.viper
-def pattern_quilted_diodes(x: int, oY: int) -> int:
-    ### PATTERN [quilted_diodes]: mix between electronics and fabric.
-    # Looks like it is ihe insides of a woven computer.
-    ###
-    snco = ptr32(sinco) # Note we (dangerously) use a bytearray as an int array
-
-    sf = 100 # size factor
-    xm = sf*12//10 # sector
-    x = x%xm-xm//2
-
-    v = 0
-    for ya in range(oY, oY+32):
-
-        y = ya*int(abs(x//100))
-
-        p1 = -1 if snco[(x^y)%99+1]<128 else 0
-        p2 = -1 if snco[(x*2^y*2)%99+1]<128 else 0
-        p3 = -1 if snco[(x*4^y*4)%99+1]<128 else 0
-        p4 = -1 if snco[(x*8^y*8)%99+1]<128 else 0
-        v |= (
-           0 if (p1^p2^p3^p4) else 1
-        ) << (ya-oY)
-    return v
-
-@micropython.viper
-def pattern_catheral(x: int, oY: int) -> int:
-    ### PATTERN [cathedral]: Cathedral style repetative background wall ###
-    v = 0
-    for y in range(oY, oY+32):
-        v |= (
-            int(y > (32423421^(y-x*y)) % 64)
         ) << (y-oY)
     return v
 ```

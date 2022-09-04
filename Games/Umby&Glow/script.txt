@@ -344,7 +344,7 @@
 0, "^: Sure thing!"
 
 # Lab
-400, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,w.pattern_biomechanical_lab_fill]",(bytearray([Prober, Bones]), bytearray([5, 40])),0)
+400, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,w.pattern_biomechanical_fill]",(bytearray([Prober, Bones]), bytearray([5, 40])),0)
 
 140, "^: What is this place?"
 0,   "^: Is this a cargo bay?"
@@ -352,20 +352,13 @@
 0,   "@: Let's keep going."
 
 # Vents
-1000, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Skittle, Bones]), bytearray([40,10])),0)
+1000,("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Skittle, Bones]), bytearray([40,10])),0)
 
 80,  "^: Umby, more vents!"
 0,   "@: Maybe these will lead somewhere more fruitful..."
 
-
-
-0, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
-
-# TODO TODO TODO - electrical ducts (cathedral background, with alient plans growing from 2 center lines that ascend and descend randomly) with Molaar, Prober
-1000,"TODO - DUCTS"
+# Electrical ducts
+200, ("6","[pattern_none,w.pattern_cathedral,pattern_fill,w.pattern_cabling,w.pattern_cabling_fill]",(bytearray([Molaar, Prober, Bones]), bytearray([20,2,5])),0)
 
 300, "@: Glow, I might be being overly optimistic..."
 0,   "@: But are these electrical ducts?"
@@ -374,11 +367,8 @@
 0,   "@: Pun intended?"
 0,   "^: As always, Umby!"
 
-
-
-
-# TODO TODO TODO - cathedral with alien totem floor, no mons
-300, "TODO - CATHEDRAL"
+# Cathedral with alien totem floor
+800, ("6","[pattern_none,w.pattern_cathedral,pattern_fill,w.pattern_slim_room,pattern_fill]",(bytearray([]), bytearray([])),0)
 
 200, "@: Maybe I was wrong, Glow"
 0,   "^: How so, Umby?"
@@ -394,27 +384,17 @@
 0,   Wyvern
 0,   Wyvern
 
-
-
-
-# TODO TODO TODO - diode ducts (electrical ducts - diode background, plus diode floor and roof layers in foreground, plus cabling), Skittle, Prober
-400, "TODO - DIODE DUCTS"
+# Diode ducts
+800, ("6","[pattern_none,w.pattern_quilted_diodes,pattern_fill,w.pattern_cabled_room,w.pattern_cabling_fill]",(bytearray([Skittle, Prober]), bytearray([30,5])),0)
 
 300, "^: Well, this is starting to feel a bit more mainframey!"
 0,   "@: That's exactly what I was thinking..."
 0,   "^: Permission to destroy everything?"
 0,   "@: Granted and encouraged!"
 
+# Mainframe core
+700, ("6","[pattern_none,w.pattern_quilted_diodes,pattern_fill,w.pattern_bimechanical_mainframe,w.pattern_biomechanical_fill]",(bytearray([Skittle, Stomper]), bytearray([30,20])),0)
 
-
-
-# TODO TODO TODO - diodes (2 layers of diodes, foreground is floor and roof only), Stomper and Skittle
-300, "TODO - MAINFRAME"
-
-
-
-
-# TODO TODO TODO
 400, "^: That looks promising!"
 0,   "^: Is that it?"
 0,   "@: I've never seen an alien mainframe core, but that feels very much like an alien mainframe core."
@@ -422,6 +402,7 @@
 
 80,  "Get ready!"
 
+0, "CHAPTER~X: \n TEST_(TODO)"
 
 
 

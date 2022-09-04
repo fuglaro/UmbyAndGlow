@@ -39,6 +39,18 @@ class W:
         return v
 
     @micropython.viper
+    def pattern_bimechanical_mainframe(self, x: int, oY: int) -> int:
+        buff = ptr32(_buf)
+        x8 = x//10
+        v = f = 0
+        for y in range(oY, oY+32):
+            blk = (((y+2)//5)+3)%13<7
+            v |= ( 1 if blk else 0 ) << (y-oY)
+            f |= ( 0 if blk and (x+1)%10>1 and (y+3)%5>1 else 1 ) << (y-oY)
+        buff[4 if oY==0 else 5] = int(self.pattern_alien_decay(x, oY)) | f
+        return v
+
+    @micropython.viper
     def pattern_biomechanical_lab(self, x: int, oY: int) -> int:
         buff = ptr32(_buf)
         snco = ptr8(sinco)
@@ -47,17 +59,54 @@ class W:
         for y in range(oY, oY+32):
             y4 = (y+2)//5
             blk = snco[((x8*x8)^((y4+100)*(y4+100)))%400] < 10 or (y4+1)%13<2
-            v |= (
-               1 if blk else 0
-            ) << (y-oY)
-            f |= (
-               0 if blk and (x+1)%10>1 and (y+3)%5>1 else 1
-            ) << (y-oY)
+            v |= ( 1 if blk else 0 ) << (y-oY)
+            f |= ( 0 if blk and (x+1)%10>1 and (y+3)%5>1 else 1 ) << (y-oY)
         buff[4 if oY==0 else 5] = int(self.pattern_alien_decay(x, oY)) | f
         return v
     @micropython.viper
-    def pattern_biomechanical_lab_fill(self, x: int, oY: int) -> int:
+
+    def pattern_biomechanical_fill(self, x: int, oY: int) -> int:
         return ptr32(_buf)[4 if oY==0 else 5]
+
+    @micropython.viper
+    def pattern_slim_room(self, x: int, oY: int) -> int:
+        return int(-2147483648) if oY else 1
+
+    @micropython.viper
+    def pattern_cathedral(self, x: int, oY: int) -> int:
+        v = 0
+        for y in range(oY, oY+32):
+            v |= (
+                int(y > (32423421^(y-x*y)) % 64)
+            ) << (y-oY)
+        return v
+
+    @micropython.viper
+    def pattern_cable(self, x: int, oY: int) -> int:
+        rh = int(shash(x,60,80))-8
+        v = 0
+        for y in range(oY, oY+32):
+            v |= (
+                int(rh-4 <= y <= rh+4)
+            ) << (y-oY)
+        return v
+
+    @micropython.viper
+    def pattern_cabling(self, x: int, oY: int) -> int:
+        ptr32(_buf)[5 if oY else 4] = v = int(self.pattern_cable(x, oY)) | \
+            int(self.pattern_cable(x+3333, oY)) | \
+            int(self.pattern_cable(x+6666, oY))
+        return v
+
+    @micropython.viper
+    def pattern_cabled_room(self, x: int, oY: int) -> int:
+        v = int(self.pattern_cabling(x, oY))
+        return v | (-16777216 if oY else 255)
+
+    @micropython.viper
+    def pattern_cabling_fill(self, x: int, oY: int) -> int:
+        v = ptr32(_buf)[5 if oY else 4]
+        return -1^(v&(v<<4)&(v>>1)) | int(self.pattern_alien_decay(x, oY+x%30))
 
     @micropython.viper
     def pattern_alien_totem_plants(self, x: int, oY: int) -> int:
@@ -92,4 +141,18 @@ class W:
     @micropython.viper
     def pattern_alien_vent_decay(self, x: int, oY: int) -> int:
         return int(self.pattern_alien_decay(x, oY)) | -1^(201523455 if oY == 0 else -16728016)
+
+    @micropython.viper
+    def pattern_quilted_diodes(self, x: int, oY: int) -> int:
+        snco = ptr32(int(ptr32(sinco))+4)
+        v = 0
+        for y in range(oY, oY+32):
+            p1 = -1 if snco[(x^y)%90]<128 else 0
+            p2 = -1 if snco[(x*2^y*2)%90]<128 else 0
+            p3 = -1 if snco[(x*4^y*4)%90]<128 else 0
+            p4 = -1 if snco[(x*8^y*8)%90]<128 else 0
+            v |= (
+               0 if (p1^p2^p3^p4) else 1
+            ) << (y-oY)
+        return v
 w = W()
