@@ -586,6 +586,10 @@ class Monsters:
             if tid == _BackBones:
                 tape.draw(0, x+px, y+py, img, pw, pf)
                 return
+            elif tid == _Wyvern:
+                img = self._prober
+                pf = t//30%2
+                tape.draw(0, x+px, y+py, img, 7, 1-pf)
             tape.mask(0, mx, my, msk, 9, 0) # Mask Back
         elif tid == _Skittle:
             img = self._skittle; msk = self._skittle_m
