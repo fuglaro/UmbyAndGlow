@@ -87,7 +87,7 @@ with open("/Games/Umby&Glow/script.txt") as fp:
 
 Game Play including main loop
 
-```
+```python
 def load_save(sav, load):
     ''' Load the progress from the file "sav" if "load" is True '''
 
@@ -104,7 +104,7 @@ def run_menu():
 
 Tape Management, Stage, and display
 
-```
+```python
 def _gen_bang(blast_x, blast_y, blast_size, invert):
     ''' PATTERN (DYNAMIC) [bang]: explosion blast pattern generator
     with customisable position and size.
@@ -531,7 +531,6 @@ class Monsters:
 
     def draw_and_check_death(self, t: int, p1, p2):
         ''' Draw all the monsters checking for collisions '''
-
 ```
 
 #### BackBones
@@ -675,7 +674,7 @@ Or as a number, which will load the relevant monster directly.
 
 2 player network communication
 
-```
+```python
 def comms():
     ''' Communicate with the other Thumby.
     Each call might not complete a full message and might instead
@@ -971,7 +970,7 @@ Background wall with square windows with rounded corners.
 
 Here are some interesting patterns:
 
-```
+```python
 @micropython.viper
 def pattern_template(x: int, oY: int) -> int:
     ### PATTERN [template]: Template for patterns. Not intended for use. ###
