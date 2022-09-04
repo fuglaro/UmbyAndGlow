@@ -647,6 +647,7 @@ or other messaging, or even level details. Each line of script
 includes a prefix indicating the character that says the line:
 * "@:" -> Umby says this (overlay at bottom of screen)
 * "^:" -> Glow says this (overlay at top of screen)
+* "|" -> Special prefix for other character dialog (overlay at center of screen)
 * "" (no prefix) -> Narration (written to middle of background)
 
  The script can also include level changes which takes the form of a
