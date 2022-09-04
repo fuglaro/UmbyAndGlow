@@ -1,6 +1,6 @@
 _Bones = const(1)
 _BackBones = const(2)
-_ChargingBones = const(5)
+_ChargingBones = const(6)
 _Molaar = const(21)
 _LeftDoor = const(30)
 
@@ -24,6 +24,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
     tape = self._tp
     camshk = -1
     data = self.data
+    say = self.reactions.extend
     # Handle countdown finishing
     if timer == 1300:
         if p1x < x or (p2.coop and p2x < x):
@@ -55,7 +56,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         tape.clear_overlay()
         camshk = 3
     elif timer == 1450:
-        self.reactions.extend(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
+        say(["^: WOAAAH!!", "@: HERE WE GOOOOOO!!",
             "@: Brace yourself, Glow!",
             "^: I'm stuck good to this beam.",
             "^: Brace yourself too, Umby!",
@@ -78,7 +79,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         data[ii+1] = 4
     elif timer == 2300:
         data[ii+1] = 5
-        self.reactions.extend(["^: Monsters!", "@: They're getting in!",
+        say(["^: Monsters!", "@: They're getting in!",
             "^: Let's fight!"])
     elif timer == 2400:
         data[ii+1] = 6
@@ -95,13 +96,13 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         camshk = 0
 
     elif timer == 6000:
-        self.reactions.extend(["@: This ship is taking a beating!",
+        say(["@: This ship is taking a beating!",
             "^: It's not going to take much more!"])
 
     # Reach orbit
     elif timer == 8800:
         data[ii+2] = 3
-        self.reactions.extend(["@: Looks like we are easing into orbit",
+        say(["@: Looks like we are easing into orbit",
             "^: Finally!"])
     elif timer == 9000:
         data[ii+2] = 2
@@ -114,7 +115,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
     elif timer == 9600:
         data[ii+1] = 4
         p1.space = p2.space = 1
-        self.reactions.extend(["^: Woah!", "@: Low Gravity!", "^: Cool!"])
+        say(["^: Woah!", "@: Low Gravity!", "^: Cool!"])
     elif timer == 9700:
         data[ii+1] = 3
     elif timer == 9800:
@@ -127,7 +128,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
     # Rocket explosions
     elif timer == 10200:
         camshk = 1
-        self.reactions.extend(["^: Umby?!", "@: Glow... WOW...",
+        say(["^: Umby?!", "@: Glow... WOW...",
             "^: I think this ship is coming apart!",
             "@: I think so too..."])
     elif timer == 10300:
@@ -136,7 +137,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         camshk = 3
     elif timer == 10500:
         camshk = 4
-        self.reactions.extend(["^: What do we do?!", "@: I don't know!",
+        say(["^: What do we do?!", "@: I don't know!",
             "@: Hold on???", "^: I'm trying!"])
         tape.feed = [pattern_none,pattern_none,pattern_fill,
             pattern_none,pattern_fill]
@@ -144,7 +145,7 @@ def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
         camshk = 5
     elif timer == 10700:
         camshk = 7
-        self.reactions.extend(["^: AAAAAGGGH!", "@: AAAAAGGGH!"])
+        say(["^: AAAAAGGGH!", "@: AAAAAGGGH!"])
     elif timer == 11300:
         camshk = 0
         p1.respawn_loc = 0
@@ -254,7 +255,7 @@ def _tick_left_door(self, t: int, i: int):
         if timer%5==0:
             play(rocket_bang, 40)
             tape.blast(timer//5,
-                (timer^p1x)%216+int(self.x[0])-72, (timer*p1x)%64)
+                (timer^p1x)%216+int(self.x[i])-72, (timer*p1x)%64)
         # Clearing out background monsters
         if tids[timer%48] != _LeftDoor:
             tids[timer%48] = 0
