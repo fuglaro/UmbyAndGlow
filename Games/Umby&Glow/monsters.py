@@ -127,6 +127,12 @@ class Monsters:
     # BITMAP: width: 9, height: 8, frames: 2
     _tentacles_up = bytearray([118, 210, 135, 189, 161, 248, 203, 98, 62, 23,
         244, 133, 191, 163, 232, 251, 65, 127])
+    # BITMAP: width: 48, height: 8, frames: 3
+    _cpu = bytearray([182,157,132,231,255,134,145,164,149,129,236,229,233,172,161,182,218,183,133,180,255,135,160,149,161,128,237,233,164,173,225,218,234,231,135,157,252,135,161,145,164,129,229,164,169,233,225,234])
+    # BITMAP: width: 16, height: 8
+    _cpu_shd = bytearray([254,133,181,133,253,135,187,181,181,155,237,173,173,173,161,254])
+    # BITMAP: width: 16, height: 8
+    _cpu_m = bytearray([254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,254])
 
     def __init__(self, tape):
         self._tp = tape
@@ -674,6 +680,21 @@ class Monsters:
                 x-11+ti%90//45, y-up+ti%36//12-1,
                 self._tentacles_up if up else self._tentacles, 9, ti%20//10)
             tape.mask(0, x-11, y-up, self._block, 8, 0)
+        elif tid == _CPU:
+            img = self._cpu; msk = self._cpu_m
+            mw = pw = 16
+            my = py = 40-y
+            pf = t//40%3
+            for xi in range(4):
+                if xi==2: continue
+                pxi = x+px+(-20 if xi==3 else -8)+16*xi
+                for yi in range(8):
+                    if xi!=3 and yi>2: continue
+                    pyi = y+py+(16 if xi==3 else -3)-8*yi
+                    tape.draw(l, pxi, pyi, img, pw, pf)
+                    tape.mask(l, pxi, pyi, msk, mw, 0)
+                    if xi!=3:
+                        tape.draw(0, pxi, pyi, self._cpu_shd, pw, 0)
         else:
             return
         tape.draw(l, x+px, y+py, img, pw, pf)
@@ -681,8 +702,9 @@ class Monsters:
 
     @micropython.viper
     def _kill(self, t: int, mon: int, player, tag):
-        ptr8(self._tids)[mon] = 0
-        self.num = int(self.num) - 1 <<1|1
+        if mon != -1:
+            ptr8(self._tids)[mon] = 0
+            self.num = int(self.num) - 1 <<1|1
         if player:
             # Explode the rocket
             player.detonate(t)
@@ -696,6 +718,7 @@ class Monsters:
         tids = ptr8(self._tids)
         tid = tids[mon]
         tag = "_RIP_"
+        alt = "_OUCH!_"
         # Monster specific damage behaviors
         if tid == _Pillar: # Direct hit!
             for j in range(mon-1, -1, -1):
@@ -704,7 +727,7 @@ class Monsters:
                 elif tids[j] == _PillarTail: # Destroy entire chain
                     self._kill(t, j, player, "_RIP_")
         elif tid == _PillarTail or _DragonBones <= tid <= _Wyvern:
-            tag = "_OUCH!_"
+            tag = alt
             # Destroy last tail segment instead
             for j in range(mon-1, -1, -1):
                 if tids[j] == _Pillar:
@@ -714,6 +737,13 @@ class Monsters:
         elif tid == _LeftDoor:
             # LeftDoor can't die
             return
+        elif tid == _CPU:
+            data = ptr32(_data)
+            ii = mon*5
+            data[ii] += 1
+            if data[ii] < 16:
+                tag = alt
+                mon = -1
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)
 

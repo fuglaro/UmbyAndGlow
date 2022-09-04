@@ -402,27 +402,20 @@
 
 80,  "Get ready!"
 
-0, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
-# TODO TODO TODO - CPU monster
 80,  CPU
-# Monster: CPU
-# - redraws right wall (diodes)
-# - every time it's hit, it explodes foreground.
-# - 14-16 hits and it explodes + cam shakes
-# Hit1 "@: Nice! Looks like it's taking damage!"
-# Hit5 "@: Keep going!"
-# Hit9 "^: This is an absolute blast!"
-# Hit14 "@: Just a bit more!"
-# Hit16 "^: And done!"
+0,   "^: And done!"
+0, ("6","[pattern_none,w.pattern_quilted_diodes,pattern_fill,w.pattern_bimechanical_mainframe,w.pattern_biomechanical_fill]",(bytearray([]), bytearray([])),0)
 
 300, "@: Okay, so that ended with a bit of a whimper."
 0,   "^: I found it to be a satisfying bang, but you're right..."
 0,   "^: The ship is still intact, and the lights are still on."
 0,   "@: Maybe there is more up ahead?"
 0,   "^: Can't hurt to try!"
+
+
+44440, "CHAPTER~X: \n TEST_(TODO)"
+
+# TODO - Only single instance of Boss monsters in coop.
 
 
 
