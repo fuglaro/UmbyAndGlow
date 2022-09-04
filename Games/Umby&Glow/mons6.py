@@ -4,12 +4,16 @@ _CPU = const(80)
 def _tick_cpu(self, t: int, i: int):
     xs = ptr32(self.x)
     data = ptr32(self.data)
+    tape = self._tp
     ii = i*5
     dmg = data[ii]
+    odmg = int(self.omons.bsync)-50
+    if 0 <= odmg <= 15 and odmg > dmg:
+        dmg = data[ii] = odmg
     if data[ii+1] != dmg:
-        tape = self._tp
         say = self.reactions.extend
         data[ii+1] = dmg
+        self.bsync = (dmg+50) <<1|1
         if dmg%7==1:
             say(["|!! CORE ALERT !! INTEGRITY:"+str(16-dmg)])
         if dmg == 2:
@@ -24,9 +28,14 @@ def _tick_cpu(self, t: int, i: int):
             say(["@: Just a bit more!"])
             tape.cam_shake = 3 <<1|1
         elif dmg == 15:
-            tape.cam_shake = 0 <<1|1
+            tape.cam_shake = 6 <<1|1
         p1 = tape.players[0]
         pr1 = int(p1.rocket_x) + int(p1.rocket_y) + 1
         tape.blast(t+i,(t^pr1)%72+int(tape.x[0]), (t*pr1)%64)
+    if dmg >= 16:
+        data[ii+2] += 1
+        if data[ii+2] > 60:
+            tape.cam_shake = 0 <<1|1
+            self._kill(t, i, None, "SEG-FAULT")
 
 mons.ticks = {_CPU: _tick_cpu}

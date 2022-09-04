@@ -146,6 +146,7 @@ def run_game():
     t = savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
     mons2 = Monsters(tape)
+    mons.omons = mons2
     ch = tape.check
     while(1):
         story_events(tape, mons, coop_px)

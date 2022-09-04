@@ -142,8 +142,8 @@ def story_events(tape, mons, coop_px):
         _active_battle = -1
 
     # Check for, and potentially action, the next event
-    pos = tape.x[0]
-    pos = pos if pos > coop_px else coop_px # Furthest of both players
+    posx = tape.x[0]
+    pos = posx if posx > coop_px else coop_px # Furthest of both players
     if pos >= _next_at:
         state[0] = _next_at
         event = eval(_next_event)
@@ -155,8 +155,11 @@ def story_events(tape, mons, coop_px):
             add_dialog(tape, event)
         # Handle specific monster spawns like bosses.
         else:
+            # Monsters must spawn in the right place
+            if posx < _next_at:
+                return
             # Pause script until boss monsters are killed
-            bat = mons.add(event, pos+144, 32)
+            bat = mons.add(event, posx+144, 32)
             if event in boss_types:
                 _active_battle = bat
         dist, _next_event = next(_line)

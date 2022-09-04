@@ -413,9 +413,8 @@
 0,   "^: Can't hurt to try!"
 
 
-44440, "CHAPTER~X: \n TEST_(TODO)"
 
-# TODO - Only single instance of Boss monsters in coop.
+0, "CHAPTER~X: \n TEST_(TODO)"
 
 
 

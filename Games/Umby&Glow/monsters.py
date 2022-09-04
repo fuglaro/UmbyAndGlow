@@ -150,6 +150,7 @@ class Monsters:
         self.num = 0
         # Dialog from worms in reaction to monster events
         self.reactions = []
+        self.bsync = 0
 
     @micropython.viper
     def port_out(self, buf: ptr8):
@@ -158,6 +159,7 @@ class Monsters:
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
         ys = ptr8(self.y)
+        buf[15] = int(self.bsync)
         for i in range(48):
             x = xs[i]
             # Add monster to buffer (disabling if out of range)
@@ -176,6 +178,7 @@ class Monsters:
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
         ys = ptr8(self.y)
+        self.bsync = buf[15] <<1|1
         for i in range(48):
             tids[i] = tid = buf[16+i*3]
             if tid:
@@ -255,6 +258,7 @@ class Monsters:
         tape = self._tp
         tpx = int(tape.x[0])
         self._px = tpx-72 <<1|1 # left of own tape
+        self.bsync = 0 <<1|1
         # Loop through all the monsters, updating ticks
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -741,9 +745,8 @@ class Monsters:
             data = ptr32(_data)
             ii = mon*5
             data[ii] += 1
-            if data[ii] < 16:
-                tag = alt
-                mon = -1
+            tag = alt
+            mon = -1
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)
 
