@@ -303,8 +303,8 @@ class Tape:
     def auto_camera(self, x: int, y: int, d: int, t: int):
         c = ptr32(self._tape_scroll)[3] # Current camera position
         # Tape scroll
-        n = (-1 if x < c+10 or (d == -1 and x < c+25 and t%8==0) else
-            1 if x > c+40 or (d == 1 and x > c+20 and t%4==0) else 0)
+        n = (-1 if x < c+10 or (d == -1 and x < c+40 and t%8==0) else
+            1 if d == 1 and x>c+10 and t%(40-x+c)==0 else 0)
         if n != 0:
             self.scroll_tape(n if c % 4 == 0 else 0, n*(c % 2), n)
         # Vertical offset
