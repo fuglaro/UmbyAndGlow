@@ -411,41 +411,24 @@
 0,   "@: Maybe there is more up ahead?"
 0,   "^: Can't hurt to try!"
 
+# Diode ducts
+400, ("6","[pattern_none,w.pattern_quilted_diodes,pattern_fill,w.pattern_cabled_room,w.pattern_cabling_fill]",(bytearray([Bones]), bytearray([50])),0)
 
+# Cathedral
+400, ("6","[pattern_none,w.pattern_cathedral,pattern_fill,w.pattern_slim_room,pattern_fill]",(bytearray([]), bytearray([])),0)
+200, Wyvern
+0,   Wyvern
 
-0, "CHAPTER~X: \n TEST_(TODO)"
+# Electrical ducts
+400, ("6","[pattern_none,w.pattern_cathedral,pattern_fill,w.pattern_cabling,w.pattern_cabling_fill]",(bytearray([Molaar, Bones]), bytearray([20,20])),0)
 
+# Vents
+400, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Bones]), bytearray([40])),0)
 
+# Lab
+200, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,w.pattern_biomechanical_fill]",(bytearray([]), bytearray([])),0)
 
-
-# TODO TODO TODO - DIODE DUCTS, Bones
-600, "TODO - DIODE DUCTS"
-
-
-
-
-# TODO TODO TODO - CATHEDRAL, Wyverns
-600, "TODO - CATHEDRAL"
-
-
-
-
-# TODO TODO TODO - DUCTS, Molaar, Bones
-600, "TODO - DUCTS"
-
-
-
-
-# TODO TODO TODO - vents (horizontal bars) with Skittle
-600, "TODO - VENTS"
-
-
-
-
-# TODO TODO TODO - LAB (with platforms), no monsters
-30,  "TODO - LAB"
-
-100, "@: Looks like that's the end of it."
+300, "@: Looks like that's the end of it."
 0,   "^: Maybe we can find another?"
 0,   "@: I think I just have to admit that I know nothing about alien technology."
 0,   "^: I thought it was a good try..."
@@ -453,25 +436,27 @@
 0,   "^: Umby, you had me at 'destroy'!"
 0,   "@: Right then. Wanton destruction, it is!"
 
-80,  "CHAPTER~6: \n Dolphins"
+140,  "CHAPTER~6: \n Dolphins"
+
+# Lab
+200, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_biomechanical_lab,w.pattern_biomechanical_fill]",(bytearray([Wyvern, Prober, Molaar, Skittle, ChargingBones, Stomper]), bytearray([7, 5, 30, 10, 10, 10])),0)
+
+# Vents
+600, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Molaar]), bytearray([40])),0)
 
 
 
 
-# TODO TODO TODO - LAB (with platforms), plus Wyverns, Prober, Molar, Skittle, ChargingBones, Stomper
-200,  "TODO - LAB"
 
 
+0, "CHAPTER~X: \n TEST_(TODO)"
 
-
-# TODO TODO TODO - vents (horizontal bars) with Molaar
-600, "TODO - VENTS"
 
 
 
 
 # TODO TODO TODO - (world 7) prison (Blank back with prison midground (bars on high ground), and flat floor and roof.) no Monsters
-600, "TODO - PRISON"
+800, "TODO - PRISON"
 
 100, "@: Another one of those alien swarms!"
 0,   "^: Easy. We've handled them before."
@@ -726,7 +711,7 @@
 0,   "^: We did pretty good there, didn't we, Umby?"
 0,   "@: That we did, Glow, and then some!"
 0,   "^: Is that it? Have we taken them down for good?"
-0,   "@: I think so, but I still want to see our if our cave is okay."
+0,   "@: I think so, but I still want to see if our cave is okay."
 0,   "^: Well, it's not far ahead now."
 
 300, ("1","[pattern_none,pattern_none,pattern_fill,w.pattern_tunnel,pattern_fill]",(bytearray(), bytearray()),0)
@@ -760,6 +745,7 @@
 160, "Special Thanks To: ------------------"
 160, "Lily VL"
 160, "Ann VL"
+160, "Chelsea W"
 160, "TinyCircuits"
 160, "TinyCircuits Thumby Discord Channel"
 160, "Auri"
@@ -777,6 +763,7 @@
 160, "Xyvir"
 160, "Game Development: ------------------"
 160, "John VL"
+160, "Chelsea W"
 160, "Graphics: ------------------"
 160, "Font by Auri"
 160, "John VL"
