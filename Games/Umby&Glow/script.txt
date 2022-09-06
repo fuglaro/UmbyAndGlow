@@ -1,7 +1,6 @@
 # Menu background
 -999,"MENU"
 0,   ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray(), bytearray()),0)
-1,   Bones
 
 # Cave with Bones
 1120,"CHAPTER~1: \n The_Cave"

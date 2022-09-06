@@ -1,7 +1,7 @@
 import gc
 gc.threshold(8000)
 gc.enable()
-from monsters import Monsters
+from monsters import Monsters, Bones
 gc.collect()
 from player import Player, bU, bD, bL, bR, bB, bA
 gc.collect()
@@ -25,7 +25,7 @@ def _run_menu():
     handshake = held = t = 0
     ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, mons, -999, False)
-    story_events(tape, mons, -950) # Scroll in the menu's Bones monster
+    mons.add(Bones, -970, 32)
     chapters = list(get_chapters())
 
     def background_update():
