@@ -319,8 +319,8 @@ class Tape:
         abc_b = ptr8(self._abc)
         abc_i = self._abc_i
         h = y - 8 # y position is from bottom of text
-        mask = 864 if layer == 1 else 2160
-        draw = 432 if layer == 1 else 2304
+        mask = 864 if layer == 1 else 1728 if layer == 2 else 2160
+        draw = 432 if layer == 1 else 1296 if layer == 2 else 2304
         b = 0xFE
         for i in range(int(len(text))*4+1): # Clear space on mask layer
             p = (x-1+i)%216*2+mask

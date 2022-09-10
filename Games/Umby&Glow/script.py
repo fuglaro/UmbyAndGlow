@@ -85,6 +85,8 @@ def story_jump(tape, mons, start, lobby):
             tape.redraw_tape(2, i, pattern_room, pattern_fill)
         tape.write(1, "THAT WAY!", start//2+19, 26)
         tape.write(1, "------>", start//2+37, 32)
+        tape.write(2, "Go Glow!^", start+1, 5)
+        tape.write(2, "Go Umby!@", start+1, 40)
 
 _dialog_queue = []
 _dialog_c = 0 # Next line counter

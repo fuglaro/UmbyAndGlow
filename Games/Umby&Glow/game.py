@@ -134,20 +134,20 @@ def run_game():
     prof = not bL() # Activate profiling by holding Left direction
     # Select character, or testing mode by holding Up+B+A (release Up last)
     p1 = Player(tape, mons, "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby", start+10, 20)
-    p2 = Player(tape, mons, "Umby" if glow else "Glow", start+10, 20, ai=not coop, coop=coop)
-    tape.player = p1
-    tape.players.append(p1)
-    tape.players.append(p2)
     story_jump(tape, mons, start, True)
-    p1.port_out(outbuf) # Initialise coop send-buffer
     gc.collect()
+    tape.player = p1
+    mons2 = Monsters(tape)
+    mons.omons = mons2
+    ch = tape.check
+    tape.players.append(p1)
+    p1.port_out(outbuf) # Initialise coop send-buffer
+    p2 = Player(tape, mons, "Umby" if glow else "Glow", start+10, 20, ai=not coop, coop=coop)
+    tape.players.append(p2)
 
     # Main gameplay loop
     t = savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
-    mons2 = Monsters(tape)
-    mons.omons = mons2
-    ch = tape.check
     while(1):
         story_events(tape, mons, coop_px)
         # Update the game engine by a tick

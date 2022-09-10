@@ -58,8 +58,8 @@ def pattern_none(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_fill(x: int, oY: int) -> int:
-    return -1 # all bits on
+    return -1
 
 @micropython.viper
 def pattern_room(x: int, oY: int) -> int:
-    return -128 if oY else 7 # High roof and floor
+    return 1920 if oY else 7

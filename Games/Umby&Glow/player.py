@@ -398,7 +398,7 @@ class Player:
         # Start normal grappling hook mode
         self.mode = 11 <<1|1
         self._hold = 1 <<1|1
-        play(grapple_launch, 15)
+        play(grapple_launch, 6)
 
     @micropython.viper
     def _tick_play_roof(self, t: int):

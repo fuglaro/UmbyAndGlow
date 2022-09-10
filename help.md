@@ -329,6 +329,7 @@ class Tape:
         of the written text (excluding the mask border).
         There are 2 layers that can be rendered to:
             1: Mid background layer.
+            2: Foreground layer.
             3: Overlay layer.
         When writing to the overlay layer, the positional coordinates
         should be given relative to the screen, rather than the tape.
