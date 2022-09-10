@@ -12,6 +12,7 @@ from time import ticks_ms
 from audio import audio_tick
 from comms import comms, inbuf, outbuf
 from script import get_chapters, story_events, story_jump, state
+import script
 gc.collect()
 
 _FPS = const(60)
@@ -23,7 +24,7 @@ tape.mons_add = mons.add
 
 def _run_menu():
     handshake = held = t = 0
-    ch = [0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
+    ch = [0, 0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, mons, -999, False)
     mons.add(Bones, -970, 32)
     chapters = list(get_chapters())
@@ -42,25 +43,26 @@ def _run_menu():
         tape.clear_stage()
 
     def sel(i): # Menu arrows
-        return ((" " if ch[i] else "<")
-            + ("--" if i == ch[4] else "  ")
-            + (">" if ch[i] else " "))
+        return (("_" if ch[i] else "<")
+            + (((("_-" if ch[i] else "-_")) if i == ch[5] else "__"))
+            + (">" if ch[i] else "_"))
 
     def update_main_menu():
-        ch[4] = (ch[4] + (1 if not bD() else -1 if not bU() else 0)) % 3
+        ch[5] = (ch[5] + (1 if not bD() else -1 if not bU() else 0)) % 4
         if not (bL() and bR()):
-            ch[ch[4]] = 0 if not bL() else 1
-        msg = "__UMBY "+sel(0)+" GLOW__ "
-        msg += "____1P "+sel(1)+" 2P____ "
-        msg += "___NEW "+sel(2)+" LOAD__"
+            ch[ch[5]] = 0 if not bL() else 1
+        msg = "UMBY_"+sel(0)+"_GLOW "
+        msg += "__1P_"+sel(1)+"_2P__ "
+        msg += "TEXT_"+sel(2)+"_TALK "
+        msg += "_NEW_"+sel(3)+"_LOAD"
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
     def update_chapter_menu():
         if bU() and bD():
             return
-        ch[3] = (ch[3] + (-1 if not bU() else 1)) % len(chapters)
-        msg = chapters[ch[3]][0]
+        ch[4] = (ch[4] + (-1 if not bU() else 1)) % len(chapters)
+        msg = chapters[ch[4]][0]
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
@@ -85,9 +87,9 @@ def _run_menu():
                     pass
                 sav = "/Saves/Umby&Glow-"+("glow" if ch[0] else "umby")+".sav"
                 # Find the starting position (of this player)
-                if ch[3] == -1:
+                if ch[4] == -1:
                     start = 3
-                    if ch[2]:
+                    if ch[3]:
                         try:
                             with open(sav, "r") as f:
                                 start = int(f.read()) - 145
@@ -95,7 +97,7 @@ def _run_menu():
                             pass
                     start = start if start > 3 else 3
                 else: # Chapter selection
-                    start = chapters[ch[3]][1]
+                    start = chapters[ch[4]][1]
                 menu = None
         background_update()
         t += 1
@@ -125,8 +127,8 @@ def _run_menu():
     tape.message(0, "GET READY!!...", 3)
     background_update()
     tape.clear_overlay()
-    return ch[0], ch[1], start, sav
-glow, coop, start, sav = _run_menu()
+    return ch[0], ch[1], ch[2], start, sav
+glow, coop, autotxt, start, sav = _run_menu()
 del _run_menu
 
 @micropython.native
@@ -149,11 +151,14 @@ def run_game():
     t = savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
     while(1):
-        story_events(tape, mons, coop_px)
+        story_events(tape, mons, coop_px, autotxt)
+        outbuf[14] = 1 if not script.speaking or autotxt else 0
+        play = outbuf[14] and (not coop or inbuf[14])
         # Update the game engine by a tick
-        p1.tick(t)
-        p2.tick(t)
-        mons.tick(t)
+        if play:
+            p1.tick(t)
+            p2.tick(t)
+            mons.tick(t)
         # Make the camera follow the action
         tape.auto_camera(p1.x, p1.y, p1.dir, t)
 

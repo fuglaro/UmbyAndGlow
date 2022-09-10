@@ -3,8 +3,10 @@
 from monsters import *
 import gc
 from utils import *
+from machine import Pin
 from array import array
 _buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
+bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
 w = None # World
 _loaded = None
@@ -89,8 +91,9 @@ def story_jump(tape, mons, start, lobby):
         tape.write(2, "Go Umby!@", start+1, 40)
 
 _dialog_queue = []
-_dialog_c = 0 # Next line counter
+_pos = _dialog_c = 0
 _active_battle = -1
+speaking = False
 
 @micropython.native
 def add_dialog(tape, dialog):
@@ -115,55 +118,47 @@ def add_dialog(tape, dialog):
         tape.message(0, dialog, 1)
 
 @micropython.native
-def story_events(tape, mons, coop_px):
-    global _dialog_c, _next_event, _next_at, _active_battle
-    # Don't progress script if respawning
+def story_events(tape, mons, coop_px, autotxt):
+    global _dialog_c, _next_event, _next_at, _active_battle, _pos, speaking
     if tape.player and tape.player.mode > 200:
-        return
-
+        return # Respawning
     # Update current dialog queue
-    if _dialog_c > 0: # Decrement the next-line counter
+    if _dialog_c > 0:
+        if _dialog_c == 1 and not autotxt and bA():
+            ali = 0 if _pos else 5
+            tape.write(3, ">", 69, 15-ali)
+            tape.write(3, ">", 69, 30+ali)
+            return
         _dialog_c -= 1
         if _dialog_c == 0:
             tape.clear_overlay()
+            speaking = False
     if _dialog_queue and _dialog_c == 0:
-        # "Say" next line
-        position, text = _dialog_queue.pop(0)
-        tape.message(position%3, text, 3)
-        # Dialog display time (in ticks)
-        _dialog_c = 60 + len(text)*5//2
-
-    # Check for monster reaction dialog
+        _pos, text = _dialog_queue.pop(0)
+        tape.message(_pos%3, text, 3)
+        _dialog_c = 60 + len(text)*3
+        speaking = True
     while mons.reactions:
         add_dialog(tape, mons.reactions.pop(0))
-
-    # Check if we are in an active battle
+    # Script event check
     if _active_battle >= 0:
         if mons.is_alive(_active_battle):
-            return
+            return # Active boss battle
         _active_battle = -1
-
-    # Check for, and potentially action, the next event
     posx = tape.x[0]
     pos = posx if posx > coop_px else coop_px # Furthest of both players
     if pos >= _next_at:
         state[0] = _next_at
         event = eval(_next_event)
-        # Handle level type changes
         if isinstance(event, tuple):
             _load_lvl(tape, mons, event)
-        # Handle script dialog and naration
         elif isinstance(event, str):
             add_dialog(tape, event)
-        # Handle specific monster spawns like bosses.
-        else:
-            # Monsters must spawn in the right place
+        else: # Monsters
             if posx < _next_at:
-                return
-            # Pause script until boss monsters are killed
+                return # Wait to reach spawn position
             bat = mons.add(event, posx+144, 32)
             if event in boss_types:
                 _active_battle = bat
         dist, _next_event = next(_line)
         _next_at += dist
-
