@@ -859,6 +859,10 @@ than 5 deep. Both have a random terrain and can intersect.
 Comes with an associated fill pattern that makes the ceiling
 seem semi-reflective and gives the ground vertical line shading.
 
+#### cell
+
+Mid background layer that is a long line of prison cells.
+
 #### chain_link_fence
 
 A chain link fence on bottom half with bar across the top, and posts.
@@ -928,6 +932,10 @@ Lightly scattered and clustered stars.
 
 Randomised planets and moons. Comes with an associated orbitals_fill pattern.
 
+#### prison
+
+Low roof and high floor that have prison bars carved into them.
+
 #### quilted_diodes
 
 Background that is a mix between electronics and fabric and looks like
@@ -945,6 +953,11 @@ These undulate in height in clustered waves.
 Comes with an associated fill pattern.
 Stalagmites are shaded in a symetric manner while
 stalactites have shadows to the left. This is just for visual richness.
+
+#### studding
+
+Background layer with minimal sprinking of a studding texture that
+has a triangular and industrial feel.
 
 #### toplit_wall
 

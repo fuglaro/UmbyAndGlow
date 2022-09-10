@@ -444,22 +444,14 @@
 # Vents
 600, ("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Molaar]), bytearray([40])),0)
 
+# Jail
+800, ("7","[w.pattern_studding,w.pattern_cell,pattern_fill,w.pattern_prison,pattern_fill]",(bytearray([]), bytearray([])),0)
 
+140, "^: A jail?"
+0,   "@: It does seem like the kind of place you get locked up..."
 
-
-
-
-0, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
-
-
-# TODO TODO TODO - (world 7) prison (Blank back with prison midground (bars on high ground), and flat floor and roof.) no Monsters
-800, "TODO - PRISON"
-
-100, "@: Another one of those alien swarms!"
-0,   "^: Easy. We've handled them before."
+200, "^: Another one of those alien swarms!"
+0,   "@: No problems. We've handled this before."
 
 80,  "Get ready!"
 
@@ -468,6 +460,14 @@
 0,   "^: Whatever we're doing, we seem to be making them mad!"
 0,   "@: Maybe that means we're heading in the right direction."
 0,   "^: Let's find out!"
+
+
+
+
+
+
+
+0, "CHAPTER~X: \n TEST_(TODO)"
 
 
 
