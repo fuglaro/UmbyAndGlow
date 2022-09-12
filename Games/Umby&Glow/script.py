@@ -125,9 +125,10 @@ def story_events(tape, mons, coop_px, autotxt):
     # Update current dialog queue
     if _dialog_c > 0:
         if _dialog_c == 1 and not autotxt and bA():
-            ali = 0 if _pos else 5
-            tape.write(3, ">", 69, 15-ali)
-            tape.write(3, ">", 69, 30+ali)
+            ali = 10 if _pos==3 else 0
+            n = ">>" if _dialog_queue else "XX"
+            tape.write(3, n, 65, 18-ali)
+            tape.write(3, n, 65, 27+ali)
             return
         _dialog_c -= 1
         if _dialog_c == 0:
@@ -136,7 +137,7 @@ def story_events(tape, mons, coop_px, autotxt):
     if _dialog_queue and _dialog_c == 0:
         _pos, text = _dialog_queue.pop(0)
         tape.message(_pos%3, text, 3)
-        _dialog_c = 60 + len(text)*3
+        _dialog_c = (60 + len(text)*3) // (1 if autotxt else 2)
         speaking = True
     while mons.reactions:
         add_dialog(tape, mons.reactions.pop(0))
