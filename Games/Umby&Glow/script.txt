@@ -458,97 +458,32 @@
 80,  BonesBoss
 0,   "@: Nice work!"
 0,   "^: Whatever we're doing, we seem to be making them mad!"
-0,   "@: Maybe that means we're heading in the right direction."
+0,   "@: Maybe that means we are heading in the right direction."
 0,   "^: Let's find out!"
 
+500, Lung
+
+# Vents
+500,("6","[pattern_none,w.pattern_biomechanical_lab_wall,pattern_fill,w.pattern_vents,w.pattern_alien_vent_decay]",(bytearray([Molaar, Bones]), bytearray([30,10])),0)
+
+
+# Biohall
+300, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([]), bytearray([])),0)
+
+140, "CHAPTER~7: \n Bring a Towel"
 
 
 
 
-
-
-0, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
-
-# TODO TODO TODO - Monster (World 7 loaded): Lung
-# - background worm like Umby at prison height
-# - follows horizontal position between U&G.
-# - redraws right walls (thick prison bars)
-# - essentially just loads up a conversation slowly.
-# - when the conversation ends, stops redrawing prison bars.
-# - Lungs conversation is centered overlay.
-# "Lung: Umby! Glow! Well if it isn't the wormy duo!"
-# "^: Lung?"
-# "@: Lung! What are you doing here?!"
-# "Lung: Well, as you can see, I'm not a particularly welcome guest."
-# "^: We've been feeling the same way."
-# "@: What happened? How did you get here?"
-# "Lung: Same reason as you, by the looks of it."
-# "Lung: I hitched a ride on one of those floating skulls. They might just be heads, but they have a pretty cosy respiratory system. My plan was to see if I could hunt down the swarm's hive mind."
-# "^: You've been trying to take down these aliens too?!"
-# "Lung: Trying, yes. Succeeding? No."
-# "^: We tried to take down their mainframe."
-# "Lung: Well that won't work."
-# "Lung: Their whole ship is a bio-computer."
-# "Lung: It's the perfect redundancy."
-
-# "@: Did you find their hive mind?"
-# "Lung: Sadly, no, and I've seen enough to know that they don't even work as a collective."
-# "@: What do you mean?"
-# "Lung: Well, they really like to barter..."
-# "Lung: In a big way."
-# "@: Barter?!"
-# "Lung: Yep! It's their main invasion strategy... Find the owners, buy them out."
-# "^: But nobody owns the planet!"
-# "Lung: Well the aliens think they do now."
-# "@: Who did they buy it from?!"
-# "Lung: The dolphins."
-# "^: The dolphins?!??!!!!"
-# "Lung: Yep, the dolphins. Who else would they go to? The most intelligent species are the Worms, but they love earth, earth is like their favourite thing, they would never sell it. Next up were Humans, but the aliens didn't think they were valid owners... they never took care of the place."
-# "@: True."
-# "^: Yep."
-# "Lung: That left the Octopus, and the Dolphins... and the Dolphins were only too keen to sell the place."
-# "@: What did they sell it for?!"
-# "Lung: Mock tuna."
-# "Lung: Well, mock tuna, and a really really giant tank."
-# "@: Wait. Two things..."
-# "@: Firstly, they already had those things - actual tuna, and the ocean!"
-# "Lung: Kinda... there hasn't been much tuna since the humans got to it. Here, they have synthesisers. They can have as much mock tuna as they want!"
-# "@: Fair enough. But secondly, are you saying there is a really really giant tank on board, with enough salty water to destroy even the largest bio-computer?"
-# "Lung: That... that might actually work!"
-# "^: What?"
-# "@: We smash the tank, then flood the ship."
-# "^: Where is the tank?"
-# "Lung: If you keep going straight ahead, you'll come up underneath it, where all the support structures are."
-# "@: This is amazing! We finally have a real plan!"
-# "^: What about you, Lung?"
-# "Lung: Me? I'll have the best chance if you can disable all their systems."
-# "Lung: You pull this off, and I'm sure I'll find a way out."
-# "@: Alright, Lung. Good luck then."
-# "Lung: Same goes to the both of you!"
-300, Lung
-
-
-
-
-# TODO TODO TODO - vents (horizontal bars) with Molaar
-200, "TODO - VENTS"
-
-
-
-
-# TODO TODO TODO - biomech hall with plants, no monsters
-40, "TODO - HALL"
+200, "CHAPTER~X: \n TEST_(TODO)"
 
 
 
 
 # TODO TODO TODO - biomech hall with plants and vertical pillars, no monsters
-300, "TODO - UNDERTANK"
+400, "TODO - UNDERTANK"
 
-100, "^: I think we might be under the tank..."
+200, "^: I think we might be under the tank..."
 0,   "@: It's certainly got that vibe."
 
 200, "@: Careful, that pillar looks electrified."
@@ -580,7 +515,6 @@
 0,   "@: Let's see if we can find a safe way off."
 0,   "^: Lead the way!"
 
-140, "CHAPTER~7: \n Bring a Towel"
 
 
 

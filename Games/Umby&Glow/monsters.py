@@ -133,6 +133,9 @@ class Monsters:
     _cpu_shd = bytearray([254,133,181,133,253,135,187,181,181,155,237,173,173,173,161,254])
     # BITMAP: width: 16, height: 8
     _cpu_m = bytearray([254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,254])
+    # BITMAP: width: 6, height: 8, frames:2
+    _lung = bytearray([3,7,4,4,7,3])
+
 
     def __init__(self, tape):
         self._tp = tape
@@ -151,6 +154,7 @@ class Monsters:
         # Dialog from worms in reaction to monster events
         self.reactions = []
         self.bsync = 0
+        self.omons = None
 
     @micropython.viper
     def port_out(self, buf: ptr8):
@@ -699,6 +703,13 @@ class Monsters:
                     tape.mask(l, pxi, pyi, msk, mw, 0)
                     if xi!=3:
                         tape.draw(0, pxi, pyi, self._cpu_shd, pw, 0)
+        elif tid == _Lung:
+            if self.omons:
+                img = msk = self._lung
+                mw = pw = 3
+                pf = t//120%2
+                if x-6 < int(self._tp.player.x)-int(tape.x[0]) < x+2:
+                    l = 0
         else:
             return
         tape.draw(l, x+px, y+py, img, pw, pf)
@@ -738,8 +749,7 @@ class Monsters:
                     break # Another head, we are done on this chain
                 elif tids[j] == _PillarTail:
                     mon = j
-        elif tid == _LeftDoor:
-            # LeftDoor can't die
+        elif tid == _LeftDoor or tid == _Lung:
             return
         elif tid == _CPU:
             data = ptr32(_data)
