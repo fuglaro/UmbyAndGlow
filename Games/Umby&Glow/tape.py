@@ -321,14 +321,17 @@ class Tape:
         h = y - 8 # y position is from bottom of text
         mask = 864 if layer == 1 else 1728 if layer == 2 else 2160
         draw = 432 if layer == 1 else 1296 if layer == 2 else 2304
+        w = 216 if layer == 1 or layer == 2 else 72
         b = 0xFE
         for i in range(int(len(text))*4+1): # Clear space on mask layer
-            p = (x-1+i)%216*2+mask
+            xi = x-1+i
+            if layer != 1 and layer != 2 and (xi < 0 or xi >= 72): continue
+            p = xi%w*2+mask
             tape[p] ^= tape[p] & (b >> -1-h if h+1 < 0 else b << h+1)
             tape[p+1] ^= tape[p+1] & (b >> 31-h if h-31 < 0 else b << h-31)
         for i in range(int(len(text))):
             for o in range(3):
-                p = (x+o+i*4)%216*2
+                p = (x+o+i*4)%w*2
                 b = abc_b[int(abc_i.get(text[i], 0))*3+o]
                 img1 = b >> 0-h if h < 0 else b << h
                 img2 = b >> 32-h if h-32 < 0 else b << h-32
