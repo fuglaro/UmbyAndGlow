@@ -10,9 +10,9 @@ bA = Pin(27, Pin.IN, Pin.PULL_UP).value
 
 w = None # World
 _loaded = None
-def _load_world(tape, mons, world, feed): # Load world
-    global _loaded
-    orig = [id(tape.feed[0]), id(tape.feed[1]), id(tape.feed[2])]
+_last_feed = "[_","_","_","_","_]"
+def _load_world(tape, mons, world, feed):
+    global _loaded, _last_feed
     if _loaded != world:
         global w
         tape.feed = None
@@ -30,15 +30,17 @@ def _load_world(tape, mons, world, feed): # Load world
         gc.collect()
         _loaded = world
     tape.feed = eval(feed)
+    split = feed.split(',')
     # Reset any offscreen background changes
-    if tape.feed[0] != orig[0]:
+    if split[0] != _last_feed[0]:
         start = tape.bx[0]
         for i in range(start+72, start+144):
             tape.redraw_tape(0, i, tape.feed[0], None)
-    if tape.feed[1:2] != orig[1:2]:
+    if split[1] != _last_feed[1] or split[2] != _last_feed[2]:
         start = tape.midx[0]
         for i in range(start+72, start+144):
             tape.redraw_tape(1, i, tape.feed[1], tape.feed[2])
+    _last_feed = split
 
 def _script():
     with open("/Games/Umby&Glow/script.txt") as fp:
