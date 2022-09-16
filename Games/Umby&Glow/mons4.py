@@ -20,6 +20,10 @@ def pattern_windows(x: int, oY: int) -> int:
         ) << (y-oY)
     return v
 
+@micropython.viper
+def pattern_inside(x: int, oY: int) -> int:
+    return -128 if oY else 7 # High roof and floor
+
 def _left_door_events(self, timer, p1, p1x, p2, p2x, ii, x):
     tape = self._tp
     camshk = -1
@@ -191,7 +195,7 @@ def _tick_left_door(self, t: int, i: int):
         if timer < 1300:
             if rx > x-20:
                 ptrn = (self.ticks[9991] if rx<x else
-                    pattern_room if rx<x+80 else pattern_fill)
+                    self.ticks[9993] if rx<x+80 else pattern_fill)
                 tape.redraw_tape(2, rx, ptrn, pattern_fill)
             x1 = x-20-rx+mx
             if rx > x:
@@ -203,7 +207,7 @@ def _tick_left_door(self, t: int, i: int):
             tape.redraw_tape(2, x-x1-1 if x1<10 else x+x1+70,
                 pattern_fill, None)
             if int(p1.mode) > 200:
-                tape.redraw_tape(2, x+timer%80, pattern_room, None)
+                tape.redraw_tape(2, x+timer%80, self.ticks[9993], None)
         # Keep redrawing the rocket ship windows when in flight
         if timer >= 1600:
             tape.redraw_tape(1, timer, self.ticks[9992], pattern_fill)
@@ -268,5 +272,6 @@ mons.ticks = {
     _LeftDoor: _tick_left_door,
     999: _left_door_events,
     9991: pattern_door,
-    9992: pattern_windows
+    9992: pattern_windows,
+    9993: pattern_inside,
 }

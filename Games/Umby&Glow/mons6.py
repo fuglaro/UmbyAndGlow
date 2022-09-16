@@ -1,4 +1,9 @@
 _CPU = const(80)
+_Flood = const(96)
+
+@micropython.viper
+def pattern_flood(x: int, oY: int) -> int:
+    return 15 if oY == 0 else -268435456
 
 @micropython.viper
 def _tick_cpu(self, t: int, i: int):
@@ -38,4 +43,11 @@ def _tick_cpu(self, t: int, i: int):
             tape.cam_shake = 0 <<1|1
             self._kill(t, i, None, "SEG-FAULT")
 
-mons.ticks = {_CPU: _tick_cpu}
+def _tick_flood(self, t: int, i: int):
+    self._tp.redraw_tape(1, t*10+t//10%300, pattern_fill, pattern_fill)
+    self._tp.redraw_tape(2, t*10+t//10%300, self.ticks[9991], None)
+    self.data[i*5] += 1
+    if self.data[i*5] > 600:
+        self._tids[i] = 0
+
+mons.ticks = {_CPU: _tick_cpu, _Flood: _tick_flood, 9991: pattern_flood}

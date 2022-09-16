@@ -135,8 +135,24 @@ class W:
         return v
 
     @micropython.viper
+    def pattern_undertank(self, x: int, oY: int) -> int:
+        if x%70<7: return -1
+        self.pattern_alien_totem_floor(x, oY)
+        if oY: return int(self.pattern_alien_totem_floor(x, oY))
+        return 67108863
+
+    def pattern_bio_pillars(self, x: int, oY: int) -> int:
+        if x%20<5: return -1
+        return int(self.pattern_undertank(x, oY))
+
+    @micropython.viper
     def pattern_vents(self, x: int, oY: int) -> int:
         return 503808511 if oY == 0 else -8265608
+
+    @micropython.viper
+    def pattern_flood(self, x: int, oY: int) -> int:
+        return (15 if oY == 0 else -268435456
+            ) if x//8%2 else (255 if oY == 0 else -16777216)
 
     @micropython.viper
     def pattern_alien_vent_decay(self, x: int, oY: int) -> int:

@@ -21,13 +21,13 @@ def _load_world(tape, mons, world, feed): # Load world
         gc.collect()
         with open(f"/Games/Umby&Glow/world{world}.py") as fp:
             exec(fp.read())
-        gc.collect()
         try:
+            gc.collect()
             with open(f"/Games/Umby&Glow/mons{world}.py") as fp:
                 exec(fp.read())
-            gc.collect()
         except OSError:
             pass
+        gc.collect()
         _loaded = world
     tape.feed = eval(feed)
     # Reset any offscreen background changes
@@ -62,7 +62,8 @@ def _load_lvl(tape, mons, ev):
     _load_world(tape, mons, ev[0], ev[1])
     tape.spawner = ev[2]
     for plyr in tape.players:
-        plyr.space = ev[3]
+        plyr.space = ev[3] & 1
+    tape.cam_shake = ev[3] >> 1
 
 def story_jump(tape, mons, start, lobby):
     global _next_event, _next_at
@@ -139,7 +140,7 @@ def story_events(tape, mons, coop_px, autotxt):
         tape.message(_pos%3, text, 3)
         _dialog_c = (60 + len(text)*3) // (1 if autotxt else 2)
         speaking = True
-    while mons.reactions:
+    if mons.reactions:
         add_dialog(tape, mons.reactions.pop(0))
     # Script event check
     if _active_battle >= 0:

@@ -9,6 +9,7 @@ _DragonBones = const(4)
 _Wyvern = const(5)
 _ChargingBones = const(6)
 _ChargingBonesFriend = const(7)
+_FallingBones = const(8)
 _Skittle = const(10)
 _Fireball = const(11)
 _Lazer = const(12)
@@ -26,21 +27,23 @@ _LeftDoor = const(30)
 _EFalcon = const(31)
 _Prober = const(32)
 _Probing = const(33)
-_FallingBones = const(34)
 _BackPillar = const(50)
 _BackBatty = const(51)
 _CPU = const(80)
 _Lung = const(81)
-_TankFloor = const(82)
+_TankPillar = const(82)
 _MegaBones = const(83)
-_CamShake2 = const(90)
-_CamShake3 = const(91)
-_SuperShake = const(92)
+_MiniShake = const(92)
+_Shake = const(93)
+_BigShake = const(94)
+_SuperShake = const(95)
+_Flood = const(96)
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
 Wyvern = _Wyvern
 ChargingBones = _ChargingBones
+FallingBones = _FallingBones
 Skittle = _Skittle
 Fireball = _Fireball
 Stomper = _Stomper
@@ -54,14 +57,15 @@ BackPillar = _BackPillar
 BackBatty = _BackBatty
 CPU = _CPU
 Lung = _Lung
-TankFloor = _TankFloor
+TankPillar = _TankPillar
 MegaBones = _MegaBones
-CamShake2 = _CamShake2
-CamShake3 = _CamShake3
+MiniShake = _MiniShake
+Shake = _Shake
+BigShake = _BigShake
 SuperShake = _SuperShake
-FallingBones = _FallingBones
-boss_types = [_BonesBoss, _DragonBones, _LeftDoor, _CPU, _Lung, _TankFloor,
-    _MegaBones]
+Flood = _Flood
+boss_types = [_BonesBoss, _DragonBones, _LeftDoor, _CPU, _Lung, _TankPillar,
+    _MegaBones, _MiniShake, _Shake, _BigShake, _SuperShake]
 
 _data = array('l', 0 for i in range(48*5))
 
@@ -135,6 +139,8 @@ class Monsters:
     _cpu_m = bytearray([254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,254])
     # BITMAP: width: 6, height: 8, frames:2
     _lung = bytearray([3,7,4,4,7,3])
+    # BITMAP: width: 18, height: 8, frames:3
+    _tank = bytearray([255,146,255,255,36,255,255,73,255,255,73,255,255,36,255,255,146,255])
 
 
     def __init__(self, tape):
@@ -194,7 +200,7 @@ class Monsters:
         return bool(self._tids[mon])
 
     @micropython.viper
-    def add(self, mon_type: int, x: int, y: int) -> int:
+    def add(self, tid: int, x: int, y: int) -> int:
         # Find an empty monster slot
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -208,46 +214,52 @@ class Monsters:
             return -1
         # Create the new monster
         self.num = (int(self.num)+1) <<1|1
-        tids[i] = mon_type
+        tids[i] = tid
         xs[i] = x; ys[i] = y+64
         ii = i*5
         d[ii] = d[ii+1] = d[ii+2] = d[ii+3] = d[ii+4] = 0
 
         # Set any monster specifics
-        if mon_type == _BonesBoss:
+        if tid == _BonesBoss:
             d[ii+4] = 20 # Starting number of monsters in the swarm
-        elif mon_type == _Bones:
+        elif tid == _Bones:
             d[ii+4] = int(self._tp.x[0]) # Movement rate type
-        elif mon_type == _BackBones:
+        elif tid == _BackBones:
             d[ii+4] = x//4 # Movement rate type
-        elif mon_type == _Skittle:
+        elif tid == _Skittle:
             ys[i] = 64 + int(self._tp.player.y) # Target player 1
-        elif mon_type == _Pillar or _DragonBones <= mon_type <= _Wyvern:
+        elif tid == _Pillar or _DragonBones <= tid <= _Wyvern:
             # Make all the sections in the chain
             k = i
-            for j in range(16 if mon_type == _DragonBones else 5):
+            for j in range(16 if tid == _DragonBones else 5):
                 kn = int(self.add(_PillarTail, x, y))
                 if kn > k:
                     k = kn
             # Swap the tail for the head is protected by body.
             tids[i] = _PillarTail
-            tids[k] = mon_type
-            if mon_type == _Pillar:
+            tids[k] = tid
+            if tid == _Pillar:
                 # Set the turn direction (1=clockwise)
                 d[k*5+1] = x%2
-            elif _DragonBones <= mon_type <= _Wyvern:
+            elif _DragonBones <= tid <= _Wyvern:
                 d[k*5+4] = 1 # Movement rate
             i = k
-        elif mon_type == _Molaar:
+        elif tid == _Molaar:
             d[ii] = 2 # Start searching edge upwards
             d[ii+2] = x*3 # Charging start offset
-        elif mon_type == _Hoot:
+        elif tid == _Hoot:
             d[ii] = x
             d[ii+1] = d[ii+3] = y
-        elif mon_type == _LeftDoor:
+        elif tid == _LeftDoor:
             d[ii] = -1 # Countdown timer paused
             # Send self 500 pixels into distance
             ptr32(self.x)[i] += 500
+        elif _MiniShake <= tid <= _SuperShake:
+            self._tp.cam_shake = (5 if tid==_SuperShake else tid-92+1) <<1|1
+        elif tid == _FallingBones:
+            xs = ptr32(self.x)
+            xs[i] -= 106 - (xs[i]^73)%72
+            ptr8(self.y)[i] = 50
         return i
 
     @micropython.viper
@@ -288,6 +300,8 @@ class Monsters:
                 self._tick_crawler(t, i)
             elif typ == _Prober:
                 self._tick_prober(t, i)
+            elif _MiniShake <= typ <= _SuperShake:
+                self._tick_shakes(t, i)
             ## Dynamically loaded behaviors
             elif self.ticks:
                 tic = self.ticks.get(typ, None)
@@ -545,6 +559,12 @@ class Monsters:
             if data[ii] == 90:
                 tids[i] = _Probing
 
+    def _tick_shakes(self, t, i):
+        self.data[i*5] += 1
+        if self.data[i*5] > 60*(self._tids[i]-91):
+            self._tp.cam_shake = 0
+            self._tids[i] = 0
+
     @micropython.viper
     def draw_and_check_death(self, t: int, p1, p2):
         tape = self._tp
@@ -572,9 +592,12 @@ class Monsters:
             # Monsters in the distance get drawn to background layers
             l = 1 if 36 <= x-px < 220 else 0
             if tids[i] < _Hoot:
-                self._draw_monsters_a(t, i, tids[i], x, ys[i]-64, l)
+                draw = self._draw_monsters_a
+            elif tids[i] < _TankPillar:
+                draw = self._draw_monsters_b
             else:
-                self._draw_monsters_b(t, i, tids[i], x, ys[i]-64, l)
+                draw = self._draw_monsters_c
+            draw(t, i, tids[i], x, ys[i]-64, l)
             # Check if a rocket hits this monster
             if r1 and ch(r1x, r1y, 224):
                 self._hit_monster(t, i, p1)
@@ -587,11 +610,11 @@ class Monsters:
     @micropython.viper
     def _draw_monsters_a(self, t: int, i: int, tid: int, x: int, y: int, l: int):
         tape = self._tp
-        pf = 0 # Animation frame number
+        pf = 0
         mx = px = -3
         my = py = -4
         mw = pw = 8
-        if _Bones <= tid <= _ChargingBonesFriend:
+        if _Bones <= tid <= _FallingBones:
             pf = 2 if not _Bones <= tid <= _BackBones else 0 if t//10 % 6 else 1
             img = self._bones; msk = self._bones_m
             pw = 7
@@ -654,7 +677,7 @@ class Monsters:
     @micropython.viper
     def _draw_monsters_b(self, t: int, i: int, tid: int, x: int, y: int, l: int):
         tape = self._tp
-        pf = 0 # Animation frame number
+        pf = 0
         mx = px = -3
         my = py = -4
         mw = pw = 8
@@ -716,6 +739,19 @@ class Monsters:
         tape.mask(l, x+mx, y+my, msk, mw, 0)
 
     @micropython.viper
+    def _draw_monsters_c(self, t: int, i: int, tid: int, x: int, y: int, l: int):
+        tape = self._tp
+        if tid == _TankPillar:
+            img = msk = self._block
+            for yi in range(8):
+                if yi > 2:
+                    img = self._tank
+                    pf = t//20%3
+                tape.draw(l, x, yi*8, img, 6, pf)
+                tape.mask(l, x, yi*8, msk, 6, 0)
+            return
+
+    @micropython.viper
     def _kill(self, t: int, mon: int, player, tag):
         if mon != -1:
             ptr8(self._tids)[mon] = 0
@@ -759,4 +795,3 @@ class Monsters:
             mon = -1
         # Wipe the monster, do the explosion, and leave a death message
         self._kill(t, mon, player, tag)
-

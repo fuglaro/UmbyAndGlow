@@ -1,4 +1,5 @@
 _Hoot = const(29)
+_FallingBones = const(8)
 
 @micropython.viper
 def _tick_hoot(self, t: int, i: int):
@@ -26,4 +27,20 @@ def _tick_hoot(self, t: int, i: int):
             ys[i] += 20 - ((20-tr)*(20-tr)//20 if tr < 20
                 else (tr-30)*(tr-30)//20 if tr >= 30 else 0)
 
-mons.ticks = {_Hoot: _tick_hoot}
+@micropython.viper
+def _tick_falling_bones(self, t: int, i: int):
+    xs = ptr32(self.x); ys = ptr8(self.y)
+    if t%2:
+        ys[i] += 1
+    if t%3==0:
+        xs[i] += 1
+    if ys[i] > 140:
+        ptr8(self._tids)[i] = 0
+    tape = self._tp
+    ch = tape.check_tape
+    x = xs[i]; y = ys[i]-64
+    if y > i%2*28+4 and ch(x, y):
+        tape.blast(t, x, y)
+        self._hit_monster(t, i, None)
+
+mons.ticks = {_Hoot: _tick_hoot, _FallingBones: _tick_falling_bones}

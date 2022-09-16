@@ -269,7 +269,7 @@
 1000,"^: Umby, check out that alien swarm!"
 0,   "@: Looks like they've organised a welcome squad!"
 0,   "^: No kidding!"
-0,   "@: They've finally realised that they've really opened a can of worms!"
+0,   "@: They've finally realised that they've really opened up a can of worms!"
 0,   "^: LOL! ... a can labelled KAPOW!"
 0,   "@: HA! Well... let's make that can of worms properly explode!"
 0,   "^: Boom! Boom!, Umby!"
@@ -278,7 +278,7 @@
 80,  ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_orbitals,w.pattern_orbitals_fill]",(bytearray([Bones, EFalcon]), bytearray([10, 40])),1)
 
 # E-Falcon swarm
-720, "^: Here comes the swarm!"
+1400,"^: Here comes the swarm!"
 0,   "@: We've got this, Glow!"
 80,  "Get ready!"
 0,   ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,w.pattern_orbitals,w.pattern_orbitals_fill]",(bytearray([Bones, EFalcon]), bytearray([10, 150])),1)
@@ -309,7 +309,7 @@
 # Mothership biohall
 400, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_alien_totem_plants,pattern_fill,w.pattern_alien_totem_floor,pattern_fill]",(bytearray([]), bytearray([])),0)
 0,   "^: Woah! Gravity!"
-0,   "@: Must be artificialddsddwdawsdd, and from this spaceship."
+0,   "@: Must be artificial, and from this spaceship."
 0,   "^: Whatever it is, it feels good!"
 0,   "^: I like knowing which way is up, Umby."
 0,   "@: Ditto, Glow."
@@ -433,7 +433,7 @@
 0,   "@: I think I just have to admit that I know nothing about alien technology."
 0,   "^: I thought it was a good try..."
 0,   "@: How do you feel about just destroying everything in our path?"
-0,   "^: Umby, you had me at 'destroy'!"
+0,   "^: Umby, I thought you'd never ask!"
 0,   "@: Right then. Wanton destruction, it is!"
 
 140,  "CHAPTER~6: \n Dolphins"
@@ -472,113 +472,95 @@
 
 140, "CHAPTER~7: \n Bring a Towel"
 
+# Undertank
+300, ("6","[w.pattern_biomechanical_hall_wall,w.pattern_bio_pillars,pattern_fill,w.pattern_undertank,pattern_fill]",(bytearray([]), bytearray([])),0)
 
-
-
-200, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
-
-# TODO TODO TODO - biomech hall with plants and vertical pillars, no monsters
-400, "TODO - UNDERTANK"
-
-200, "^: I think we might be under the tank..."
-0,   "@: It's certainly got that vibe."
-
-200, "@: Careful, that pillar looks electrified."
-0,   "^: Let's shoot it down!"
+240, "^: I think we might be under the tank..."
+0,   "@: I think you might be right."
 
 40,  "Get ready!"
 
+80,  "@: That pillar looks load bearing..."
+0,   "^: Let's shoot it down!"
+0,   TankPillar
+0,   MiniShake
+0,   "^: Nice!"
+0,   "@: That didn't quite do it..."
+0,   "^: I see another up ahead."
 
+50,  TankPillar
+0,   MiniShake
+0,   "@: I think this is working..."
+0,   "^: Let's take them all down!"
 
+50,  TankPillar
+0,   MiniShake
 
-# TODO TODO TODO - Monster: TankFloor
-#Tank Floor (thick wall)
-#- Takes 16 hits.
-#- After each hit, cam shakes for a bit.
-#- 14-16 increasing cam shake.
-#- 16 - Floods - fills background, then dies.
-#- leaves mild cam shake.
-0,   TankFloor
+50,  TankPillar
+0,   MiniShake
 
+50,  TankPillar
+0,   MiniShake
 
+50,  TankPillar
+0,   Shake
+0,   "@: I think it is finally starting to give way!"
+0,   "^: Can't be much more now..."
 
+50,  TankPillar
+0,   BigShake
 
-# TODO TODO TODO - Activate low gravity (with existing pattern)
-0,   "TODO - Activate low gravity"
+50,  TankPillar
+0,   Flood
+0,   SuperShake
+# Low gravity and shake
+0,   ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([80])),3)
 0,   "^: Woooohooo!"
 0,   "@: I think that did it!"
 0,   "^: It's definitely extremely flooded!"
 0,   "@: And telling by the way the whole ship is shaking, it feels like it's falling out of the sky!"
-0,   "@: Let's see if we can find a safe way off."
+0,   "@: Let's see if we can find a safe way off the ship."
 0,   "^: Lead the way!"
 
-
-
-
-
-# TODO TODO TODO - Flood (has floor and roof) with Bones
-40,  "TODO - Flood"
-
-
-
-
-# TODO TODO TODO - Monster: CamShake2 (set camera shake to 2)
-300, CamShake2
+# Medium shake
+400, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
 0,   "^: It's getting worse!"
 0,   "@: I think we might have hit re-entry."
 
+300, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones,ChargingBones]), bytearray([30,20])),5)
 
-
-
-# TODO TODO TODO - Flood (has floor and roof), no monsters
-300, "TODO - Flood"
-
-
-
-
-# TODO TODO TODO - Monster: CamShake3 (set camera shake to 3)
-0,   CamShake3
+# Large shake
+140, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([ChargingBones]), bytearray([20])),7)
 0,   "@: Yep, this is clearly getting worse. I hope the ship holds together."
 0,   "^: What?! What happens if it doesn't?"
 0,   "@: Bad things. So let's keep moving!"
 
-
-
-
-# TODO TODO TODO - Monster: SuperShake (set camera shake to 10 for 3 seconds, then none)
-0,   SuperShake
-
-
-
-
-# TODO TODO TODO - Activate gravity (with existing pattern)
-0,   "TODO - Activate gravity"
+200, SuperShake
+# Normal gravity no shake
+0,   ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([]), bytearray([])),0)
 0,   "^: Have we crash landed?!"
 0,   "@: I think we have..."
-0,   "@: There's something about that authentic real gravity, that feels like home."
+0,   "@: There's something about that authentic real gravity that feels like home."
 0,   "^: Did we just save the world?"
 0,   "@: I hope so. Actually, I just hope our cave is now nice, quiet, and safe."
 0,   "^: Let's find a way off this wreck and see where we landed."
-0,   "@, And let's go see if those aliens are still a problem."
+0,   "@: And let's go see if those aliens are still a problem."
 
 # Ship hull
-200, ("5","[w.pattern_nebula,w.pattern_orbitals,w.pattern_orbitals_fill,pattern_fill,w.pattern_hull]",(bytearray([]), bytearray([])),0)
+200, ("5","[pattern_fill,pattern_fill,pattern_fill,pattern_fill,w.pattern_hull]",(bytearray([]), bytearray([])),0)
 
 # Forest
-80,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
+200, ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
 
 80,  "^: We landed in the forest!"
 0,   "@: Well, we landed in 'A' forest!"
 0,   "@: Is this ours?"
-0,   "^: It's totally ours, Umby. I recognise the trees, and the type of biodiversity. That's our species of caterpillar."
-0,   "@: Well, I wish it was more friendly."
+0,   "^: It's totally ours, Umby. I recognise the trees, and the types of biodiversity. That's our species of caterpillar!"
+0,   "@: Well, I wish it was more friendly!"
 0,   "@: But I think you are right."
 0,   "@: You know you really surprise me sometimes, Glow... almost as much as how we landed in our own forest. What are the chances?!"
-0,   "^: It's like I've said: We are a couple of lucky worms, Umby."
-0,   "@: That we are."
+0,   "^: It's like I've said: We are a lucky couple of worms, Umby."
+0,   "@: That we are!"
 
 80,  "^: How are we going to get around the ship?"
 0,   "@: We aren't. The cave's dead ahead. We must have gotten turned around when we were crash landing."
@@ -588,28 +570,38 @@
 0,   "^: Okay, so let's keep going and head back to our cave."
 0,   "@: Lead on!"
 
+400, "@: All the aliens are falling from the sky!"
+0,   "^: Do you think we did that?!"
+0,   "@: Maybe they did function as a collective?"
 
+80, ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot, FallingBones]), bytearray([15, 15, 200])),0)
 
-
-# TODO TODO TODO - Monster: - Falling bones - falls from sky (from left side) and explodes on impact (after first 0-10 pixels). Looks like Prober falling down.
-80,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot, FallingBones]), bytearray([30, 15, 200])),0)
-0,   "^: All the aliens are falling from the sky!"
-0,   "@: Maybe they did function as a collective!"
-0,   "^: I am very happy with this level of destruction!"
-0,   "@: Careful of that rain now."
-0,   "^: Lol! Just when I forgot my umbrella!"
-
-400,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([30, 15])),0)
-0,   "^: Umby..."
-0,   "^: Seems like the rain has stopped!"
-0,   "@: Glow..."
-0,   "@: I'm forecasting alien-free clear skies ahead!"
+900,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([20, 15])),0)
+140,   "^: Umby..."
+0,   "^: Seems like the monster rain has stopped!"
+0,   "@: I'm seeing clear skies ahead!"
+0,   "^: We literally took them down!"
+0,   "@: We took them all down!"
 
 100, ("2","[w.pattern_cloudy_snowy_mountains,w.pattern_ferns,w.pattern_ferns_fill,w.pattern_cloudy_plains,pattern_fill]",(bytearray(), bytearray()),0)
 
-100, "CHAPTER~8: \n Hive Mind"
 
-80,  "@: Maybe I spoke too soon..."
+
+
+
+
+
+
+
+
+
+
+200, "CHAPTER~X: \n TEST_(TODO)"
+
+
+
+
+400, "@: Maybe I spoke too soon..."
 0,   "^: Yeah... whatever that is... it's huge!"
 0,   "@: I think that might be the alien hive mind that Lung was after."
 0,   "^: Giant alien brain... Check! Out for revenge... Check!"
@@ -618,6 +610,8 @@
 0,   "^: Fair enough."
 0,   "^: How about we give it some shock therapy?"
 0,   "@: Savage, Glow, but yes, let's finish this!"
+
+300, "CHAPTER~8: \n Hive Mind"
 
 200, "Get ready!"
 
@@ -637,7 +631,8 @@
 #- cam shake death roll at end.
 # MegaAlienHiveMind brain is 32bit sized (int not byte) so need function to dynamical turn Thumby sprite format to into int sprites on load. IMG: sideways Bones with flame trail. -- if hard to update engine, leave for sequel, and just do 4 stacked sprites.
 # Tendrils can be 1 sprite but rendered with a decreasing width.
-200, MegaBones
+400, MegaBones
+0,   SuperShake
 0,   "^: Squirm!"
 0,   "@: Squirm indeed!"
 0,   "@: Absolutely astounding work there, Glow!"

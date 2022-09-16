@@ -310,7 +310,7 @@ class Tape:
         # Vertical offset
         y -= 20
         ptr32(self._tape_scroll)[4] = ((y if y >= 0 else 0) if y <= 24
-            else 24) + t//2%(int(self.cam_shake)+1)
+            else 24) + t//2%(int(self.cam_shake)+1)*(1 if y<12 else -1)
 
     @micropython.viper
     def write(self, layer: int, text, x: int, y: int):

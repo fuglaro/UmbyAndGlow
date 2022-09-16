@@ -821,6 +821,12 @@ section on top and bottom. 4 height lines, with 6 height gaps.
 Comes with an associated alient_vent_decay fill pattern to
 give organic texture.
 
+#### bio_pillars
+
+Middle layer of the underneath of the space ship aquarium. Similar to
+undertank it that it as the alien totem flooring, with a thick full ceiling,
+and pillars, but where the pillrs are more frequently placed.
+
 #### biomechanical_hall_wall
 
 Alien background wall with repetative feel.
@@ -888,6 +894,10 @@ A 4 pixel thick horizontal line that matches the top of chain_link_fence.
 
 Midbackground jungle-fern ground cover.
 Also comes with ferns_fill which just has thinker leaves.
+
+#### flood
+
+Simple big open room for a foreground in the flood area.
 
 #### forest
 
@@ -976,6 +986,11 @@ Background of dense forest.
 #### tunnel
 
 Thin tunnel a little bit bigger than worm height, that rolls up and down.
+
+#### undertank
+
+Foreground layer of the underneath of the space ship aquarium. Has the
+alien totem flooring, with a thick full ceiling, and pillars.
 
 #### windows
 

@@ -24,7 +24,7 @@ tape.mons_add = mons.add
 
 def _run_menu():
     handshake = held = t = 0
-    ch = [0, 0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
+    ch = [0, 0, 1, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, mons, -999, False)
     mons.add(Bones, -970, 32)
     chapters = list(get_chapters())
@@ -101,6 +101,7 @@ def _run_menu():
                 menu = None
         background_update()
         t += 1
+    clip = not (bU() or bA() or bB())
 
     ## Negotiate 2 player communication and starting position (if needed)
     if ch[1]:
@@ -127,24 +128,27 @@ def _run_menu():
     tape.message(0, "GET READY!!...", 3)
     background_update()
     tape.clear_overlay()
-    return ch[0], ch[1], ch[2], start, sav
-glow, coop, autotxt, start, sav = _run_menu()
+    return ch[0], clip, ch[1], ch[2], start, sav
+glow, clip, coop, autotxt, start, sav = _run_menu()
 del _run_menu
 
 @micropython.native
 def run_game():
     prof = not bL() # Activate profiling by holding Left direction
     # Select character, or testing mode by holding Up+B+A (release Up last)
-    p1 = Player(tape, mons, "Clip" if not (bU() or bA() or bB()) else "Glow" if glow else "Umby", start+10, 20)
+    p1 = Player(tape, mons,
+        "Clip" if clip else "Glow" if glow else "Umby", start+10, 20)
+    tape.player = p1
+    tape.players.append(p1)
     story_jump(tape, mons, start, True)
     gc.collect()
-    tape.player = p1
+
     mons2 = Monsters(tape)
     mons.omons = mons2
     ch = tape.check
-    tape.players.append(p1)
     p1.port_out(outbuf) # Initialise coop send-buffer
-    p2 = Player(tape, mons, "Umby" if glow else "Glow", start+10, 20, ai=not coop, coop=coop)
+    p2 = Player(tape, mons,
+        "Umby" if glow else "Glow", start+10, 20, ai=not coop, coop=coop)
     tape.players.append(p2)
 
     # Main gameplay loop

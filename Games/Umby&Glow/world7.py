@@ -13,4 +13,3 @@ class W:
         x *= 2
         return 1 << ((((32+oY)*x)^(x))%31)
 w = W()
-# chainroom (roof and floor of chain mess)
