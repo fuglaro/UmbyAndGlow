@@ -142,6 +142,7 @@ def run_game():
     tape.players.append(p1)
     story_jump(tape, mons, start, True)
     gc.collect()
+    gc.threshold(16000)
 
     mons2 = Monsters(tape)
     mons.omons = mons2
