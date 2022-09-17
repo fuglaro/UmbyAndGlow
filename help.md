@@ -1042,22 +1042,6 @@ def pattern_wall(x: int, oY: int) -> int:
     return v
 
 @micropython.viper
-def pattern_toothsaw(x: int, y: int) -> int:
-    ### PATTERN [toothsaw]: TODO use and update for word ###
-    return int(y > (113111^x+11) % 64 // 2 + 24)
-
-@micropython.viper
-def pattern_revtoothsaw(x: int, y: int) -> int:
-    ### PATTERN [revtoothsaw]: TODO use and update for word ###
-    return int(y > (11313321^x) % 64)
-
-@micropython.viper
-def pattern_diamondsaw(x: int, y: int) -> int:
-    ### PATTERN [diamondsaw]: TODO use and update for word ###
-    return int(y > (32423421^x) % 64)
-
-
-@micropython.viper
 def pattern_zebra_hills(x: int, oY: int) -> int:
     ### PATTERN [zebra_hills]: Hills with internal zebra pattern ###
     buff = ptr32(_buf)
@@ -1073,7 +1057,7 @@ def pattern_zebra_hills(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_fallen_tree(x: int, oY: int) -> int:
-    ### PATTERN [fallentree]: TODO use  ###
+    ### PATTERN [fallentree] ###
     v = 0
     for y in range(oY, oY+32):
         v |= (
@@ -1083,7 +1067,7 @@ def pattern_fallen_tree(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_vine_hang(x: int, oY: int) -> int:
-    ### PATTERN [panels]: TODO use ###
+    ### PATTERN [panels] ###
     u = int(shash(x,12,40)) + int(shash(x,5,8))
     v = 0
     for y in range(oY, oY+32):
@@ -1094,7 +1078,7 @@ def pattern_vine_hang(x: int, oY: int) -> int:
 
 @micropython.viper
 def pattern_panels(x: int, oY: int) -> int:
-    ### PATTERN [panels]: TODO use ###
+    ### PATTERN [panels] ###
     v = 0
     for y in range(oY, oY+32):
         v |= (

@@ -576,30 +576,14 @@
 
 80, ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot, FallingBones]), bytearray([15, 15, 200])),0)
 
-900,  ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([20, 15])),0)
-140,   "^: Umby..."
+900, ("3","[w.pattern_tree_wall,w.pattern_mid_forest,w.pattern_mid_forest_fill,w.pattern_forest,w.pattern_forest_fill]",(bytearray([Pillar, Hoot]), bytearray([20, 15])),0)
+140, "^: Umby..."
 0,   "^: Seems like the monster rain has stopped!"
 0,   "@: I'm seeing clear skies ahead!"
 0,   "^: We literally took them down!"
 0,   "@: We took them all down!"
 
 100, ("2","[w.pattern_cloudy_snowy_mountains,w.pattern_ferns,w.pattern_ferns_fill,w.pattern_cloudy_plains,pattern_fill]",(bytearray(), bytearray()),0)
-
-
-
-
-
-
-
-
-
-
-
-
-200, "CHAPTER~X: \n TEST_(TODO)"
-
-
-
 
 400, "@: Maybe I spoke too soon..."
 0,   "^: Yeah... whatever that is... it's huge!"
@@ -615,22 +599,8 @@
 
 200, "Get ready!"
 
+#0, "CHAPTER~X: \n TEST"
 
-
-
-# TODO TODO TODO - Monster: MegaBones
-#Mega boss before returning to cave (Alien Hivemind out for revenge)
-#- Only takes damage when there are no other monsters (or less than 5?)
-#- Floating brain with tendrils that are straight lines downwards. Number of lines is health (Mon id: 200-250) 50HP.
-#- Only spawned by player 1
-#- Hovers up and down around mid point. Moves slowly to right of both players so half onscreen.
-#- Releases chain of charging bones every hit (1@1-10damg, 2@11-20damg, etc).
-#- Releases DragonBones (1@20, 2@30, 3@40)
-#- Releases BonesBoss @10.
-#- Releases Skittle randomly.
-#- cam shake death roll at end.
-# MegaAlienHiveMind brain is 32bit sized (int not byte) so need function to dynamical turn Thumby sprite format to into int sprites on load. IMG: sideways Bones with flame trail. -- if hard to update engine, leave for sequel, and just do 4 stacked sprites.
-# Tendrils can be 1 sprite but rendered with a decreasing width.
 400, MegaBones
 0,   SuperShake
 0,   "^: Squirm!"
@@ -643,26 +613,22 @@
 0,   "@: I think so, but I still want to see if our cave is okay."
 0,   "^: Well, it's not far ahead now."
 
-300, ("1","[pattern_none,pattern_none,pattern_fill,w.pattern_tunnel,pattern_fill]",(bytearray(), bytearray()),0)
+800,("1","[pattern_none,pattern_none,pattern_fill,w.pattern_tunnel,pattern_fill]",(bytearray(), bytearray()),0)
 
+420, ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([]), bytearray([])),0)
 
-
-
-# TODO TODO TODO - Monsters: BackPillar & BackBatty (background Pillar and background Hoot skinned as a Bat.)
-50,  ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([BackPillar,BackBatty]), bytearray([30,30])),0)
-
-300, "@: Home!"
+500, "@: Home!"
 0,   "^: Ah! I love home!"
 0,   "@: We did it, Glow."
 0,   "^: We sure did, Umby..."
-0,   "^: and with maximum destruction."
+0,   "^: and with maximum destruction!"
 0,   "@: HA! No kidding."
 0,   "^: Not bad for a couple of worms."
 0,   "@: Not bad indeed!"
 
-300, "Thank you for playing!"
+400, "Thank you for playing!"
 
-300, "Stay tuned for\nUmby & Glow's\nnext adventure!"
+250, "Watch out for Umby_n_Glow's next adventure!"
 
 ## Credits ##
 300, ("1", "[w.pattern_toplit_wall,pattern_none,pattern_fill,pattern_room,pattern_fill]",(bytearray(), bytearray()), 0)
@@ -718,7 +684,7 @@
 160, "Vince B"
 160, "Thank you for playing!"
 
-# TODO TODO TODO - Bonus Level - Exponentialy increasing lengths of levels, - With increasing numbers of monsters.
+400,  ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([Bones,Skittle]), bytearray([37,2])),0)
 
 3000000, "GOODBYE!"
 100, StopIteration()

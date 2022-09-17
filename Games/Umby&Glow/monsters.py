@@ -27,8 +27,6 @@ _LeftDoor = const(30)
 _EFalcon = const(31)
 _Prober = const(32)
 _Probing = const(33)
-_BackPillar = const(50)
-_BackBatty = const(51)
 _CPU = const(80)
 _Lung = const(81)
 _TankPillar = const(82)
@@ -53,8 +51,6 @@ Hoot = _Hoot
 LeftDoor = _LeftDoor
 EFalcon = _EFalcon
 Prober = _Prober
-BackPillar = _BackPillar
-BackBatty = _BackBatty
 CPU = _CPU
 Lung = _Lung
 TankPillar = _TankPillar
@@ -141,7 +137,14 @@ class Monsters:
     _lung = bytearray([3,7,4,4,7,3])
     # BITMAP: width: 18, height: 8, frames:3
     _tank = bytearray([255,146,255,255,36,255,255,73,255,255,73,255,255,36,255,255,146,255])
-
+    # BITMAP: width: 30, height: 8
+    _cerebral_shd = bytearray([48,118,155,250,231,119,28,234,199,59,125,111,246,246,169,207,238,113,183,223,166,189,123,125,246,141,237,209,92,28])
+    # BITMAP: width: 30, height: 8
+    _cerebral = bytearray([48,118,131,194,193,65,0,192,193,35,69,7,130,130,129,131,130,65,129,193,130,129,67,69,198,133,197,193,92,28])
+    # BITMAP: width: 30, height: 8
+    _cerebral_m = bytearray([126,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,126])
+    _cerebral_w = bytearray([16,23,25,20,8])
+    _cerebral_x = bytearray([8,1,0,8,30])
 
     def __init__(self, tape):
         self._tp = tape
@@ -741,15 +744,46 @@ class Monsters:
     @micropython.viper
     def _draw_monsters_c(self, t: int, i: int, tid: int, x: int, y: int, l: int):
         tape = self._tp
+        draw = tape.draw
+        mask = tape.mask
         if tid == _TankPillar:
             img = msk = self._block
             for yi in range(8):
                 if yi > 2:
                     img = self._tank
                     pf = t//20%3
-                tape.draw(l, x, yi*8, img, 6, pf)
-                tape.mask(l, x, yi*8, msk, 6, 0)
-            return
+                draw(l, x, yi*8, img, 6, pf)
+                mask(l, x, yi*8, msk, 6, 0)
+        elif tid == _MegaBones:
+            if self.omons:
+                d = ptr32(_data)
+                cpx = ptr8(self._cerebral)
+                spx = ptr8(self._cerebral_shd)
+                mpx = ptr8(self._cerebral_m)
+                wb = ptr8(self._cerebral_w)
+                xb = ptr8(self._cerebral_x)
+                tn = -1-t
+                yh = 24+(t if t//64%2 else tn)//4%16
+                y = 22+((t if t//80%2 else tn)//4%20)-yh//2
+                yt = 0
+                xr = (t if t//120%2 else tn)//12%10
+                mh = d[i*5] # data[0] must sync through bsync for coop.
+                for yi in range(5):
+                    ys = y+yt
+                    yt += (yh-yt)//(5-yi)
+                    w = wb[yi]
+                    w1 = w-xr//2
+                    w2 = w-(xr-xr//2)
+                    mhw = w1*(54-mh)//54
+                    mhw2 = w1-mhw
+                    xs = xb[yi] + x + xr//2
+                    o = 30-w2
+                    draw(l, xs, ys, cpx, w1, 0)
+                    draw(0, xs, ys, spx, mhw, 0)
+                    mask(l, xs, ys, mpx, w1, 0)
+                    draw(l, xs+w1, ys, ptr8(int(cpx)+o), w2, 0)
+                    draw(0, xs+w1+mhw2, ys, ptr8(int(spx)+o), w2-mhw2, 0)
+                    mask(l, xs+w1, ys, ptr8(int(mpx)+o), w2, 0)
 
     @micropython.viper
     def _kill(self, t: int, mon: int, player, tag):
@@ -787,7 +821,7 @@ class Monsters:
                     mon = j
         elif tid == _LeftDoor or tid == _Lung:
             return
-        elif tid == _CPU:
+        elif tid == _CPU or tid == _MegaBones:
             data = ptr32(_data)
             ii = mon*5
             data[ii] += 1

@@ -1,5 +1,5 @@
 import gc
-gc.threshold(8000)
+gc.threshold(2000)
 gc.enable()
 from monsters import Monsters, Bones
 gc.collect()
