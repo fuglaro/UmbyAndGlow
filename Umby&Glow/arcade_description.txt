@@ -1,7 +1,20 @@
+Umby & Glow - save their cave!
 
-Umby & Glow
+Play as Umby the earthworm, or Glow the caveworm,
+as the wormy duo embark on an epic adventure to save their cave,
+and the whole world!
 
-Follow the most tenacious wormy duo as they embark on an epic adventure to save their humble cave,
+* Side scrolling platformer with destructable landscapes.
+* Supports 2 player coop (with link cable).
+* 8 epic Chapters through caves, forests, space, and beyond!
+* 4 Boss Battles including one epic showdown!
+
+Meet UMBY!
+Crawl along the ground, jump high, launch grenades,
+and create platforms.
+Just don't 
+
+
 
 Instructions
 Version
