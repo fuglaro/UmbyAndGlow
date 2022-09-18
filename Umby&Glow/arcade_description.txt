@@ -16,6 +16,12 @@ Just don't hit your head too hard on the roof or low overhangs!
 Careful of falling to your doom!
 And don't stand too close to your own grenades!
 
+Move & Climb: Left/Right
+Jump: A (hold for higher)
+Aim: Up/Down
+Charge grenade: B (release to launch)
+Create platform: B (while grenade in flight)
+
 
 Meet GLOW!
 Cling to the roof, blast tunnels, swing with a grappling hook,
@@ -23,7 +29,8 @@ launch rockets, and wriggle through walls!
 Just don't sink into the mud!
 And don't stand too close to your own rockets!
 
-
+Move & Climb: Left/Right
+Fall: A 
 
 
 Author: fuglaro
