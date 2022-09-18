@@ -8,7 +8,6 @@ Coop side scrolling platformer for the Thumby device - Umby the earthworm and Gl
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
 
 ## TODO
-* Initial test
 * Full game description and overview (for arcade_description.txt file)
   * quick cave emulator vid of Umby crawling, jumping, shooting to destroy, and shooting a platform. (Play on ground level as earthworm Umby, and make platforms!)
   * quick cave emulator vid of Glow clinging, swinging, digging, and shooting. (Play from the roof as glow-worm Glow, and cling, swing, pummel, and tunnel!
