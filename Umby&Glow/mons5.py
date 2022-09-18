@@ -1,4 +1,4 @@
-_Lazer = const(9)
+_Lazer = const(12)
 _EFalcon = const(31)
 
 @micropython.viper
