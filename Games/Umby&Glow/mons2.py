@@ -40,7 +40,7 @@ def _tick_mega_bones(self, t: int, i: int):
         data[ii+2] += 1
         if data[ii+2] > 60:
             self._kill(t, i, None, "_REST_IN_DEFEAT!_")
-            for mi in range(len(self._tids)):
+            for mi in range(int(len(self._tids))):
                 self._tids[mi] = 0
                 
 
