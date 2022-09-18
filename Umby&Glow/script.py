@@ -7,6 +7,7 @@ from machine import Pin
 from array import array
 _buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
 bA = Pin(27, Pin.IN, Pin.PULL_UP).value
+bR = Pin(5, Pin.IN, Pin.PULL_UP).value
 
 w = None # World
 _loaded = None
@@ -127,7 +128,7 @@ def story_events(tape, mons, coop_px, autotxt):
         return # Respawning
     # Update current dialog queue
     if _dialog_c > 0:
-        if _dialog_c == 1 and not autotxt and bA():
+        if _dialog_c == 1 and not autotxt and (bA() and bR()):
             ali = 10 if _pos==3 else 0
             n = ">>" if _dialog_queue else "XX"
             tape.write(3, n, 65, 18-ali)
