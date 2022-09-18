@@ -14,8 +14,6 @@ Meet UMBY!
 Crawl the mud, blast tunnels, jump high, launch grenades,
 and create platforms!
 Just don't hit your head too hard on the roof or low overhangs!
-Careful of falling to your doom!
-And don't stand too close to your own grenades!
 Move & Climb: Left/Right
 Jump: A (hold for higher)
 Aim: Up/Down
@@ -26,7 +24,6 @@ Meet GLOW!
 Cling to the roof, blast tunnels, swing with a grappling hook,
 launch rockets, and wriggle through walls!
 Just don't sink into the mud!
-And don't stand too close to your own rockets!
 Move & Climb: Left/Right
 Fall: A (hold)
 Aim: Up/Down
@@ -35,6 +32,8 @@ Release grappling hook: A (while grappling)
 Climb/Descend rope: Up/down (while grappling)
 Wiggle through walls: Left/Right + A (tapping)
 Charge rocket: B (release to launch)
+
+TEXT option pauses game during dialog (TALK stays live).
 
 Author: fuglaro
 Version: beta
