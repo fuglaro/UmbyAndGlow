@@ -36,5 +36,5 @@ Charge rocket: B (release to launch)
 
 TEXT option pauses game during dialog (TALK stays live).
 
-Author: fuglaro
+Author: fuglaro (font by Auri)
 Version: beta
