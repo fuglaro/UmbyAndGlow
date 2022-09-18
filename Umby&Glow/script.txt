@@ -601,7 +601,9 @@
 
 #0, "CHAPTER~X: \n TEST"
 
-400, MegaBones
+400, freq(250000000)
+0,   MegaBones
+0,   freq(133000000)
 0,   SuperShake
 0,   "^: Squirm!"
 0,   "@: Squirm indeed!"

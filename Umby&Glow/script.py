@@ -3,7 +3,7 @@
 from monsters import *
 import gc
 from utils import *
-from machine import Pin
+from machine import Pin, freq
 from array import array
 _buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
 bA = Pin(27, Pin.IN, Pin.PULL_UP).value
@@ -159,7 +159,7 @@ def story_events(tape, mons, coop_px, autotxt):
             _load_lvl(tape, mons, event)
         elif isinstance(event, str):
             add_dialog(tape, event)
-        else: # Monsters
+        elif event: # Monsters
             if posx < _next_at:
                 return # Wait to reach spawn position
             bat = mons.add(event, posx+144, 32)
