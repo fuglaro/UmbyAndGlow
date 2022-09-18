@@ -24,7 +24,7 @@ tape.mons_add = mons.add
 
 def _run_menu():
     handshake = held = t = 0
-    ch = [0, 0, 1, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
+    ch = [0, 0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
     story_jump(tape, mons, -999, False)
     mons.add(Bones, -970, 32)
     chapters = list(get_chapters())
