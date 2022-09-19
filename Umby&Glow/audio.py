@@ -4,7 +4,12 @@ _OFF = const(0)
 _ON = const(32767)
 _spkr = PWM(Pin(28))
 _audio = _spkr.duty_u16
-_speaker = _spkr.freq
+@micropython.native
+def _speaker(freq):
+    try:
+        _spkr.freq(freq)
+    except ValueError:
+        pass # ignore out of bound frequencies
 _emu = int
 try:
     import emulator
