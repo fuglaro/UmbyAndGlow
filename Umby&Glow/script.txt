@@ -525,7 +525,7 @@
 0,   "^: Lead the way!"
 
 # Medium shake
-400, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
+800, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
 0,   "^: It's getting worse!"
 0,   "@: I think we might have hit re-entry."
 
@@ -619,7 +619,8 @@
 
 800,("1","[pattern_none,pattern_none,pattern_fill,w.pattern_tunnel,pattern_fill]",(bytearray(), bytearray()),0)
 
-420, ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([]), bytearray([])),0)
+0, "CHAPTER~X: \n TEST"
+440, ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([]), bytearray([])),0)
 
 500, "@: Home!"
 0,   "^: Ah! I love home!"
@@ -630,7 +631,7 @@
 0,   "^: Not bad for a couple of worms."
 0,   "@: Not bad indeed!"
 
-400, "Thank you for playing!"
+340, "Thank you for playing!"
 
 250, "Watch out for Umby_n_Glow's next adventure!"
 
