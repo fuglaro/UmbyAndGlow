@@ -619,7 +619,6 @@
 
 800,("1","[pattern_none,pattern_none,pattern_fill,w.pattern_tunnel,pattern_fill]",(bytearray(), bytearray()),0)
 
-0, "CHAPTER~X: \n TEST"
 440, ("1","[w.pattern_toplit_wall,w.pattern_stalagmites,w.pattern_stalagmites_fill,w.pattern_cave,w.pattern_cave_fill]",(bytearray([]), bytearray([])),0)
 
 500, "@: Home!"
