@@ -391,6 +391,10 @@ class Player:
         snco = ptr8(sinco)
         x = int(self.x); y = int(self.y)
         xl = x<<8; yl = y<<8
+        if angle > 60000:
+            angle = 60000
+        elif angle < -60000:
+            angle = -60000
         self._hook_ang = angle <<1|1
         # Find hook landing position
         xs = 128-snco[((angle>>10)+200)%400]
