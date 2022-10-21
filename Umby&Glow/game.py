@@ -24,7 +24,8 @@ tape.mons_add = mons.add
 
 def _run_menu():
     handshake = held = t = 0
-    ch = [0, 0, 0, 1, -1, 0] # Umby/Glow, 1P/2P, New/Load, Chapter, selection
+    # Umby/Glow, 1P/2P, Text/Talk, Easy/Hard, New/Load, Chapter, selection
+    ch = [0, 0, 0, 0, 1, -1, 0]
     story_jump(tape, mons, -999, False)
     mons.add(Bones, -970, 32)
     chapters = list(get_chapters())
@@ -44,25 +45,26 @@ def _run_menu():
 
     def sel(i): # Menu arrows
         return (("_" if ch[i] else "<")
-            + (((("_-" if ch[i] else "-_")) if i == ch[5] else "__"))
+            + (((("_-" if ch[i] else "-_")) if i == ch[6] else "__"))
             + (">" if ch[i] else "_"))
 
     def update_main_menu():
-        ch[5] = (ch[5] + (1 if not bD() else -1 if not bU() else 0)) % 4
+        ch[6] = (ch[6] + (1 if not bD() else -1 if not bU() else 0)) % 5
         if not (bL() and bR()):
-            ch[ch[5]] = 0 if not bL() else 1
+            ch[ch[6]] = 0 if not bL() else 1
         msg = "UMBY_"+sel(0)+"_GLOW "
         msg += "__1P_"+sel(1)+"_2P__ "
         msg += "TEXT_"+sel(2)+"_TALK "
-        msg += "_NEW_"+sel(3)+"_LOAD"
+        msg += "EASY_"+sel(3)+"_HARD "
+        msg += "_NEW_"+sel(4)+"_LOAD"
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
     def update_chapter_menu():
         if bU() and bD():
             return
-        ch[4] = (ch[4] + (-1 if not bU() else 1)) % len(chapters)
-        msg = chapters[ch[4]][0]
+        ch[5] = (ch[5] + (-1 if not bU() else 1)) % len(chapters)
+        msg = chapters[ch[5]][0]
         tape.clear_overlay()
         tape.message(0, msg, 3)
 
@@ -87,9 +89,9 @@ def _run_menu():
                     pass
                 sav = "/Saves/Umby&Glow-"+("glow" if ch[0] else "umby")+".sav"
                 # Find the starting position (of this player)
-                if ch[4] == -1:
+                if ch[5] == -1:
                     start = 3
-                    if ch[3]:
+                    if ch[4]:
                         try:
                             with open(sav, "r") as f:
                                 start = int(f.read()) - 145
@@ -97,7 +99,7 @@ def _run_menu():
                             pass
                     start = start if start > 3 else 3
                 else: # Chapter selection
-                    start = chapters[ch[4]][1]
+                    start = chapters[ch[5]][1]
                 menu = None
         background_update()
         t += 1
@@ -128,8 +130,8 @@ def _run_menu():
     tape.message(0, "GET READY!!...", 3)
     background_update()
     tape.clear_overlay()
-    return ch[0], clip, ch[1], ch[2], start, sav
-glow, clip, coop, autotxt, start, sav = _run_menu()
+    return ch[0], clip, ch[1], ch[2], ch[3], start, sav
+glow, clip, coop, autotxt, hard, start, sav = _run_menu()
 del _run_menu
 
 @micropython.native
@@ -137,7 +139,7 @@ def run_game():
     prof = not bL() # Activate profiling by holding Left direction
     # Select character, or testing mode by holding Up+B+A (release Up last)
     p1 = Player(tape, mons,
-        "Clip" if clip else "Glow" if glow else "Umby", start+10, 20)
+        "Clip" if clip else "Glow" if glow else "Umby", start+10, 20, hard=hard)
     tape.player = p1
     tape.players.append(p1)
     story_jump(tape, mons, start, True)
