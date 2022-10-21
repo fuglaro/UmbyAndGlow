@@ -198,7 +198,7 @@ def run_game():
         mons2.draw_and_check_death(t, None, None)
 
         # Check for death by monster
-        if ch(p1.x-tape.x[0], p1.y, 224):
+        if play and ch(p1.x-tape.x[0], p1.y, 224):
             p1.die("Umby became monster food!")
         # Draw the players
         p1.draw(t)

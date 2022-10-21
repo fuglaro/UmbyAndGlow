@@ -631,18 +631,23 @@ class Player:
             elif rex - 4000 < xf <= rex:
                 tape.redraw_tape(2, (xf>>8)+5, ptrn, fill)
         else:
-            # Cancel any rocket powering
-            self._aim_pow = 256 <<1|1
-            # Hide any death message
-            tape.clear_overlay()
-            # Return to normal play modes
-            if int(self.mode) == 201:
-                self.mode = 0 <<1|1
-            else:
-                # Shoot hook straight up
-                self._x_vel = self._y_vel = 0 <<1|1
-                self._launch_hook(0)
-            tape.write(1, "DONT GIVE UP!", int(tape.midx[0])+8, 26)
+            self.revive()
+
+    @micropython.viper
+    def revive(self):
+        tape = self._tp
+        # Cancel any rocket powering
+        self._aim_pow = 256 <<1|1
+        # Hide any death message
+        tape.clear_overlay()
+        # Return to normal play modes
+        if int(self.mode) == 201:
+            self.mode = 0 <<1|1
+        else:
+            # Shoot hook straight up
+            self._x_vel = self._y_vel = 0 <<1|1
+            self._launch_hook(0)
+        tape.write(1, "DONT GIVE UP!", int(tape.midx[0])+8, 26)
 
     @micropython.native
     def _tick_testing(self):
