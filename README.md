@@ -1,22 +1,58 @@
-# Umby&Glow - save their cave
+# Umby & Glow - Save Their Cave!
 
 ![Umby & Glow](/Umby&Glow.png)
 
 Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
 
+![Demo](/Umby&Glow/arcade_title_video.webm)
+
+Play as Umby the earthworm, or Glow the caveworm,
+as the wormy duo embark on an epic adventure to save their cave,
+and the whole world!
+* Side scrolling platformer with destructable landscapes.
+* Supports 2 player coop (with link cable).
+* 8 epic Chapters through caves, forests, space, and beyond!
+* Aliens, Dragons, Owls, Lazers, their favourite nemesis: Lung.
+* 4 Boss Battles including one epic showdown.
+* 1 breathtaking font by Auri.
+* And a truckload of puntastic fun!
+
+Please see the credits at the bottom of [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
+
+## Meet UMBY!
+
+Crawl the mud, blast tunnels, jump high, launch grenades,
+and create platforms!
+Move & Climb: Left/Right
+Jump: A (hold for higher)
+Aim: Up/Down
+Charge grenade: Hold B (release to launch)
+Create platform: B (while grenade in flight)
+
+## Meet GLOW!
+
+Cling to the roof, blast tunnels, swing with a grappling hook,
+launch rockets, and wriggle through walls!
+Move & Climb: Left/Right
+Fall: A (hold)
+Aim: Up/Down
+Launch grappling hook: A (while falling)
+Release grappling hook: A (while grappling)
+Climb/Descend rope: Up/down (while grappling)
+Wiggle through walls: Left/Right + [Tapping A]
+Charge rocket: Hold B (release to launch)
+
+## Help
+
+Story dialog options:
+TEXT: pauses game
+TALK: stays in active play
+
+Coop requires 2 Thumbys connected via a Link cable.
+
 # Font by Auri
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
 
 ## TODO
-* quick cave emulator vid of Umby crawling, jumping, shooting to destroy, and shooting a platform. (Play on ground level as earthworm Umby, and make platforms!)
-* quick cave emulator vid of Glow clinging, swinging, digging, and shooting. (Play from the roof as glow-worm Glow, and cling, swing, pummel, and tunnel!
-*  2 player coop photo of a pink and teal Thumby connected. On fence with destruction, a rocket trail, and a Pillar. (Play with an AI RoboWorm, or with a Friend!)
-* snap of Forest (X levels with Y environments!)
-* snap of launch area with Molaar and Stomp and Bones? (Battle hoards of different monsters!)
-* snap of Dragon (Boss Battles!)
-* snap of Space (1 Epic journey!)
-* Make demo video (WIP: https://drive.google.com/file/d/1NM4SpyZwK2Xgj_-J5FfPJtdIFm1kZSmK)
-* Full tests
-* Submit to https://github.com/TinyCircuits/TinyCircuits-Thumby-Games
+* Full play through tests: Coop / Glow / Text mode.
 
-Please see the credits at the bottom of [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
