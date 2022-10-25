@@ -207,7 +207,8 @@ def run_game():
         # Composite everything together to the render buffer
         tape.comp()
         audio_tick()
-        t += 1
+        if play:
+            t += 1
 
         # Save any script progress (script events function as save points)
         if (savst != state[0]):
