@@ -5,7 +5,7 @@
 Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
 
 ![Demo](/Umby&Glow/arcade_title_video.webm)
-![Demo](https://raw.githubusercontent.com/TinyCircuits/TinyCircuits-Thumby-Games/master/Umby&Glow/arcade_title_video.webm)
+
 Play as Umby the earthworm, or Glow the caveworm,
 as the wormy duo embark on an epic adventure to save their cave,
 and the whole world!
