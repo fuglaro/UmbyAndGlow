@@ -231,6 +231,8 @@ class Monsters:
             d[ii+4] = x//4 # Movement rate type
         elif tid == _Skittle:
             ys[i] = 64 + int(self._tp.player.y) # Target player 1
+        elif tid == _Stomper:
+            d[ii] = y*16
         elif tid == _Pillar or _DragonBones <= tid <= _Wyvern:
             # Make all the sections in the chain
             k = i
@@ -299,6 +301,8 @@ class Monsters:
                 self._tick_bones_charging(t, i)
             elif (_Skittle <= typ <= _Lazer) and t%2:
                 xs[i] -= 1 # Just fly straight left
+            elif typ == _Stomper:
+                self._tick_stomper(t, i)
             elif _Molaar <= typ <= _Pillar and t%3==0:
                 self._tick_crawler(t, i)
             elif typ == _Prober:
@@ -310,6 +314,15 @@ class Monsters:
                 tic = self.ticks.get(typ, None)
                 if tic:
                     tic(self, t, i)
+
+    @micropython.viper
+    def _tick_stomper(self, t: int, i: int):
+        data = ptr32(_data)
+        ys = ptr8(self.y)
+        ii = i*5
+        y = data[ii] = (data[ii] + 1)%440
+        ys[i] = 64 + (y if y < 50 else 50 if y < 170 else 220-y
+            if y < 220 else 0)
 
     @micropython.viper
     def _tick_bones(self, t: int, i: int):
@@ -651,9 +664,7 @@ class Monsters:
             tape.draw(0, x+1, y+py, self._lazer_shd, 3, 0)
         elif tid == _Stomper:
             img = self._stomper; msk = self._stomper_m
-            m = (y*16+t)%440
-            my = py = (m if m < 50 else 50 if m < 170 else 220-m
-                if m < 220 else 0)+3-y
+            my = py = 3
             mw = pw = 7
         elif _Molaar <= tid <= _MolaarClimbingCharging:
             img = self._molaar_feet; msk = self._molaar_feet_m
