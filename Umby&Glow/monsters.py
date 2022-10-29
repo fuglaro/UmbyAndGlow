@@ -598,8 +598,8 @@ class Monsters:
             if tids[i] == 0:
                 continue
             x = xs[i]-tpx
-            # Monsters in the distance get drawn to background layers
-            l = 1 if 36 <= x-px < 220 else 0
+            # Coop's monsters in the distance get drawn to background layers
+            l = 1 if 36 <= x-px < 174 or self.omons else 0
             if tids[i] < _Hoot:
                 draw = self._draw_monsters_a
             elif tids[i] < _TankPillar:
