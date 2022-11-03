@@ -124,8 +124,8 @@ def add_dialog(tape, dialog):
 @micropython.native
 def story_events(tape, mons, coop_px, autotxt, outbuf, inbuf):
     global _dialog_c, _next_event, _next_at, _active_battle, _pos, _speaking
-    outbuf[14] = 2 if _active_battle >= 0 else (
-        1 if not _speaking or autotxt else 0)
+    outbuf[14] = ((1 if not _speaking or autotxt else 0) |
+        (2 if _active_battle >= 0 else 0))
     if tape.player and tape.player.mode > 200:
         # Respawning
         if _speaking and not autotxt:
@@ -145,13 +145,13 @@ def story_events(tape, mons, coop_px, autotxt, outbuf, inbuf):
         if _dialog_c == 0:
             tape.clear_overlay()
             _speaking = False
-    if _dialog_queue and _dialog_c == 0 and inbuf[14] != 2:
+    if _dialog_queue and _dialog_c == 0:
         _pos, text = _dialog_queue.pop(0)
         tape.message(_pos%3, text, 3)
         _dialog_c = (60 + len(text)*3) // (1 if autotxt else 2)
         _speaking = True
-        outbuf[14] = 2 if _active_battle >= 0 else (
-            1 if not _speaking or autotxt else 0)
+        outbuf[14] = ((1 if not _speaking or autotxt else 0) |
+        (2 if _active_battle >= 0 else 0))
     if mons.reactions:
         add_dialog(tape, mons.reactions.pop(0))
     # Script event check
@@ -167,7 +167,8 @@ def story_events(tape, mons, coop_px, autotxt, outbuf, inbuf):
         if isinstance(event, tuple):
             _load_lvl(tape, mons, event)
         elif isinstance(event, str):
-            add_dialog(tape, event)
+            if not (inbuf[14] & 2):
+                add_dialog(tape, event)
         elif event: # Monsters
             if posx < _next_at:
                 return # Wait to reach spawn position
