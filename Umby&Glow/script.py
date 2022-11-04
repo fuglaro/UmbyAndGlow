@@ -134,6 +134,8 @@ def story_events(tape, mons, coop_px, autotxt, outbuf, inbuf):
         else:
             return
     # Update current dialog queue
+    if _active_battle >= 0:
+        autotxt = True
     if _dialog_c > 0:
         if _dialog_c == 1 and not autotxt and (bA() and bR()):
             ali = 10 if _pos==3 else 0
@@ -167,8 +169,9 @@ def story_events(tape, mons, coop_px, autotxt, outbuf, inbuf):
         if isinstance(event, tuple):
             _load_lvl(tape, mons, event)
         elif isinstance(event, str):
-            if not (inbuf[14] & 2):
-                add_dialog(tape, event)
+            if inbuf[14] & 2:
+                return
+            add_dialog(tape, event)
         elif event: # Monsters
             if posx < _next_at:
                 return # Wait to reach spawn position

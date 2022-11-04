@@ -159,7 +159,7 @@ def run_game():
     pw = pw2 = pfpst = ticks_ms()
     while(1):
         story_events(tape, mons, coop_px, autotxt, outbuf, inbuf)
-        play = (outbuf[14] & 1) and (not coop or (inbuf[14] & 1))
+        play = outbuf[14] and (not coop or inbuf[14])
         # Update the game engine by a tick
         if play:
             p1.tick(t)
