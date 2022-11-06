@@ -536,37 +536,25 @@
 
 40,  "Get ready!"
 
-80,  "@: That pillar looks load bearing..."
+70,  "@: That pillar looks load bearing..."
 0,   "^: Let's shoot it down!"
-0,   TankPillar
+
+10,  TankPillar
 0,   MiniShake
 0,   "^: Nice!"
 0,   "@: That didn't quite do it..."
 0,   "^: I see another up ahead."
+0,   "@: Let's take them all down!"
 
-50,  TankPillar
-0,   MiniShake
-0,   "@: I think this is working..."
-0,   "^: Let's take them all down!"
-
-50,  TankPillar
-0,   MiniShake
-
-50,  TankPillar
-0,   MiniShake
-
-50,  TankPillar
-0,   MiniShake
-
-50,  TankPillar
+300,  TankPillar
 0,   Shake
+
+100,  TankPillar
+0,   BigShake
 0,   "@: I think it is finally starting to give way!"
 0,   "^: Can't be much more now..."
 
-50,  TankPillar
-0,   BigShake
-
-50,  TankPillar
+300,  TankPillar
 0,   Flood
 0,   SuperShake
 # Low gravity and shake
@@ -579,11 +567,11 @@
 0,   "^: Lead the way!"
 
 # Medium shake
-800, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
+550, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
 0,   "^: It's getting worse!"
 0,   "@: I think we might have hit re-entry."
 
-300, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones,ChargingBones]), bytearray([30,20])),5)
+100, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones,ChargingBones]), bytearray([30,20])),5)
 
 # Large shake
 140, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([ChargingBones]), bytearray([20])),7)

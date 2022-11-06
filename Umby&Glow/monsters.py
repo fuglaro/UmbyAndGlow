@@ -749,8 +749,7 @@ class Monsters:
                     if xi!=3:
                         tape.draw(0, pxi, pyi, self._cpu_shd, pw, 0)
         elif tid == _Lung:
-            if not self.omons:
-                return
+            if not self.omons: return
             img = msk = self._lung
             mw = pw = 3
             pf = t//120%2
@@ -767,6 +766,7 @@ class Monsters:
         draw = tape.draw
         mask = tape.mask
         if tid == _TankPillar:
+            pf = 0
             img = msk = self._block
             for yi in range(8):
                 if yi > 2:
@@ -775,35 +775,35 @@ class Monsters:
                 draw(l, x, yi*8, img, 6, pf)
                 mask(l, x, yi*8, msk, 6, 0)
         elif tid == _MegaBones:
-            if self.omons:
-                d = ptr32(_data)
-                cpx = ptr8(self._cerebral)
-                spx = ptr8(self._cerebral_shd)
-                mpx = ptr8(self._cerebral_m)
-                wb = ptr8(self._cerebral_w)
-                xb = ptr8(self._cerebral_x)
-                tn = -1-t
-                yh = 24+(t if t//64%2 else tn)//4%16
-                y = 22+((t if t//80%2 else tn)//4%20)-yh//2
-                yt = 0
-                xr = (t if t//120%2 else tn)//12%10
-                mh = d[i*5] # data[0] must sync through bsync for coop.
-                for yi in range(5):
-                    ys = y+yt
-                    yt += (yh-yt)//(5-yi)
-                    w = wb[yi]
-                    w1 = w-xr//2
-                    w2 = w-(xr-xr//2)
-                    mhw = w1*(54-mh)//54
-                    mhw2 = w1-mhw
-                    xs = xb[yi] + x + xr//2
-                    o = 30-w2
-                    draw(l, xs, ys, cpx, w1, 0)
-                    draw(0, xs, ys, spx, mhw, 0)
-                    mask(l, xs, ys, mpx, w1, 0)
-                    draw(l, xs+w1, ys, ptr8(int(cpx)+o), w2, 0)
-                    draw(0, xs+w1+mhw2, ys, ptr8(int(spx)+o), w2-mhw2, 0)
-                    mask(l, xs+w1, ys, ptr8(int(mpx)+o), w2, 0)
+            if not self.omons: eturn
+            d = ptr32(_data)
+            cpx = ptr8(self._cerebral)
+            spx = ptr8(self._cerebral_shd)
+            mpx = ptr8(self._cerebral_m)
+            wb = ptr8(self._cerebral_w)
+            xb = ptr8(self._cerebral_x)
+            tn = -1-t
+            yh = 24+(t if t//64%2 else tn)//4%16
+            y = 22+((t if t//80%2 else tn)//4%20)-yh//2
+            yt = 0
+            xr = (t if t//120%2 else tn)//12%10
+            mh = d[i*5] # data[0] must sync through bsync for coop.
+            for yi in range(5):
+                ys = y+yt
+                yt += (yh-yt)//(5-yi)
+                w = wb[yi]
+                w1 = w-xr//2
+                w2 = w-(xr-xr//2)
+                mhw = w1*(54-mh)//54
+                mhw2 = w1-mhw
+                xs = xb[yi] + x + xr//2
+                o = 30-w2
+                draw(l, xs, ys, cpx, w1, 0)
+                draw(0, xs, ys, spx, mhw, 0)
+                mask(l, xs, ys, mpx, w1, 0)
+                draw(l, xs+w1, ys, ptr8(int(cpx)+o), w2, 0)
+                draw(0, xs+w1+mhw2, ys, ptr8(int(spx)+o), w2-mhw2, 0)
+                mask(l, xs+w1, ys, ptr8(int(mpx)+o), w2, 0)
 
     @micropython.viper
     def _kill(self, t: int, mon: int, player, tag):
