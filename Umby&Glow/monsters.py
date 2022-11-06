@@ -749,12 +749,13 @@ class Monsters:
                     if xi!=3:
                         tape.draw(0, pxi, pyi, self._cpu_shd, pw, 0)
         elif tid == _Lung:
-            if self.omons:
-                img = msk = self._lung
-                mw = pw = 3
-                pf = t//120%2
-                if x-6 < int(self._tp.player.x)-int(tape.x[0]) < x+2:
-                    l = 0
+            if not self.omons:
+                return
+            img = msk = self._lung
+            mw = pw = 3
+            pf = t//120%2
+            if x-6 < int(self._tp.player.x)-int(tape.x[0]) < x+2:
+                l = 0
         else:
             return
         tape.draw(l, x+px, y+py, img, pw, pf)
