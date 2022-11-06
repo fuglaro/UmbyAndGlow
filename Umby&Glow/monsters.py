@@ -775,7 +775,7 @@ class Monsters:
                 draw(l, x, yi*8, img, 6, pf)
                 mask(l, x, yi*8, msk, 6, 0)
         elif tid == _MegaBones:
-            if not self.omons: eturn
+            if not self.omons: return
             d = ptr32(_data)
             cpx = ptr8(self._cerebral)
             spx = ptr8(self._cerebral_shd)
