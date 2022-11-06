@@ -36,6 +36,7 @@ _Shake = const(93)
 _BigShake = const(94)
 _SuperShake = const(95)
 _Flood = const(96)
+_Hold = const(99)
 Bones = _Bones
 BonesBoss = _BonesBoss
 DragonBones = _DragonBones
@@ -60,7 +61,8 @@ Shake = _Shake
 BigShake = _BigShake
 SuperShake = _SuperShake
 Flood = _Flood
-boss_types = [_BonesBoss, _DragonBones, _LeftDoor, _CPU, _Lung, _TankPillar,
+Hold = _Hold
+boss_types = [_BonesBoss, _DragonBones, _LeftDoor, _CPU, _Hold, _TankPillar,
     _MegaBones, _MiniShake, _Shake, _BigShake, _SuperShake]
 
 _data = array('l', 0 for i in range(48*5))
