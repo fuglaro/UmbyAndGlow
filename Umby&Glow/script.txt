@@ -567,7 +567,7 @@
 0,   "^: Lead the way!"
 
 # Medium shake
-550, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
+700, ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([Bones]), bytearray([20])),5)
 0,   "^: It's getting worse!"
 0,   "@: I think we might have hit re-entry."
 
@@ -579,10 +579,11 @@
 0,   "^: What?! What happens if it doesn't?"
 0,   "@: Bad things. So let's keep moving!"
 
-200, SuperShake
 # Normal gravity no shake
+200, SuperShake
 0,   ("6","[pattern_fill,pattern_fill,pattern_fill,w.pattern_flood,pattern_fill]",(bytearray([]), bytearray([])),0)
-0,   "^: Have we crash landed?!"
+
+200, "^: Have we crash landed?!"
 0,   "@: I think we have..."
 0,   "@: There's something about that authentic real gravity that feels like home."
 0,   "^: Did we just save the world?"
