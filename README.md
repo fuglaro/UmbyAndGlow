@@ -62,7 +62,7 @@ Story dialog options:
 
 Coop requires 2 Thumbys connected via a Link cable.
 
-Please see (/help.md) for the main concept and code documentation.
+Please see [help.md](/help.md) for the main concept and code documentation.
 
 # Font by Auri
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
