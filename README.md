@@ -1,18 +1,21 @@
 # Umby & Glow - Save Their Cave!
 
 ![Umby & Glow](/Umby&Glow.png)
-
-Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
-
 ![Demo Video](/Umby&Glow/arcade_title_video.webm)
 
-There is an emulated version you can play from TinyCircuits' Thumby Arcade:
+See the hosted emulated version at TinyCircuits' Thumby Arcade:
 * https://code.thumby.us
 * Click Arcade
 * Find Umby&Glow
 * Mouse over and click OPEN
 * In the Emulator click START
 * Play with: W/A/S/D (direction) and "," (B) "." (A)
+
+Or grab a ![Thumby](https://tinycircuits.com/products/thumby) for the full experience!
+
+## About
+
+Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
 
 Play as Umby the earthworm, or Glow the caveworm,
 as the wormy duo embark on an epic adventure to save their cave,
@@ -27,7 +30,7 @@ and the whole world!
 
 Please see the credits at the bottom of [script.txt](/Games/Umby&Glow/script.txt) for special thanks and contributors.
 
-## Meet UMBY!
+### Meet UMBY!
 
 Crawl the mud, blast tunnels, jump high, launch grenades,
 and create platforms!
@@ -37,7 +40,7 @@ Aim: Up/Down
 Charge grenade: Hold B (release to launch)
 Create platform: B (while grenade in flight)
 
-## Meet GLOW!
+### Meet GLOW!
 
 Cling to the roof, blast tunnels, swing with a grappling hook,
 launch rockets, and wriggle through walls!
@@ -60,7 +63,3 @@ Coop requires 2 Thumbys connected via a Link cable.
 
 # Font by Auri
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
-
-## TODO
-* Full play through tests: Coop / Glow / Text mode.
-
