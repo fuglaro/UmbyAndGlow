@@ -1,6 +1,7 @@
 # Umby & Glow - Save Their Cave!
 
 ![Umby & Glow](/Umby&Glow.png)
+
 ![Demo Video](/Umby&Glow/arcade_title_video.webm)
 
 See the hosted emulated version at TinyCircuits' Thumby Arcade:
