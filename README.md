@@ -54,7 +54,7 @@ Climb/Descend rope: Up/down (while grappling)
 Wiggle through walls: Left/Right + [Tapping A]
 Charge rocket: Hold B (release to launch)
 
-## Help
+## Help & Documentation
 
 Story dialog options:
 * TEXT: pauses game
