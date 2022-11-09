@@ -57,10 +57,12 @@ Charge rocket: Hold B (release to launch)
 ## Help
 
 Story dialog options:
-TEXT: pauses game
-TALK: stays in active play
+* TEXT: pauses game
+* TALK: stays in active play
 
 Coop requires 2 Thumbys connected via a Link cable.
+
+Please see (/help.md) for the main concept and code documentation.
 
 # Font by Auri
 Special thanks to Auri for the U&G 3x5 font designs, which is at the heart of the aesthetics of the whole game.
