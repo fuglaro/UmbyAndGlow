@@ -2,7 +2,7 @@
 
 ![Umby & Glow](/Umby&Glow.png)
 
-![Demo Video](https://user-images.githubusercontent.com/39223558/200944876-3e43a01c-3a31-4b10-9e78-7d0340dfa21f.mp4)
+[!(Demo Video)](https://user-images.githubusercontent.com/39223558/200944876-3e43a01c-3a31-4b10-9e78-7d0340dfa21f.mp4)
 
 See the hosted version emulated at TinyCircuits' Thumby Arcade:
 * https://code.thumby.us
