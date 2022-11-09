@@ -33,26 +33,24 @@ Please see the credits at the bottom of [script.txt](/Games/Umby&Glow/script.txt
 
 ### Meet UMBY!
 
-Crawl the mud, blast tunnels, jump high, launch grenades,
-and create platforms!
-Move & Climb: Left/Right
-Jump: A (hold for higher)
-Aim: Up/Down
-Charge grenade: Hold B (release to launch)
-Create platform: B (while grenade in flight)
+Crawl the mud, blast tunnels, jump high, launch grenades, and create platforms!
+* Move & Climb: Left/Right
+* Jump: A (hold for higher)
+* Aim: Up/Down
+* Charge grenade: Hold B (release to launch)
+* Create platform: B (while grenade in flight)
 
 ### Meet GLOW!
 
-Cling to the roof, blast tunnels, swing with a grappling hook,
-launch rockets, and wriggle through walls!
-Move & Climb: Left/Right
-Fall: A (hold)
-Aim: Up/Down
-Launch grappling hook: A (while falling)
-Release grappling hook: A (while grappling)
-Climb/Descend rope: Up/down (while grappling)
-Wiggle through walls: Left/Right + [Tapping A]
-Charge rocket: Hold B (release to launch)
+Cling to the roof, blast tunnels, swing with a grappling hook, launch rockets, and wriggle through walls!
+* Move & Climb: Left/Right
+* Fall: A (hold)
+* Aim: Up/Down
+* Launch grappling hook: A (while falling)
+* Release grappling hook: A (while grappling)
+* Climb/Descend rope: Up/down (while grappling)
+* Wiggle through walls: Left/Right + [Tapping A]
+* Charge rocket: Hold B (release to launch)
 
 ## Help & Documentation
 
