@@ -4,7 +4,7 @@
 
 ![Demo Video](/Umby&Glow/arcade_title_video.webm)
 
-See the hosted emulated version at TinyCircuits' Thumby Arcade:
+See the hosted version emulated at TinyCircuits' Thumby Arcade:
 * https://code.thumby.us
 * Click Arcade
 * Find Umby&Glow
