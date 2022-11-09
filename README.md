@@ -12,7 +12,7 @@ See the hosted version emulated at TinyCircuits' Thumby Arcade:
 * In the Emulator click START
 * Play with: W/A/S/D (direction) and "," (B) "." (A)
 
-Or grab a ![Thumby](https://tinycircuits.com/products/thumby) for the full experience!
+Or grab a [Thumby](https://tinycircuits.com/products/thumby) for the full experience!
 
 ## About
 
