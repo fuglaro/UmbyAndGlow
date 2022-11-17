@@ -24,7 +24,7 @@ and the whole world!
 * Side scrolling platformer with destructable landscapes.
 * Supports 2 player coop (with link cable).
 * 8 epic Chapters through caves, forests, space, and beyond!
-* Aliens, Dragons, Owls, Lazers, their favourite nemesis: Lung.
+* Aliens, Dragons, Owls, Lazers, and their favourite nemesis: Lung.
 * 4 Boss Battles including one epic showdown.
 * 1 breathtaking font by Auri.
 * And a truckload of puntastic fun!
