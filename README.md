@@ -6,7 +6,7 @@
 
 See the hosted version emulated at TinyCircuits' Thumby Arcade:
 https://code.thumby.us/play.html?game=Umby%26Glow
-(Play with: W/A/S/D (direction) and "," (B) "." (A))
+(Play with: w/a/s/d (direction) and "," (B) "." (A))
 
 Or grab a [Thumby](https://tinycircuits.com/products/thumby) for the full experience!
 
