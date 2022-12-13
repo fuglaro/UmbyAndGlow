@@ -5,12 +5,8 @@
 [!(Demo Video)](https://user-images.githubusercontent.com/39223558/200944876-3e43a01c-3a31-4b10-9e78-7d0340dfa21f.mp4)
 
 See the hosted version emulated at TinyCircuits' Thumby Arcade:
-* https://code.thumby.us
-* Click Arcade
-* Find Umby&Glow
-* Mouse over and click OPEN
-* In the Emulator click START
-* Play with: W/A/S/D (direction) and "," (B) "." (A)
+https://code.thumby.us/play.html?game=Umby%26Glow
+(Play with: W/A/S/D (direction) and "," (B) "." (A))
 
 Or grab a [Thumby](https://tinycircuits.com/products/thumby) for the full experience!
 
