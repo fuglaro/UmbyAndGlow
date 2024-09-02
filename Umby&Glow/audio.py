@@ -22,6 +22,7 @@ _signal = None
 _duration = _t = 0
 _no_interupt = False
 
+@micropython.native
 def audio_tick():
     global _t
     if _t == _duration:
