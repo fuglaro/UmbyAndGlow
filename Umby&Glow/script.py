@@ -6,8 +6,11 @@ from utils import *
 from machine import Pin, freq
 from array import array
 _buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
-bA = Pin(27, Pin.IN, Pin.PULL_UP).value
-bR = Pin(5, Pin.IN, Pin.PULL_UP).value
+import engine_io
+def bR():
+    return not engine_io.RIGHT.is_pressed
+def bA():
+    return not engine_io.A.is_pressed
 
 w = None # World
 _loaded = None

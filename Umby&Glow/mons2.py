@@ -21,7 +21,7 @@ def _tick_mega_bones(self, t: int, i: int):
     odmg = int(self.omons.bsync)
     if odmg > dmg:
         dmg = data[ii] = odmg
-    self.bsync = dmg <<1|1
+    self.bsync = dmg
     if data[ii+1] != dmg and dmg <= 50:
         data[ii+1] = dmg
         spawn(_ChargingBones, x, 32)

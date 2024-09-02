@@ -188,12 +188,12 @@ class Monsters:
     @micropython.viper
     def port_in(self, buf: ptr8):
         px = buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3] # left of other tape
-        self._px = px <<1|1
+        self._px = px
         # Loop through each monster
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
         ys = ptr8(self.y)
-        self.bsync = buf[15] <<1|1
+        self.bsync = buf[15]
         for i in range(48):
             tids[i] = tid = buf[16+i*3]
             if tid:
@@ -218,7 +218,7 @@ class Monsters:
         else: # Monster buffer full
             return -1
         # Create the new monster
-        self.num = (int(self.num)+1) <<1|1
+        self.num = (int(self.num)+1)
         tids[i] = tid
         xs[i] = x; ys[i] = y+64
         ii = i*5
@@ -262,7 +262,7 @@ class Monsters:
             # Send self 500 pixels into distance
             ptr32(self.x)[i] += 500
         elif _MiniShake <= tid <= _SuperShake:
-            self._tp.cam_shake = (5 if tid==_SuperShake else tid-92+1) <<1|1
+            self._tp.cam_shake = (5 if tid==_SuperShake else tid-92+1)
         elif tid == _FallingBones:
             xs = ptr32(self.x)
             xs[i] -= 106 - (xs[i]^73)%72
@@ -274,14 +274,14 @@ class Monsters:
         tids = ptr8(self._tids)
         for i in range(48):
             tids[i] = 0
-        self.num = 0 <<1|1
+        self.num = 0
 
     @micropython.viper
     def tick(self, t: int):
         tape = self._tp
         tpx = int(tape.x[0])
-        self._px = tpx-72 <<1|1 # left of own tape
-        self.bsync = 0 <<1|1
+        self._px = tpx-72 # left of own tape
+        self.bsync = 0
         # Loop through all the monsters, updating ticks
         tids = ptr8(self._tids)
         xs = ptr32(self.x)
@@ -809,7 +809,7 @@ class Monsters:
     def _kill(self, t: int, mon: int, player, tag):
         if mon != -1:
             ptr8(self._tids)[mon] = 0
-            self.num = int(self.num) - 1 <<1|1
+            self.num = int(self.num) - 1
         if player:
             # Explode the rocket
             player.detonate(t)

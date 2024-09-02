@@ -18,7 +18,7 @@ def _tick_cpu(self, t: int, i: int):
     if data[ii+1] != dmg:
         say = self.reactions.extend
         data[ii+1] = dmg
-        self.bsync = (dmg+50) <<1|1
+        self.bsync = (dmg+50)
         if dmg%7==1:
             say(["|!! CORE ALERT !! INTEGRITY:"+str(16-dmg)])
         if dmg == 2:
@@ -28,19 +28,19 @@ def _tick_cpu(self, t: int, i: int):
         elif dmg == 9:
             say(["^: This is an absolute blast!"])
         elif dmg == 13:
-            tape.cam_shake = 1 <<1|1
+            tape.cam_shake = 1
         elif dmg == 14:
             say(["@: Just a bit more!"])
-            tape.cam_shake = 3 <<1|1
+            tape.cam_shake = 3
         elif dmg == 15:
-            tape.cam_shake = 6 <<1|1
+            tape.cam_shake = 6
         p1 = tape.players[0]
         pr1 = int(p1.rocket_x) + int(p1.rocket_y) + 1
         tape.blast(t+i,(t^pr1)%72+int(tape.x[0]), (t*pr1)%64)
     if dmg >= 16:
         data[ii+2] += 1
         if data[ii+2] > 60:
-            tape.cam_shake = 0 <<1|1
+            tape.cam_shake = 0
             self._kill(t, i, None, "SEG-FAULT")
 
 def _tick_flood(self, t: int, i: int):

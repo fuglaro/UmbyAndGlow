@@ -1,24 +1,26 @@
 from machine import Pin, UART
 
-_rxPin = Pin(1, Pin.IN)
-_uart = UART(0, baudrate=115200, rx=_rxPin, tx=Pin(0, Pin.OUT), timeout=0,
-    txbuf=164, rxbuf=328)
-Pin(2, Pin.OUT).value(1)
+#_rxPin = Pin(1, Pin.IN)
+#_uart = UART(0, baudrate=115200, rx=_rxPin, tx=Pin(0, Pin.OUT), timeout=0,
+#    txbuf=164, rxbuf=328)
+#Pin(2, Pin.OUT).value(1)
 
 # Read/write buffers (last byte is checksum)
-_echobuf = bytearray(0 for x in range(160))
+#_echobuf = bytearray(0 for x in range(160))
 inbuf = bytearray(0 for x in range(160))
 outbuf = bytearray(0 for x in range(160))
-_echo = _wait = _uanyc = 0 # Listen counters
+#_echo = _wait = _uanyc = 0 # Listen counters
 
 @micropython.viper
 def _prep_checksum():
+    return
     chs = 0
     for i in range(159):
         chs ^= int(outbuf[i])
     outbuf[159] = chs
 @micropython.viper
 def _check_checksum() -> int:
+    return
     chs = 0
     for i in range(159):
         chs ^= int(inbuf[i])
@@ -26,6 +28,7 @@ def _check_checksum() -> int:
 
 @micropython.native
 def comms():
+    return
     global _echo, _wait, _uanyc
     res = 0
     # Discard echo rebounding back on the wire (from half duplex)
@@ -49,4 +52,5 @@ def comms():
         if _uanyc > 60:
             _echo = _wait = _uanyc = 0
     return res
+
 

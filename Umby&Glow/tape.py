@@ -45,7 +45,7 @@ class Tape:
         # The patterns to feed into each tape section
         self.feed = [None, None, None, None, None]
         self.cam_shake = 0
-        self._stage = array('l', (0 for i in range(72*2*3+132*2)))
+        self._stage = array('l', (0 for i in range(128*2*3+132*2)))
         self.spawner = (bytearray([]), bytearray([]))
         def _pass(*arg):
             pass
@@ -79,7 +79,7 @@ class Tape:
         if x < -30 or x >= 102:
             return False # Out of buffer range is always False
         stage = ptr32(self._stage)
-        p = (x+30)%132*2+432
+        p = (x+30)%132*2+768
         h = y - 8 # y position is from bottom of text
         img1 = b >> 0-h if h < 0 else b << h
         img2 = b >> 32-h if h-32 < 0 else b << h-32
@@ -88,9 +88,9 @@ class Tape:
     @micropython.viper
     def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
         o = x-f*w
-        p = (layer+2)*144 + (60 if layer == 1 else 0)
-        r1 = -30 if layer == 1 else 0
-        r2 = 101 if layer == 1 else 71
+        p = (layer+2)*256 + (60 if layer == 1 else 56)
+        r1 = -30 if layer == 1 else 56
+        r2 = 101 if layer == 1 else 100
         draw = ptr32(self._stage)
         for i in range(x if x >= r1 else r1, x+w if x+w <= r2 else r2):
             b = uint(img[i-o])
@@ -100,9 +100,9 @@ class Tape:
     @micropython.viper
     def mask(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
         o = x-f*w
-        p = layer*144
+        p = layer*256 + 56
         draw = ptr32(self._stage)
-        for i in range(x if x >= 0 else 0, x+w if x+w < 72 else 71):
+        for i in range(x if x >= -28 else 0, x+w if x+w < 101 else 100):
             b = uint(img[i-o])
             draw[p+i*2] &= -1 ^ ((b<<y) if y >= 0 else (b>>0-y))
             draw[p+i*2+1] &= -1 ^ ((b<<y-32) if y >= 32 else (b>>32-y))
@@ -114,20 +114,20 @@ class Tape:
         stg = ptr32(self._stage)
         frame = ptr8(display_buffer)
         scroll[2] += 1 # Counter (increment)
-        y_pos = scroll[4]
         # Loop through each column of pixels
-        for x in range(72):
+        wid = 128
+        for x in range(wid):
             # Compose the first 32 bits vertically.
-            p0 = (x+scroll[0])%216*2
-            p1 = (x+scroll[1])%216*2
-            p3 = (x+scroll[3])%216*2
-            dim = int(1431655765) << ((scroll[2]+x+y_pos+p1)%2)
+            p0 = (x+scroll[0]-28)%216*2
+            p1 = (x+scroll[1]-28)%216*2
+            p3 = (x+scroll[3]-28)%216*2
+            dim = int(1431655765) << ((scroll[2]+x+p1)%2)
             x2 = x*2
             # Composite onto layers
-            overlay_mask = tape[x2+2160] << y_pos
-            overlay_draw = tape[x2+2304] << y_pos
+            overlay_mask = tape[x2+2160] if x < 72 else -1
+            overlay_draw = tape[x2+2304] if x < 72 else 0
             for i in range(2):
-                actrs = stg[x2+492]
+                actrs = stg[x2+772]
                 tlnd = tape[p3+1296]
                 ntlnd = -1^tlnd
                 glare = stg[x2]
@@ -139,45 +139,48 @@ class Tape:
                             ((tape[p0] & dim | tape[p1+432]) & glare
                                 & tape[p1+864] & tlndfll)
                             # Background (non-interactive) monsters
-                            | stg[x2+288]
+                            | stg[x2+512]
                         )  & ntlnd & overlay_mask
                     | tlndshd
                     # Aliased land
                     | ((tlnd<<1 | tlnd>>1) & ntlnd)
                     | actrs)
                 # Convert to grayscale layers
-                b = uint(((tlnd & tlndfll & stg[x2+144] | actrs) & overlay_mask) | overlay_draw)
+                b = uint(((tlnd & tlndfll & stg[x2+wid*2] | actrs) & overlay_mask) | overlay_draw)
                 bg = uint(back ^ (back & (actrs & overlay_mask | overlay_draw)))
                 if i == 0:
                     a, ag = b, bg
                     # The second pass should compose the second 32 bits vertically.
-                    overlay_mask = int(uint(tape[x2+2160]) >> 32-y_pos) | (tape[x2+2161] << y_pos)
-                    overlay_draw = int(uint(tape[x2+2304]) >> 32-y_pos) | (tape[x2+2305] << y_pos)
+                    overlay_mask = int(uint(tape[x2+2160]) >> 32) | (tape[x2+2161]) if x < 72 else -1
+                    overlay_draw = int(uint(tape[x2+2304]) >> 32) | (tape[x2+2305]) if x < 72 else 0
                     p0 += 1
                     p1 += 1
                     p3 += 1
                     x2 += 1
             # Apply the relevant pixels to next vertical column of the display
             # buffer, while also accounting for the vertical offset.
-            ry = 32 - y_pos
+            ry = 32
             for _ in range(2):
                 bry = b << ry
-                frame[x] = a >> y_pos
-                frame[72+x] = (a >> 8 >> y_pos) | (bry >> 8)
-                frame[144+x] = (a >> 16 >> y_pos) | (bry >> 16)
-                frame[216+x] = (a >> 24 >> y_pos) | (bry >> 24)
-                frame[288+x] = b >> y_pos
+                frame[x] = a
+                frame[wid+x] = (a >> 8) | (bry >> 8)
+                frame[wid*2+x] = (a >> 16) | (bry >> 16)
+                frame[wid*3+x] = (a >> 24) | (bry >> 24)
+                frame[wid*4+x] = b
+                frame[wid*5+x] = (b >> 8)
+                frame[wid*6+x] = (b >> 16)
+                frame[wid*7+x] = (b >> 24)
                 # Switch to grayscale for second pass
-                x += 360
+                x += wid*8
                 a = ag
                 b = bg
 
     @micropython.viper
     def clear_stage(self):
         stg = ptr32(self._stage)
-        for i in range(288, 696):
+        for i in range(512, 1028):
             stg[i] = 0
-        for i in range(288):
+        for i in range(512):
             stg[i] = -1
 
     @micropython.viper
@@ -262,11 +265,6 @@ class Tape:
         if l != 0 and fill_pattern:
             tape[offX+432] &= int(fill_pattern(x, 0))
             tape[offX+433] &= int(fill_pattern(x, 32))
-        
-    @micropython.viper
-    def offset_vertically(self, offset: int):
-        ptr32(self._tape_scroll)[4] = (
-            offset if offset >= 0 else 0) if offset <= 24 else 24
 
     @micropython.viper
     def auto_camera(self, x: int, y: int, d: int, t: int):
@@ -279,8 +277,6 @@ class Tape:
             self.scroll_tape(n if c % 4 == 0 else 0, n*(c % 2), n)
         # Vertical offset
         y -= 20
-        ptr32(self._tape_scroll)[4] = ((y if y >= 0 else 0) if y <= 24
-            else 24) + t//2%(int(self.cam_shake)+1)*(1 if y<12 else -1)
 
     @micropython.viper
     def write(self, layer: int, text, x: int, y: int):
@@ -374,3 +370,4 @@ class Tape:
             tape[i] = -1
         for i in range(2304, 2448):
             tape[i] = 0
+

@@ -263,10 +263,10 @@ def _tick_left_door(self, t: int, i: int):
         # Clearing out background monsters
         if tids[timer%48] != _LeftDoor:
             tids[timer%48] = 0
-            self.num = int(self.num) - 1 <<1|1
+            self.num = int(self.num) - 1
     elif timer == 11300:
         tids[i] = 0
-        self.num = int(self.num) - 1 <<1|1
+        self.num = int(self.num) - 1
 
 mons.ticks = {
     _LeftDoor: _tick_left_door,
