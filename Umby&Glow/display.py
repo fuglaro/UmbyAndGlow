@@ -10,20 +10,10 @@ disable_fps_limit()
 def C(R,G,B):
     return ((R*31//255)<<11) + ((G*63//255)<<5) + (B*31//255)
 
-
-# Miminised Thumby grayscale library (version 4.0.2-hemlock)
-# See: https://github.com/Timendus/thumby-grayscale
-
-from utime import sleep_ms, ticks_diff, ticks_ms, sleep_us
-from machine import Pin, SPI, idle, mem32
-import _thread
-from array import array
-
 _WIDTH = const(128)
 _HEIGHT = const(64)
 _BUFF_SIZE = const((_HEIGHT // 8) * _WIDTH)
 _BUFF_INT_SIZE = const(_BUFF_SIZE // 4)
-
 
 class Grayscale:
     def __init__(self):
@@ -31,9 +21,9 @@ class Grayscale:
         self.buffer = memoryview(self._drawBuffer)[:_BUFF_SIZE]
         self.shading = memoryview(self._drawBuffer)[_BUFF_SIZE:]
         self.lastUpdateEnd = 0
-        self._fb_bw = fbuf = FrameBuffer(self.buffer, _WIDTH, _HEIGHT, MONO_VLSB)
+        self._fb_bw = FrameBuffer(self.buffer, _WIDTH, _HEIGHT, MONO_VLSB)
         self._col = bytearray(_BUFF_SIZE)
-        self._fb_col =  FrameBuffer(self._col, _WIDTH, _HEIGHT, MONO_VLSB)
+        self._fb_col = FrameBuffer(self._col, _WIDTH, _HEIGHT, MONO_VLSB)
         self._pal = FrameBuffer(bytearray(4), 2, 1, RGB565)
 
     @micropython.viper

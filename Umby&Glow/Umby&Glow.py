@@ -16,7 +16,7 @@
 import engine_main
 
 from machine import freq
-freq(133000000)
+freq(180000000)
 
 from sys import path
 path.append("/Games/Umby&Glow")
