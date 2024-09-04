@@ -89,8 +89,8 @@ class Tape:
     def draw(self, layer: int, x: int, y: int, img: ptr8, w: int, f: int):
         o = x-f*w
         p = (layer+2)*256 + (60 if layer == 1 else 56)
-        r1 = -30 if layer == 1 else 56
-        r2 = 101 if layer == 1 else 100
+        r1 = -30 if layer == 1 else -28
+        r2 = 101 if layer == 1 else 99
         draw = ptr32(self._stage)
         for i in range(x if x >= r1 else r1, x+w if x+w <= r2 else r2):
             b = uint(img[i-o])
@@ -102,7 +102,7 @@ class Tape:
         o = x-f*w
         p = layer*256 + 56
         draw = ptr32(self._stage)
-        for i in range(x if x >= -28 else 0, x+w if x+w < 101 else 100):
+        for i in range(x if x >= -28 else -28, x+w if x+w < 101 else 100):
             b = uint(img[i-o])
             draw[p+i*2] &= -1 ^ ((b<<y) if y >= 0 else (b>>0-y))
             draw[p+i*2+1] &= -1 ^ ((b<<y-32) if y >= 32 else (b>>32-y))
