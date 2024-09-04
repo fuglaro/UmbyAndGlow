@@ -4,7 +4,7 @@ class W:
         xa = x*x*40//((x%40+20)+1)
         return ((
                 int(0x00000FFF)<<((xa+oY)%64-16) |
-                uint(0xFFF00000)>>(32-(xa)%32)
+                uint(-1048576)>>(32-(xa)%32)
             ) if xa%12 > 4 # Tree middle
             else -1 if (xa-1)%12 > 2 # Bark
             else 0 # Gaps
@@ -73,7 +73,7 @@ class W:
         xa = buff[1]
         return (((
                 int(0x00000FFF)<<((xa+oY)%64-16) |
-                uint(0xFFF00000)>>(32-(xa)%32) |
+                uint(-1048576)>>(32-(xa)%32) |
                 int(1431655765)<<(x%2)
             ) if xb%120 > 100 # Tree middle
             else -1)
@@ -102,7 +102,7 @@ class W:
         xa = buff[1]
         return ((
                 int(0x00000FFF)<<((xa+oY)%64-16) |
-                uint(0xFFF00000)>>(32-(xa)%32) |
+                uint(-1048576)>>(32-(xa)%32) |
                 int(1431655765)<<(x//2%2)
             ) if xb%60 > 45 # Tree middle
             else -1 if (xb-3)%60 > 39 # Tree edge
