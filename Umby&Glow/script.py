@@ -3,7 +3,6 @@
 from monsters import *
 import gc
 from utils import *
-from machine import Pin, freq
 from array import array
 _buf = array('l', [0, 0, 0, 0, 0, 0, 0, 0])
 import engine_io

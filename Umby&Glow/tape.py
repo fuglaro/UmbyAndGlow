@@ -1,6 +1,8 @@
 from array import array
 from utils import ihash
-from display import display_buffer
+from display import display_buffer, borders
+import display
+from engine_io import rumble
 
 # Font by Auri (@Auri#8401)
 _font = (
@@ -151,8 +153,8 @@ class Tape:
                 if i == 0:
                     a, ag = b, bg
                     # The second pass should compose the second 32 bits vertically.
-                    overlay_mask = int(uint(tape[x2+2160]) >> 32) | (tape[x2+2161]) if x < 72 else -1
-                    overlay_draw = int(uint(tape[x2+2304]) >> 32) | (tape[x2+2305]) if x < 72 else 0
+                    overlay_mask = int(uint(tape[x2+2160]) >> 32) | (tape[x2+2161] | -128) if x < 72 else -1
+                    overlay_draw = int(uint(tape[x2+2304]) >> 32) | (tape[x2+2305] & 127) if x < 72 else 0
                     p0 += 1
                     p1 += 1
                     p3 += 1
@@ -174,6 +176,13 @@ class Tape:
                 x += wid*8
                 a = ag
                 b = bg
+        # Also draw the borders.
+        bord = ptr8(borders)
+        for x in range(72):
+            a = uint(tape[x*2+2305])
+            bord[72+x] = a >> 8
+            bord[144+x] = a >> 16
+            bord[216+x] = a >> 24
 
     @micropython.viper
     def clear_stage(self):
@@ -277,6 +286,8 @@ class Tape:
             self.scroll_tape(n if c % 4 == 0 else 0, n*(c % 2), n)
         # Vertical offset
         y -= 20
+        # Shake
+        display.shake = t//2%(int(self.cam_shake)+1)*(1 if y<12 else -1)
 
     @micropython.viper
     def write(self, layer: int, text, x: int, y: int):
@@ -337,9 +348,9 @@ class Tape:
                 y += 6
         else:
             if position == 1: # Top
-                y = 5
+                y = 57
             if position == 2: # Bottom
-                y = 46 - 6*leng
+                y = 57 - 6*leng
             for i in range(leng):
                 self.write(layer, lines[i], 0, y)
                 y += 6
