@@ -10,6 +10,8 @@ https://code.thumby.us/play.html?game=Umby%26Glow
 
 Or grab a [Thumby](https://tinycircuits.com/products/thumby) for the full experience!
 
+Or check out the [ThumbyColor branch](https://github.com/fuglaro/UmbyAndGlow/tree/ThumbyColor) for the port for the [Thumby Color](https://color.thumby.us)!
+
 ## About
 
 Coop side scrolling platformer for the Thumby device - Umby the earthworm and Glow the caveworm team up to save their cave, and the world!
