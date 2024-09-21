@@ -1,56 +1,56 @@
-from machine import Pin, UART
+import engine_link
+ready_comms = engine_link.start
 
-#_rxPin = Pin(1, Pin.IN)
-#_uart = UART(0, baudrate=115200, rx=_rxPin, tx=Pin(0, Pin.OUT), timeout=0,
-#    txbuf=164, rxbuf=328)
-#Pin(2, Pin.OUT).value(1)
 
 # Read/write buffers (last byte is checksum)
-#_echobuf = bytearray(0 for x in range(160))
 inbuf = bytearray(0 for x in range(160))
 outbuf = bytearray(0 for x in range(160))
-#_echo = _wait = _uanyc = 0 # Listen counters
 
 @micropython.viper
 def _prep_checksum():
-    return
     chs = 0
     for i in range(159):
-        chs ^= int(outbuf[i])
-    outbuf[159] = chs
+        chs += int(outbuf[i])
+    outbuf[159] = chs&0xff
 @micropython.viper
 def _check_checksum() -> int:
-    return
     chs = 0
     for i in range(159):
-        chs ^= int(inbuf[i])
-    return 1 if int(inbuf[159]) == chs else 0
+        chs += int(inbuf[i])
+    return 1 if int(inbuf[159]) == chs&0xff else 0
 
+send = 2
+skips = 0
 @micropython.native
 def comms():
-    return
-    global _echo, _wait, _uanyc
+    """ Attempt to send outbuf and recieve inbuf.
+    Only sends if it gets a recieve.
+    """
+    global send, skips
+    skips += 1
+    # Ensure the connection is established.
+    while not engine_link.connected():
+        if not engine_link.is_started():
+            engine_link.start()
+    # Attempt to exchange data packets.
     res = 0
-    # Discard echo rebounding back on the wire (from half duplex)
-    _echo -= _uart.readinto(_echobuf, _echo) or 0
-    if _echo == 0 and _wait > 0: # Read
-        _wait -= _uart.readinto(memoryview(inbuf)[160-_wait:], _wait) or 0
-        if not _wait and _check_checksum():
-            res = 1 # Message recieved
-    # Check if it is our turn to send
-    if _echo == 0 and _wait == 0 and _rxPin.value:
-        # Wipe junk or half messages
-        while _uart.any():
-            _uart.readinto(_echobuf)
+    # Read a whole packet if available.
+    if engine_link.available() >= 160:
+        engine_link.read_into(inbuf)
+        res = _check_checksum()
+        if res:
+            send += 1
+    # Send entire packet if ready.
+    if send:
         _prep_checksum()
-        _uart.write(outbuf) # Send
-        # Ready for echo and then reply
-        _echo = _wait = 160
-    elif _wait != 0 and not _uart.any():
-        _uanyc += 1
-        # If noreply 60 times, abort and send again
-        if _uanyc > 60:
-            _echo = _wait = _uanyc = 0
+        engine_link.send(outbuf)
+        skips = 0
+        send -= 1
+    if skips > 10:
+        skips = 0
+        engine_link.clear_read()
+        engine_link.clear_send()
+        if engine_link.is_host():
+            send = 2
     return res
-
 

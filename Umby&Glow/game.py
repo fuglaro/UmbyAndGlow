@@ -11,7 +11,7 @@ gc.collect()
 from os import mkdir
 from time import ticks_ms
 from audio import audio_tick
-from comms import comms, inbuf, outbuf
+from comms import comms, inbuf, outbuf, ready_comms
 from script import get_chapters, story_events, story_jump, state
 import script
 gc.collect()
@@ -104,10 +104,28 @@ def _run_menu():
 
     ## Negotiate 2 player communication and starting position (if needed)
     if ch[1]:
+        ready_comms()
         tape.clear_overlay()
         # Waiting for other player...
-        tape.message(0, "WAITING...", 3)
-        while handshake < 240:
+        tape.message(0, "CONNECT DEVICES, THEN PRESS A...", 3)
+        while not bA():
+            background_update()
+            t += 1
+        ready = False
+        while handshake < 10:
+            # Update background
+            background_update()
+            t += 1
+            # Ensure comms is ready to exchange information.
+            if not ready:
+                if not bA():
+                    ready = True
+                    tape.clear_overlay()
+                    tape.message(0, "CONNECTING...", 3)
+                continue
+ 
+            tape.clear_overlay()
+            tape.message(0, "WAITING...", 3)
             # Get ready to send starting location information
             outbuf[0] = start>>24
             outbuf[1] = start>>16
@@ -115,13 +133,10 @@ def _run_menu():
             outbuf[3] = start
             # Communicate with other player on start position
             if comms():
-                handshake += 60
+                handshake += 1
                 p2start = inbuf[0]<<24 | inbuf[1]<<16 | inbuf[2]<<8 | inbuf[3]
                 if p2start > start:
                     start = p2start
-            # Update background
-            background_update()
-            t += 1
 
     tape.clear_overlay()
     tape.message(0, "GET READY!!...", 3)
@@ -154,9 +169,10 @@ def run_game():
     # Main gameplay loop
     t = savst = coop_px = pstat = pstat2 = ptot = pfps1 = pfps2 = 0
     pw = pw2 = pfpst = ticks_ms()
+    p2play = True
     while(1):
         story_events(tape, mons, coop_px, autotxt, outbuf, inbuf)
-        play = outbuf[14] and (not coop or inbuf[14])
+        play = outbuf[14] and (not coop or p2play)
         # Update the game engine by a tick
         if play:
             p1.tick(t)
@@ -168,6 +184,7 @@ def run_game():
         # Update coop networking
         if coop:
             if comms():
+                p2play = inbuf[14]
                 # Update player 2 data (and also monsters)
                 coop_px = p2.port_in(inbuf)
                 mons2.port_in(inbuf)
